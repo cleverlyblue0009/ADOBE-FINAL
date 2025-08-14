@@ -353,14 +353,19 @@ async def get_library_documents(persona: Optional[str] = None, job_to_be_done: O
     """Get documents for library view, optionally filtered by persona or job."""
     docs = []
     for doc_data in documents_store.values():
-        doc_info = doc_data["info"]
+        doc_info = doc_data["info"].copy()  # Create a copy to avoid modifying original
         
         # Apply filters if provided
         if persona and doc_info.get("persona") != persona:
             continue
         if job_to_be_done and doc_info.get("job_to_be_done") != job_to_be_done:
             continue
-            
+        
+        # Limit outline data for faster loading - only send essential info
+        if "outline" in doc_info and len(doc_info["outline"]) > 10:
+            doc_info["outline"] = doc_info["outline"][:10]  # Limit to first 10 sections
+            doc_info["outline_truncated"] = True
+        
         docs.append(doc_info)
     
     # Sort by upload timestamp (newest first)

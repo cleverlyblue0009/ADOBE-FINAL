@@ -13,6 +13,27 @@ class LLMService:
         self.model = None
         self._initialize_model()
     
+    def _clean_json_artifacts(self, text: str) -> str:
+        """Clean JSON formatting artifacts from text content."""
+        if not text:
+            return text
+        
+        # Remove common JSON artifacts
+        text = text.replace('{{', '{').replace('}}', '}')
+        text = text.replace('\\"', '"')
+        text = text.replace('\\n', ' ')
+        text = text.replace('\\t', ' ')
+        
+        # Remove any remaining JSON-like structures
+        import re
+        text = re.sub(r'\{[^}]*\}', '', text)
+        text = re.sub(r'\[[^\]]*\]', '', text)
+        
+        # Clean up extra whitespace
+        text = ' '.join(text.split())
+        
+        return text.strip()
+    
     def _initialize_model(self):
         """Initialize the Gemini model."""
         if self.api_key:
@@ -476,6 +497,7 @@ class LLMService:
         try:
             prompt = f"""
             Analyze these two documents and find detailed connections, similarities, contradictions, and insights.
+            Focus particularly on identifying SPECIFIC contradictory statements with exact quotes.
             
             Document 1: "{title1}"
             Content: {text1[:3000]}
@@ -487,11 +509,16 @@ class LLMService:
             - Persona: {persona}
             - Job to be done: {job}
             
-            Please provide a comprehensive analysis focusing on:
-            1. SPECIFIC SIMILARITIES: Find exact sentences or phrases that say similar things
-            2. CONTRADICTIONS: Find specific statements that contradict each other
-            3. COMPLEMENTARY INSIGHTS: How the documents support each other
-            4. KEY DIFFERENCES: Important differences in approach or conclusions
+            CRITICAL INSTRUCTIONS FOR CONTRADICTIONS:
+            - Only report contradictions if you can find EXACT quotes that directly contradict each other
+            - Look for statements where Document 1 says X and Document 2 says NOT X about the same topic
+            - Include the specific topic being contradicted
+            - Provide clear, specific quotes, not summaries or paraphrases
+            
+            Examples of valid contradictions:
+            - Doc1: "The weather in Madrid is humid" vs Doc2: "Madrid has a dry climate"
+            - Doc1: "Method A is recommended" vs Doc2: "Method A should be avoided"
+            - Doc1: "The study shows 85% success rate" vs Doc2: "Success rates were only 45%"
             
             Return a JSON response with:
             {{
@@ -509,11 +536,12 @@ class LLMService:
                 ],
                 "contradictions": [
                     {{
-                        "doc1_quote": "contradicting statement from doc 1",
-                        "doc2_quote": "contradicting statement from doc 2",
-                        "contradiction_type": "direct|methodological|conclusion",
+                        "topic": "specific topic being contradicted",
+                        "doc1_quote": "exact contradicting statement from {title1}",
+                        "doc2_quote": "exact contradicting statement from {title2}",
+                        "contradiction_type": "direct|methodological|conclusion|factual",
                         "severity": "low|medium|high",
-                        "explanation": "explanation of the contradiction"
+                        "explanation": "clear explanation of how these statements contradict each other"
                     }}
                 ],
                 "complementary_insights": [
@@ -529,7 +557,7 @@ class LLMService:
                 "severity": "low|medium|high"
             }}
             
-            Focus on providing SPECIFIC quotes and evidence. Be precise and detailed.
+            ONLY include contradictions if you have specific, exact quotes that clearly contradict each other.
             """
             
             response = await asyncio.to_thread(
@@ -540,7 +568,28 @@ class LLMService:
             # Try to parse JSON response
             try:
                 import json
-                result = json.loads(response.text.strip())
+                # Clean the response text to remove any markdown formatting
+                cleaned_text = response.text.strip()
+                if cleaned_text.startswith('```json'):
+                    cleaned_text = cleaned_text[7:]
+                if cleaned_text.endswith('```'):
+                    cleaned_text = cleaned_text[:-3]
+                cleaned_text = cleaned_text.strip()
+                
+                result = json.loads(cleaned_text)
+                
+                # Clean any JSON-like formatting from the content fields
+                if "explanation" in result:
+                    result["explanation"] = self._clean_json_artifacts(result["explanation"])
+                if "contradictions" in result:
+                    for contradiction in result["contradictions"]:
+                        if "explanation" in contradiction:
+                            contradiction["explanation"] = self._clean_json_artifacts(contradiction["explanation"])
+                if "similarities" in result:
+                    for similarity in result["similarities"]:
+                        if "explanation" in similarity:
+                            similarity["explanation"] = self._clean_json_artifacts(similarity["explanation"])
+                
                 return result
             except:
                 # Fallback if JSON parsing fails
@@ -549,7 +598,7 @@ class LLMService:
                     "has_connection": has_connection,
                     "connection_type": "related",
                     "relevance_score": 0.5,
-                    "explanation": response.text[:200],
+                    "explanation": self._clean_json_artifacts(response.text[:200]),
                     "similarities": [],
                     "contradictions": [],
                     "complementary_insights": [],
@@ -607,14 +656,29 @@ class LLMService:
             
             try:
                 import json
-                result = json.loads(response.text.strip())
+                # Clean the response text
+                cleaned_text = response.text.strip()
+                if cleaned_text.startswith('```json'):
+                    cleaned_text = cleaned_text[7:]
+                if cleaned_text.endswith('```'):
+                    cleaned_text = cleaned_text[:-3]
+                cleaned_text = cleaned_text.strip()
+                
+                result = json.loads(cleaned_text)
+                
+                # Clean JSON artifacts from insights content
+                if "insights" in result:
+                    for insight in result["insights"]:
+                        if "content" in insight:
+                            insight["content"] = self._clean_json_artifacts(insight["content"])
+                
                 return result
             except:
                 # Fallback
                 return {
                     "insights": [{
                         "type": "takeaway",
-                        "content": response.text[:300],
+                        "content": self._clean_json_artifacts(response.text[:300]),
                         "confidence": 0.7
                     }]
                 }
@@ -680,12 +744,36 @@ class LLMService:
             
             try:
                 import json
-                result = json.loads(response.text.strip())
+                # Clean the response text
+                cleaned_text = response.text.strip()
+                if cleaned_text.startswith('```json'):
+                    cleaned_text = cleaned_text[7:]
+                if cleaned_text.endswith('```'):
+                    cleaned_text = cleaned_text[:-3]
+                cleaned_text = cleaned_text.strip()
+                
+                result = json.loads(cleaned_text)
+                
+                # Clean JSON artifacts from all content fields
+                for key in ["opportunities", "critical_decisions", "risks", "action_items", "knowledge_gaps"]:
+                    if key in result:
+                        for item in result[key]:
+                            for field in item:
+                                if isinstance(item[field], str):
+                                    item[field] = self._clean_json_artifacts(item[field])
+                                elif isinstance(item[field], list):
+                                    item[field] = [self._clean_json_artifacts(str(x)) for x in item[field]]
+                
+                if "strategic_context" in result:
+                    for field in result["strategic_context"]:
+                        if isinstance(result["strategic_context"][field], str):
+                            result["strategic_context"][field] = self._clean_json_artifacts(result["strategic_context"][field])
+                
                 return result
             except:
                 # Fallback
                 return {
-                    "opportunities": [{"insight": response.text[:200], "priority": "medium", "timeframe": "short-term"}],
+                    "opportunities": [{"insight": self._clean_json_artifacts(response.text[:200]), "priority": "medium", "timeframe": "short-term"}],
                     "critical_decisions": [],
                     "risks": [],
                     "action_items": [],
@@ -754,12 +842,28 @@ class LLMService:
             
             try:
                 import json
-                result = json.loads(response.text.strip())
+                # Clean the response text
+                cleaned_text = response.text.strip()
+                if cleaned_text.startswith('```json'):
+                    cleaned_text = cleaned_text[7:]
+                if cleaned_text.endswith('```'):
+                    cleaned_text = cleaned_text[:-3]
+                cleaned_text = cleaned_text.strip()
+                
+                result = json.loads(cleaned_text)
+                
+                # Clean JSON artifacts from all string fields
+                for key in result:
+                    if isinstance(result[key], str):
+                        result[key] = self._clean_json_artifacts(result[key])
+                    elif isinstance(result[key], list):
+                        result[key] = [self._clean_json_artifacts(str(x)) for x in result[key]]
+                
                 return result
             except:
                 # Fallback
                 return {
-                    "section_summary": response.text[:150],
+                    "section_summary": self._clean_json_artifacts(response.text[:150]),
                     "contextual_significance": "This section provides important context within the document",
                     "personal_relevance": f"Relevant for {persona} working on {job}",
                     "deeper_implications": ["Consider the broader implications", "Evaluate potential impacts"],
@@ -857,7 +961,26 @@ class LLMService:
             
             try:
                 import json
-                result = json.loads(response.text.strip())
+                # Clean the response text
+                cleaned_text = response.text.strip()
+                if cleaned_text.startswith('```json'):
+                    cleaned_text = cleaned_text[7:]
+                if cleaned_text.endswith('```'):
+                    cleaned_text = cleaned_text[:-3]
+                cleaned_text = cleaned_text.strip()
+                
+                result = json.loads(cleaned_text)
+                
+                # Clean JSON artifacts from nested structures
+                for category in ["overarching_patterns", "contradictions", "knowledge_gaps", "synthesis_insights", "actionable_recommendations"]:
+                    if category in result:
+                        for item in result[category]:
+                            for field in item:
+                                if isinstance(item[field], str):
+                                    item[field] = self._clean_json_artifacts(item[field])
+                                elif isinstance(item[field], list):
+                                    item[field] = [self._clean_json_artifacts(str(x)) for x in item[field]]
+                
                 return result
             except:
                 # Fallback
@@ -865,7 +988,7 @@ class LLMService:
                     "overarching_patterns": [],
                     "contradictions": [],
                     "knowledge_gaps": [],
-                    "synthesis_insights": [{"insight": response.text[:300], "supporting_documents": [], "implications": "General insight", "confidence": 0.7}],
+                    "synthesis_insights": [{"insight": self._clean_json_artifacts(response.text[:300]), "supporting_documents": [], "implications": "General insight", "confidence": 0.7}],
                     "actionable_recommendations": []
                 }
                 

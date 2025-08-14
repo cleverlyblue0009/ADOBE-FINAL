@@ -347,10 +347,23 @@ export function CrossConnectionsPanel({ documentId, onNavigateToDocument, classN
                     {/* Display specific contradictory quotes if available */}
                     {contradiction.doc1_quote && contradiction.doc2_quote ? (
                       <div className="space-y-3">
-                        <h6 className="text-xs font-semibold text-gray-700 flex items-center gap-1">
-                          <AlertTriangle className="h-3 w-3 text-red-500" />
-                          Contradictory Statements
-                        </h6>
+                        <div className="flex items-center justify-between">
+                          <h6 className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                            <AlertTriangle className="h-3 w-3 text-red-500" />
+                            Contradictory Statements
+                          </h6>
+                          {onNavigateToDocument && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => onNavigateToDocument(contradiction.document_id)}
+                              className="text-xs border-red-200 text-red-700 hover:bg-red-50"
+                            >
+                              <ExternalLink className="h-3 w-3 mr-1" />
+                              View Document
+                            </Button>
+                          )}
+                        </div>
                         <div className="grid grid-cols-1 gap-3">
                           <div className="bg-red-50 p-3 rounded border border-red-200">
                             <div className="text-xs font-medium text-gray-700 mb-1">Current Document:</div>
@@ -367,20 +380,21 @@ export function CrossConnectionsPanel({ documentId, onNavigateToDocument, classN
                         </div>
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-800 leading-relaxed bg-white/50 p-3 rounded border-l-2 border-l-red-300">{contradiction.contradiction}</p>
-                    )}
-                    
-                    {onNavigateToDocument && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => onNavigateToDocument(contradiction.document_id)}
-                        className="mt-2 border-red-200 text-red-700 hover:bg-red-50"
-                      >
-                        <ExternalLink className="h-3 w-3 mr-1" />
-                        Review Document
-                      </Button>
-                    )}
+                      <div className="space-y-3">
+                        <p className="text-sm text-gray-800 leading-relaxed bg-white/50 p-3 rounded border-l-2 border-l-red-300">{contradiction.contradiction}</p>
+                        {onNavigateToDocument && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => onNavigateToDocument(contradiction.document_id)}
+                            className="border-red-200 text-red-700 hover:bg-red-50"
+                          >
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            Review Document
+                          </Button>
+                        )}
+                      </div>
+                                          )}
                   </div>
                 </Card>
               ))}
