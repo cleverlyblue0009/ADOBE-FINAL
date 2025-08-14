@@ -475,7 +475,7 @@ class LLMService:
         
         try:
             prompt = f"""
-            Analyze these two documents and find detailed connections, similarities, contradictions, and insights.
+            Analyze these two documents and find SPECIFIC contradictions and differences between them.
             
             Document 1: "{title1}"
             Content: {text1[:3000]}
@@ -487,11 +487,22 @@ class LLMService:
             - Persona: {persona}
             - Job to be done: {job}
             
-            Please provide a comprehensive analysis focusing on:
-            1. SPECIFIC SIMILARITIES: Find exact sentences or phrases that say similar things
-            2. CONTRADICTIONS: Find specific statements that contradict each other
+            IMPORTANT: Focus on finding ACTUAL CONTRADICTIONS where the documents state different or opposing facts, recommendations, or conclusions about the same topic.
+            
+            For example:
+            - If Document 1 says "The weather in Madrid is humid" and Document 2 says "The weather in Madrid is dry"
+            - If Document 1 recommends "Use method A" and Document 2 says "Avoid method A"
+            - If Document 1 states "X increases by 50%" and Document 2 states "X increases by 20%"
+            
+            DO NOT report as contradictions:
+            - Different topics being discussed
+            - One document mentioning something the other doesn't
+            - Similar content expressed differently
+            
+            Please provide a comprehensive analysis with:
+            1. CONTRADICTIONS: Find statements that directly contradict each other (different claims about the same thing)
+            2. SIMILARITIES: Find exact sentences or phrases that say similar things
             3. COMPLEMENTARY INSIGHTS: How the documents support each other
-            4. KEY DIFFERENCES: Important differences in approach or conclusions
             
             Return a JSON response with:
             {{
@@ -509,11 +520,11 @@ class LLMService:
                 ],
                 "contradictions": [
                     {{
-                        "doc1_quote": "contradicting statement from doc 1",
-                        "doc2_quote": "contradicting statement from doc 2",
-                        "contradiction_type": "direct|methodological|conclusion",
+                        "doc1_quote": "EXACT quote stating one thing from doc 1",
+                        "doc2_quote": "EXACT quote stating the opposite from doc 2",
+                        "contradiction_type": "factual|methodological|conclusion",
                         "severity": "low|medium|high",
-                        "explanation": "explanation of the contradiction"
+                        "explanation": "Clear explanation of what specifically contradicts (e.g., 'Doc1 says X is 50% while Doc2 says X is 20%')"
                     }}
                 ],
                 "complementary_insights": [
@@ -525,11 +536,13 @@ class LLMService:
                 ],
                 "key_sections": ["section1", "section2"],
                 "has_contradiction": boolean,
-                "overall_contradiction": "description if any",
+                "overall_contradiction": "summary of main contradictions if any",
                 "severity": "low|medium|high"
             }}
             
-            Focus on providing SPECIFIC quotes and evidence. Be precise and detailed.
+            CRITICAL: Only include items in "contradictions" array if you find ACTUAL contradictory statements. 
+            Each contradiction MUST have specific quotes from both documents that contradict each other about the same topic.
+            If no real contradictions exist, return an empty contradictions array.
             """
             
             response = await asyncio.to_thread(

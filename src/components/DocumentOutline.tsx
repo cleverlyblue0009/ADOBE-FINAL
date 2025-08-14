@@ -208,7 +208,7 @@ export function DocumentOutline({
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-5 border-b border-border-subtle">
+      <div className="p-5 border-b border-border-subtle flex-shrink-0">
         <h3 className="font-semibold text-lg text-text-primary mb-2 flex items-center gap-2">
           <BookOpen className="h-5 w-5" />
           {isMultiDocument ? 'Document Library' : 'Document Outline'}
@@ -217,7 +217,9 @@ export function DocumentOutline({
           {isMultiDocument ? (
             <>
               {documents.length} documents • {documents.reduce((total, doc) => total + doc.outline.length, 0)} total sections
-              {currentDocument && ` • Currently viewing: ${currentDocument.title}`}
+              {currentDocument && (
+                <span className="block text-xs mt-1">Currently viewing: {currentDocument.title}</span>
+              )}
             </>
           ) : (
             <>
@@ -227,7 +229,7 @@ export function DocumentOutline({
         </p>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 overflow-y-auto">
         <div className="p-3 space-y-2">
           {isMultiDocument ? (
             // Multi-document view

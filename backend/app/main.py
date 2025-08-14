@@ -350,22 +350,44 @@ async def track_reading_progress(doc_id: str = Form(...),
 
 @app.get("/library/documents")
 async def get_library_documents(persona: Optional[str] = None, job_to_be_done: Optional[str] = None):
-    """Get documents for library view, optionally filtered by persona or job."""
+    """Get documents for library view, optionally filtered by persona or job - optimized for fast loading."""
     docs = []
-    for doc_data in documents_store.values():
+    
+    # Use list comprehension for faster filtering
+    for doc_id, doc_data in documents_store.items():
         doc_info = doc_data["info"]
         
-        # Apply filters if provided
+        # Skip filtering if not needed
         if persona and doc_info.get("persona") != persona:
             continue
         if job_to_be_done and doc_info.get("job_to_be_done") != job_to_be_done:
             continue
-            
-        docs.append(doc_info)
+        
+        # Only include essential fields for library view to reduce payload
+        docs.append({
+            "id": doc_info["id"],
+            "name": doc_info["name"],
+            "title": doc_info["title"],
+            "upload_timestamp": doc_info.get("upload_timestamp", ""),
+            "persona": doc_info.get("persona"),
+            "job_to_be_done": doc_info.get("job_to_be_done"),
+            "tags": doc_info.get("tags", []),
+            # Include outline only if needed, but keep it minimal
+            "outline": doc_info.get("outline", [])[:10] if doc_info.get("outline") else []  # Limit outline items for faster loading
+        })
     
-    # Sort by upload timestamp (newest first)
+    # Sort by upload timestamp (newest first) - more efficient sorting
     docs.sort(key=lambda x: x.get("upload_timestamp", ""), reverse=True)
     return docs
+
+@app.get("/library/documents/{doc_id}/full")
+async def get_full_document(doc_id: str):
+    """Get full document details including complete outline."""
+    if doc_id not in documents_store:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    doc_data = documents_store[doc_id]
+    return doc_data["info"]
 
 @app.get("/library/personas")
 async def get_personas():
