@@ -5,6 +5,7 @@ import { FloatingTools } from './FloatingTools';
 import { AdobePDFViewer, FallbackPDFViewer } from './AdobePDFViewer';
 import { CrossConnectionsPanel } from './CrossConnectionsPanel';
 import { StrategicInsightsPanel } from './StrategicInsightsPanel';
+import { InsightsPanel } from './InsightsPanel';
 
 // Hybrid PDF Viewer component that tries Adobe first, then falls back to iframe
 function HybridPDFViewer({ 
@@ -73,7 +74,8 @@ import {
   Settings,
   Palette,
   Link,
-  Brain
+  Brain,
+  Highlighter
 } from 'lucide-react';
 
 export interface PDFDocument {
@@ -132,37 +134,44 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
     if (documents && documents.length > 0 && !currentDocument) {
       setCurrentDocument(documents[0]);
       
-      // Add some sample highlights to demonstrate the feature
-      const sampleHighlights: Highlight[] = [
-        {
-          id: 'sample-1',
-          text: 'This is an important concept that relates to the main topic of the document.',
-          page: 1,
-          color: 'primary',
-          relevanceScore: 0.95,
-          explanation: 'Key concept relevant to your analysis'
-        },
-        {
-          id: 'sample-2', 
-          text: 'Supporting evidence and data that reinforces the primary arguments.',
-          page: 2,
-          color: 'secondary',
-          relevanceScore: 0.87,
-          explanation: 'Supporting evidence for main thesis'
-        },
-        {
-          id: 'sample-3',
-          text: 'Critical analysis point that requires further consideration.',
-          page: 3,
-          color: 'tertiary',
-          relevanceScore: 0.82,
-          explanation: 'Requires deeper analysis for your job role'
-        }
-      ];
-      
-      setHighlights(sampleHighlights);
+      // Automatically generate intelligence highlights if persona and job are set
+      if (persona && jobToBeDone) {
+        setTimeout(() => {
+          generateIntelligenceHighlights();
+        }, 1000); // Small delay to ensure everything is loaded
+      } else {
+        // Add some sample highlights to demonstrate the feature
+        const sampleHighlights: Highlight[] = [
+          {
+            id: 'sample-1',
+            text: 'This is an important concept that relates to the main topic of the document.',
+            page: 1,
+            color: 'primary',
+            relevanceScore: 0.95,
+            explanation: 'Key concept relevant to your analysis'
+          },
+          {
+            id: 'sample-2', 
+            text: 'Supporting evidence and data that reinforces the primary arguments.',
+            page: 2,
+            color: 'secondary',
+            relevanceScore: 0.87,
+            explanation: 'Supporting evidence for main thesis'
+          },
+          {
+            id: 'sample-3',
+            text: 'Critical analysis point that requires further consideration.',
+            page: 3,
+            color: 'tertiary',
+            relevanceScore: 0.82,
+            explanation: 'Requires deeper analysis for your job role'
+          }
+        ];
+        
+        setHighlights(sampleHighlights);
+      }
     }
-  }, [documents, currentDocument]);
+  }, [documents, currentDocument, persona, jobToBeDone]);
 
   // Load related sections when page or document changes
   useEffect(() => {
@@ -316,6 +325,71 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
     }
   };
 
+  // Auto-generate highlights from document intelligence analysis
+  const generateIntelligenceHighlights = async () => {
+    if (!documents || !persona || !jobToBeDone) return;
+    
+    try {
+      // Get document IDs for analysis
+      const documentIds = documents.map(d => d.id);
+      
+      // Call the document intelligence analysis
+      const analysisResult = await apiService.analyzeDocuments(documentIds, persona, jobToBeDone);
+      
+      if (analysisResult && analysisResult.extracted_sections) {
+        const intelligenceHighlights: Highlight[] = [];
+        
+        // Create highlights from extracted sections
+        analysisResult.extracted_sections.forEach((section: any, index: number) => {
+          const highlight: Highlight = {
+            id: `intelligence-section-${index}`,
+            text: `${section.section_title} - Key section identified by AI analysis`,
+            page: section.page_number,
+            color: section.importance_rank <= 3 ? 'primary' : 
+                   section.importance_rank <= 7 ? 'secondary' : 'tertiary',
+            relevanceScore: section.relevance_score,
+            explanation: `Rank #${section.importance_rank} - Highly relevant section for ${persona} working on ${jobToBeDone}`
+          };
+          intelligenceHighlights.push(highlight);
+        });
+        
+        // Create highlights from subsection analysis
+        if (analysisResult.subsection_analysis) {
+          analysisResult.subsection_analysis.forEach((subsection: any, index: number) => {
+            const highlight: Highlight = {
+              id: `intelligence-subsection-${index}`,
+              text: subsection.refined_text || 'Key insight from document analysis',
+              page: subsection.page_number,
+              color: 'secondary',
+              relevanceScore: 0.85, // High relevance for refined text
+              explanation: `AI-identified key insight from ${subsection.document}`
+            };
+            intelligenceHighlights.push(highlight);
+          });
+        }
+        
+        // Add to existing highlights, removing duplicates
+        setHighlights(prev => {
+          const existingIds = new Set(prev.map(h => h.id));
+          const newHighlights = intelligenceHighlights.filter(h => !existingIds.has(h.id));
+          return [...prev, ...newHighlights];
+        });
+        
+        toast({
+          title: "AI Analysis Complete",
+          description: `Generated ${intelligenceHighlights.length} intelligent highlights based on document analysis.`,
+        });
+      }
+    } catch (error) {
+      console.error('Failed to generate intelligence highlights:', error);
+      toast({
+        title: "Analysis Error",
+        description: "Failed to analyze documents for intelligent highlighting.",
+        variant: "destructive"
+      });
+    }
+  };
+
   return (
     <div className="h-screen flex flex-col bg-background">
       {/* Header */}
@@ -364,6 +438,18 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
             <Button
               variant="ghost"
               size="sm"
+              onClick={generateIntelligenceHighlights}
+              disabled={!documents || !persona || !jobToBeDone}
+              className="gap-2 hover:bg-surface-hover"
+              aria-label="Generate AI highlights"
+            >
+              <Highlighter className="h-4 w-4" />
+              AI Highlights
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setRightPanelOpen(!rightPanelOpen)}
               className="gap-2 hover:bg-surface-hover"
               aria-label="Toggle utilities"
@@ -385,15 +471,15 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
           <aside className="w-80 bg-surface-elevated/50 border-r border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm">
             <div className="flex-1 overflow-hidden flex flex-col">
               {/* Document Outline */}
-              {currentDocument && (
-                <div className="flex-1">
-                  <DocumentOutline
-                    outline={currentDocument.outline}
-                    currentPage={currentPage}
-                    onItemClick={handleOutlineClick}
-                  />
-                </div>
-              )}
+              <div className="flex-1">
+                <DocumentOutline
+                  documents={documents}
+                  currentDocument={currentDocument}
+                  currentPage={currentPage}
+                  onItemClick={handleOutlineClick}
+                  onDocumentSwitch={setCurrentDocument}
+                />
+              </div>
               
               {/* Related Sections */}
               <div className="border-t border-border-subtle max-h-80">
@@ -471,6 +557,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
             <div className="flex-1 overflow-hidden">
               {activeRightPanel === 'insights' && (
                 <InsightsPanel 
+                  documentIds={documents?.map(d => d.id) || []}
                   documentId={currentDocument?.id}
                   persona={persona}
                   jobToBeDone={jobToBeDone}

@@ -352,6 +352,30 @@ class ApiService {
     return response.json();
   }
 
+  async generateMultiDocumentInsights(
+    documentIds: string[],
+    persona: string,
+    jobToBeDone: string
+  ): Promise<MultiDocumentInsights> {
+    const response = await fetch(`${this.baseUrl}/multi-document-insights`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_ids: documentIds,
+        persona,
+        job_to_be_done: jobToBeDone,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate multi-document insights: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
   async generateStrategicInsights(
     text: string,
     persona: string,
@@ -424,6 +448,17 @@ export interface RelatedDocument {
   relevance_score: number;
   explanation: string;
   key_sections: string[];
+  similarities?: Array<{
+    doc1_quote: string;
+    doc2_quote: string;
+    similarity_type: 'identical' | 'paraphrased' | 'concept_match';
+    explanation: string;
+  }>;
+  complementary_insights?: Array<{
+    insight: string;
+    doc1_support: string;
+    doc2_support: string;
+  }>;
 }
 
 export interface Contradiction {
@@ -431,6 +466,9 @@ export interface Contradiction {
   document_title: string;
   contradiction: string;
   severity: 'low' | 'medium' | 'high';
+  doc1_quote?: string;
+  doc2_quote?: string;
+  contradiction_type?: 'direct' | 'methodological' | 'conclusion' | 'general';
 }
 
 export interface CrossDocumentInsight {
@@ -482,6 +520,47 @@ export interface ContextualAnalysis {
   questions_to_consider: string[];
   next_steps: string[];
   confidence_score: number;
+}
+
+export interface MultiDocumentInsights {
+  analyzed_documents: number;
+  document_titles: string[];
+  insights: {
+    overarching_patterns: Array<{
+      pattern: string;
+      documents: string[];
+      evidence: string[];
+      significance: string;
+    }>;
+    contradictions: Array<{
+      topic: string;
+      doc1_position: string;
+      doc2_position: string;
+      doc1_evidence: string;
+      doc2_evidence: string;
+      impact: string;
+      resolution_suggestion: string;
+    }>;
+    knowledge_gaps: Array<{
+      gap: string;
+      importance: 'high' | 'medium' | 'low';
+      impact_on_job: string;
+      suggested_research: string;
+    }>;
+    synthesis_insights: Array<{
+      insight: string;
+      supporting_documents: string[];
+      implications: string;
+      confidence: number;
+    }>;
+    actionable_recommendations: Array<{
+      recommendation: string;
+      priority: 'high' | 'medium' | 'low';
+      timeframe: 'immediate' | 'short-term' | 'long-term';
+      based_on: string;
+      success_metrics: string;
+    }>;
+  };
 }
 
 export const apiService = new ApiService();

@@ -207,6 +207,78 @@ export function CrossConnectionsPanel({ documentId, onNavigateToDocument, classN
                       )}
                     </div>
                     <p className="text-xs text-gray-700 leading-relaxed bg-white/50 p-2 rounded border-l-2 border-l-blue-200">{doc.explanation}</p>
+                    
+                    {/* Similarities Section */}
+                    {doc.similarities && doc.similarities.length > 0 && (
+                      <div className="space-y-2">
+                        <h6 className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          Similar Content Found
+                        </h6>
+                        {doc.similarities.slice(0, 2).map((similarity, idx) => (
+                          <div key={idx} className="bg-green-50/50 p-3 rounded border border-green-200">
+                            <div className="space-y-2">
+                              <div className="flex items-center gap-1 mb-1">
+                                <Badge variant="outline" className="text-xs px-2 py-1 bg-green-100 border-green-300 text-green-800">
+                                  {similarity.similarity_type.replace('_', ' ')}
+                                </Badge>
+                              </div>
+                              <div className="grid grid-cols-1 gap-2 text-xs">
+                                <div>
+                                  <span className="font-medium text-gray-700">Current: </span>
+                                  <span className="text-gray-600 italic">"{similarity.doc1_quote}"</span>
+                                </div>
+                                <div>
+                                  <span className="font-medium text-gray-700">Related: </span>
+                                  <span className="text-gray-600 italic">"{similarity.doc2_quote}"</span>
+                                </div>
+                              </div>
+                              {similarity.explanation && (
+                                <p className="text-xs text-gray-600 mt-1 bg-white/60 p-2 rounded">
+                                  {similarity.explanation}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {doc.similarities.length > 2 && (
+                          <p className="text-xs text-gray-500 italic">
+                            +{doc.similarities.length - 2} more similarities found
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Complementary Insights Section */}
+                    {doc.complementary_insights && doc.complementary_insights.length > 0 && (
+                      <div className="space-y-2">
+                        <h6 className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                          <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                          Complementary Insights
+                        </h6>
+                        {doc.complementary_insights.slice(0, 2).map((insight, idx) => (
+                          <div key={idx} className="bg-purple-50/50 p-3 rounded border border-purple-200">
+                            <p className="text-xs text-gray-700 font-medium mb-2">{insight.insight}</p>
+                            <div className="grid grid-cols-1 gap-2 text-xs">
+                              <div>
+                                <span className="font-medium text-gray-700">Supporting evidence: </span>
+                                <span className="text-gray-600">"{insight.doc1_support}"</span>
+                              </div>
+                              <div>
+                                <span className="font-medium text-gray-700">Related evidence: </span>
+                                <span className="text-gray-600">"{insight.doc2_support}"</span>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                        {doc.complementary_insights.length > 2 && (
+                          <p className="text-xs text-gray-500 italic">
+                            +{doc.complementary_insights.length - 2} more insights available
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     {doc.key_sections.length > 0 && (
                       <div className="flex flex-wrap gap-1.5">
                         {doc.key_sections.slice(0, 3).map((section, idx) => (
@@ -254,17 +326,50 @@ export function CrossConnectionsPanel({ documentId, onNavigateToDocument, classN
             <CollapsibleContent className="space-y-3 mt-4 pl-2">
               {connections.contradictions.map((contradiction, index) => (
                 <Card key={index} className="p-4 border-l-4 border-l-red-500 bg-gradient-to-r from-red-50/50 to-transparent">
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
                         <h4 className="font-semibold text-gray-900 text-sm mb-2">{contradiction.document_title}</h4>
-                        <Badge variant="secondary" className={`text-xs font-medium ${getSeverityColor(contradiction.severity)} border mb-2`}>
-                          <AlertCircle className="h-3 w-3 mr-1" />
-                          {contradiction.severity.toUpperCase()} SEVERITY
-                        </Badge>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="secondary" className={`text-xs font-medium ${getSeverityColor(contradiction.severity)} border`}>
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            {contradiction.severity.toUpperCase()} SEVERITY
+                          </Badge>
+                          {contradiction.contradiction_type && (
+                            <Badge variant="outline" className="text-xs px-2 py-1 bg-orange-50 border-orange-200 text-orange-800">
+                              {contradiction.contradiction_type.replace('_', ' ')}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
-                    <p className="text-sm text-gray-800 leading-relaxed bg-white/50 p-3 rounded border-l-2 border-l-red-300">{contradiction.contradiction}</p>
+                    
+                    {/* Display specific contradictory quotes if available */}
+                    {contradiction.doc1_quote && contradiction.doc2_quote ? (
+                      <div className="space-y-3">
+                        <h6 className="text-xs font-semibold text-gray-700 flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3 text-red-500" />
+                          Contradictory Statements
+                        </h6>
+                        <div className="grid grid-cols-1 gap-3">
+                          <div className="bg-red-50 p-3 rounded border border-red-200">
+                            <div className="text-xs font-medium text-gray-700 mb-1">Current Document:</div>
+                            <p className="text-sm text-gray-800 italic">"{contradiction.doc1_quote}"</p>
+                          </div>
+                          <div className="bg-red-50 p-3 rounded border border-red-200">
+                            <div className="text-xs font-medium text-gray-700 mb-1">{contradiction.document_title}:</div>
+                            <p className="text-sm text-gray-800 italic">"{contradiction.doc2_quote}"</p>
+                          </div>
+                        </div>
+                        <div className="bg-orange-50 p-3 rounded border-l-2 border-l-orange-300">
+                          <div className="text-xs font-medium text-gray-700 mb-1">Analysis:</div>
+                          <p className="text-sm text-gray-700">{contradiction.contradiction}</p>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-800 leading-relaxed bg-white/50 p-3 rounded border-l-2 border-l-red-300">{contradiction.contradiction}</p>
+                    )}
+                    
                     {onNavigateToDocument && (
                       <Button
                         size="sm"
