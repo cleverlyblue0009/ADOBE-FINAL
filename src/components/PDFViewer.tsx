@@ -87,6 +87,61 @@ export function PDFViewer({
     window.getSelection()?.removeAllRanges();
   };
 
+  // Helper function to render text with highlights
+  const renderHighlightedText = (text: string, pageHighlights: Highlight[]) => {
+    if (pageHighlights.length === 0) return text;
+
+    // Sort highlights by relevance score
+    const sortedHighlights = [...pageHighlights].sort((a, b) => b.relevanceScore - a.relevanceScore);
+    
+    // Create spans for highlighted portions
+    let result = text;
+    const elements: JSX.Element[] = [];
+    let lastIndex = 0;
+
+    // Try to find and highlight matching text
+    sortedHighlights.forEach(highlight => {
+      const searchText = highlight.text.toLowerCase();
+      const textLower = text.toLowerCase();
+      
+      // Try to find partial matches for section titles or key phrases
+      const words = searchText.split(' ').filter(w => w.length > 3);
+      
+      for (const word of words) {
+        const index = textLower.indexOf(word, lastIndex);
+        if (index !== -1) {
+          // Found a match, highlight this word and surrounding context
+          const start = Math.max(0, index - 20);
+          const end = Math.min(text.length, index + word.length + 20);
+          
+          if (start > lastIndex) {
+            elements.push(<span key={`text-${lastIndex}`}>{text.slice(lastIndex, start)}</span>);
+          }
+          
+          elements.push(
+            <span
+              key={`highlight-${highlight.id}`}
+              className={`highlight-${highlight.color} px-1 rounded`}
+              title={`${highlight.explanation} (${Math.round(highlight.relevanceScore * 100)}% relevant)`}
+            >
+              {text.slice(start, end)}
+            </span>
+          );
+          
+          lastIndex = end;
+          break;
+        }
+      }
+    });
+
+    // Add remaining text
+    if (lastIndex < text.length) {
+      elements.push(<span key={`text-end`}>{text.slice(lastIndex)}</span>);
+    }
+
+    return elements.length > 0 ? <>{elements}</> : text;
+  };
+
   return (
     <div className="h-full flex flex-col bg-pdf-background">
       {/* PDF Toolbar */}
@@ -224,53 +279,47 @@ export function PDFViewer({
           onMouseUp={handleTextSelection}
         >
           {/* Mock PDF Content */}
-          <div className="p-8 text-gray-900 space-y-6">
-            <header className="text-center border-b pb-6">
-              <h1 className="text-2xl font-bold mb-2">
-                Artificial Intelligence in Healthcare
-              </h1>
-              <p className="text-lg text-gray-600">
-                A Comprehensive Research Study
-              </p>
-              <div className="mt-4 text-sm text-gray-500">
-                <p>Dr. Sarah Johnson, PhD • Medical AI Research Institute</p>
-                <p>Published: November 2024 • Page {currentPage} of {totalPages}</p>
-              </div>
-            </header>
-
+          <div className="pdf-content p-8 max-w-4xl mx-auto">
             {currentPage === 1 && (
-              <section>
-                <h2 className="text-xl font-semibold mb-4">Abstract</h2>
+              <section className="mb-8">
+                <h1 className="text-3xl font-bold mb-4">{document.title}</h1>
                 <p className="text-sm leading-relaxed mb-4">
-                  This comprehensive study examines the implementation and impact of artificial intelligence 
-                  technologies in modern healthcare systems. Through extensive research and clinical trials, 
-                  we demonstrate that <span className="highlight-primary">machine learning algorithms achieve 
-                  94% accuracy in diagnostic imaging applications</span>, significantly improving patient 
-                  outcomes while reducing diagnostic time by up to 60%.
+                  {renderHighlightedText(
+                    `This comprehensive study examines the implementation and impact of artificial intelligence 
+                    technologies in modern healthcare systems. Through extensive research and clinical trials, 
+                    we demonstrate that machine learning algorithms achieve 
+                    94% accuracy in diagnostic imaging applications, significantly improving patient 
+                    outcomes while reducing diagnostic time by up to 60%.`,
+                    highlights.filter(h => h.page === currentPage)
+                  )}
                 </p>
                 <p className="text-sm leading-relaxed">
-                  Our findings indicate that AI integration faces several challenges, including 
-                  <span className="highlight-secondary">data privacy concerns and regulatory compliance 
-                  requirements</span> that must be addressed for widespread adoption. However, the potential 
-                  benefits far outweigh these limitations, particularly in areas of early disease detection 
-                  and personalized treatment planning.
+                  {renderHighlightedText(
+                    `Our findings indicate that AI integration faces several challenges, including 
+                    data privacy concerns and regulatory compliance 
+                    requirements that must be addressed for widespread adoption. However, the potential 
+                    benefits far outweigh these limitations, particularly in areas of early disease detection 
+                    and personalized treatment planning.`,
+                    highlights.filter(h => h.page === currentPage)
+                  )}
                 </p>
               </section>
             )}
 
             {currentPage === 2 && (
-              <section>
-                <h2 className="text-xl font-semibold mb-4">Introduction</h2>
+              <section className="mb-8">
+                <h2 className="text-2xl font-semibold mb-4">Methodology and Implementation</h2>
                 <p className="text-sm leading-relaxed mb-4">
-                  The healthcare industry stands at the precipice of a technological revolution. Artificial 
-                  intelligence, once confined to the realm of science fiction, now represents one of the most 
-                  promising avenues for improving patient care and medical outcomes.
-                </p>
-                <p className="text-sm leading-relaxed mb-4">
-                  <span className="highlight-tertiary">Integration with existing EHR systems requires 
-                  standardized protocols</span> to ensure seamless data flow and maintain interoperability 
-                  across different healthcare providers. This standardization is crucial for the success 
-                  of AI implementation at scale.
+                  {renderHighlightedText(
+                    `The research methodology employed in this study combines quantitative analysis of clinical 
+                    data with qualitative assessments from healthcare professionals. We analyzed over 10,000 
+                    patient records across 15 medical institutions, focusing on diagnostic accuracy and treatment 
+                    outcomes. Integration with existing EHR systems requires 
+                    standardized protocols to ensure seamless data flow and maintain interoperability 
+                    across different healthcare providers. This standardization is crucial for the success 
+                    of AI implementation at scale.`,
+                    highlights.filter(h => h.page === currentPage)
+                  )}
                 </p>
                 <p className="text-sm leading-relaxed">
                   Current research focuses on three primary areas: diagnostic imaging, predictive analytics, 
@@ -295,24 +344,6 @@ export function PDFViewer({
               </section>
             )}
           </div>
-
-          {/* Highlight Overlays */}
-          {highlights
-            .filter(h => h.page === currentPage)
-            .map(highlight => (
-              <div
-                key={highlight.id}
-                className={`absolute highlight-${highlight.color} rounded-sm opacity-30 pointer-events-none`}
-                style={{
-                  // Position would be calculated based on text selection
-                  top: '20%',
-                  left: '10%',
-                  right: '10%',
-                  height: '1.5em'
-                }}
-                title={`${highlight.explanation} (${Math.round(highlight.relevanceScore * 100)}% relevant)`}
-              />
-            ))}
         </div>
       </div>
 

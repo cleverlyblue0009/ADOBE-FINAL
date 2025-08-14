@@ -173,58 +173,53 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
     }
   }, [documents, currentDocument, persona, jobToBeDone]);
 
-  // Load related sections when page or document changes
+  // Fetch related sections when page changes
   useEffect(() => {
-    if (currentDocument && persona && jobToBeDone) {
-      loadRelatedSections();
-    }
-  }, [currentDocument, currentPage, persona, jobToBeDone]);
-
-  const loadRelatedSections = async () => {
-    if (!currentDocument || !persona || !jobToBeDone) return;
-    
-    setIsLoadingRelated(true);
-    try {
-      const documentIds = documents ? documents.map(d => d.id) : [currentDocument.id];
-      const currentSection = getCurrentSectionTitle();
+    const fetchRelatedSections = async () => {
+      if (!currentDocument || !persona || !jobToBeDone) return;
       
-      const related = await apiService.getRelatedSections(
-        documentIds,
-        currentPage,
-        currentSection,
-        persona,
-        jobToBeDone
-      );
-      
-      setRelatedSections(related);
-      
-      // Convert to highlights for display - only if we have real data
-      if (related && related.length > 0) {
-        const newHighlights: Highlight[] = related.slice(0, 5).map((section, index) => ({
-          id: `related-${section.page_number}-${index}`,
-          text: section.section_title,
-          page: section.page_number,
-          color: ['primary', 'secondary', 'tertiary'][index % 3] as 'primary' | 'secondary' | 'tertiary',
-          relevanceScore: section.relevance_score,
-          explanation: section.explanation
-        }));
+      setIsLoadingRelated(true);
+      try {
+        const documentIds = documents ? documents.map(d => d.id) : [currentDocument.id];
+        const currentSection = getCurrentSectionTitle();
         
-        setHighlights(newHighlights);
+        const related = await apiService.getRelatedSections(
+          documentIds,
+          currentPage,
+          currentSection,
+          persona,
+          jobToBeDone
+        );
+        
+        setRelatedSections(related);
+        
+        // Create highlights from related sections
+        if (related && related.length > 0) {
+          const relatedHighlights: Highlight[] = related.map((section, index) => ({
+            id: `related-${currentPage}-${index}`,
+            text: section.section_title,
+            page: section.page_number || currentPage,
+            color: index === 0 ? 'primary' : index === 1 ? 'secondary' : 'tertiary',
+            relevanceScore: section.relevance_score || 0.8,
+            explanation: `Related: ${section.explanation}`
+          }));
+          
+          // Add related section highlights, avoiding duplicates
+          setHighlights(prev => {
+            const existingIds = new Set(prev.map(h => h.id));
+            const newHighlights = relatedHighlights.filter(h => !existingIds.has(h.id));
+            return [...prev.filter(h => !h.id.startsWith('related-')), ...newHighlights];
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch related sections:', error);
+      } finally {
+        setIsLoadingRelated(false);
       }
-      
-    } catch (error) {
-      console.error('Failed to load related sections:', error);
-      toast({
-        title: "Failed to load related content",
-        description: "Unable to find related sections. Please try again.",
-        variant: "destructive"
-      });
-      // Clear highlights on error instead of using mock data
-      setHighlights([]);
-    } finally {
-      setIsLoadingRelated(false);
-    }
-  };
+    };
+
+    fetchRelatedSections();
+  }, [currentPage, currentDocument, persona, jobToBeDone, documents]);
 
   const getCurrentSectionTitle = (): string => {
     if (!currentDocument) return "";
@@ -582,24 +577,26 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                   <CrossConnectionsPanel 
                     documentId={currentDocument.id}
                     onNavigateToDocument={(docId) => {
-                      // Handle navigation to another document
-                      // For now, we'll show a toast since we need to implement document switching
-                      toast({
-                        title: "Document Reference",
-                        description: `Click to view related document: ${docId}`,
-                        action: (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              // TODO: Implement document switching within the reader
-                              console.log('Navigate to document:', docId);
-                            }}
-                          >
-                            View
-                          </Button>
-                        )
-                      });
+                      // Find the document in the documents array
+                      const targetDoc = documents.find(doc => doc.id === docId);
+                      if (targetDoc) {
+                        // Switch to the target document
+                        setCurrentDocument(targetDoc);
+                        setCurrentPage(1);
+                        
+                        // Show success toast
+                        toast({
+                          title: "Document Switched",
+                          description: `Now viewing: ${targetDoc.title}`,
+                        });
+                      } else {
+                        // Document not in current session, show error
+                        toast({
+                          title: "Document Not Available",
+                          description: "This document is not loaded in the current session. Please go back to the library and include it in your selection.",
+                          variant: "destructive"
+                        });
+                      }
                     }}
                   />
                 </div>
