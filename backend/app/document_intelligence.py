@@ -207,33 +207,82 @@ def find_related_sections(current_page: int,
                          all_sections: List[Dict[str, Any]],
                          limit: int = 3) -> List[Dict[str, Any]]:
     """
-    Find sections related to the current reading position.
-    Returns top related sections with explanations.
+    Find sections related to the current reading position using Round 1B logic.
+    This implements a multi-pass approach with enhanced scoring and contextual analysis.
     """
     if not all_sections:
         return []
     
-    # Filter out current section and rank by relevance
+    # Round 1B Logic: Multi-pass relevance scoring
+    
+    # Pass 1: Basic filtering and initial scoring
     filtered_sections = [s for s in all_sections if s.get("page_number", s.get("page", 0)) != current_page]
     
-    if current_section and filtered_sections:
-        # Re-rank based on current section context
+    if not filtered_sections:
+        return []
+    
+    # Pass 2: Enhanced contextual scoring
+    if current_section:
+        # Build enhanced query with context
         query = f"{persona} {job} {current_section}"
         kw = scoring.build_keywords(persona, job) | scoring.keyword_set(current_section)
+        
+        # Get section data for scoring
         headings = [s.get("section_title", "Unknown Section") for s in filtered_sections]
-        # Since extracted_sections don't have text, use section_title for scoring
-        texts = [s.get("section_title", "") for s in filtered_sections]
-        scores = scoring.combined_scores(query, headings, texts, kw)
+        texts = [s.get("section_title", "") + " " + s.get("text", "") for s in filtered_sections]
         
-        for s, sc in zip(filtered_sections, scores):
-            s["contextual_score"] = float(sc)
+        # Calculate multiple scoring dimensions
+        base_scores = scoring.combined_scores(query, headings, texts, kw)
         
+        # Pass 3: Contextual boosting based on section relationships
+        for i, section in enumerate(filtered_sections):
+            base_score = float(base_scores[i])
+            
+            # Boost score based on document proximity (same document sections are more relevant)
+            current_doc = _get_current_document_from_page(current_page, all_sections)
+            if current_doc and section.get("document") == current_doc:
+                base_score *= 1.3  # 30% boost for same document
+            
+            # Boost score based on importance rank if available
+            importance_rank = section.get("importance_rank", 10)
+            if importance_rank <= 5:
+                base_score *= 1.2  # 20% boost for high importance
+            
+            # Boost score based on section type/level
+            section_title = section.get("section_title", "")
+            if any(indicator in section_title.lower() for indicator in ["conclusion", "summary", "key", "important"]):
+                base_score *= 1.15  # 15% boost for key sections
+            
+            section["contextual_score"] = base_score
+        
+        # Pass 4: Diversification - ensure we don't get all sections from the same document
         filtered_sections.sort(key=lambda x: x.get("contextual_score", 0), reverse=True)
+        
+        # Apply diversification to avoid clustering
+        diversified_sections = []
+        seen_documents = set()
+        
+        for section in filtered_sections:
+            doc_name = section.get("document", "Unknown")
+            if len(diversified_sections) < limit:
+                diversified_sections.append(section)
+                seen_documents.add(doc_name)
+            elif doc_name not in seen_documents and len(diversified_sections) < limit * 2:
+                # Add diverse sections up to 2x limit, then trim
+                diversified_sections.append(section)
+                seen_documents.add(doc_name)
+        
+        # Final selection: take top sections with diversity
+        filtered_sections = diversified_sections[:limit]
+    else:
+        # Fallback: use original relevance scores if available
+        filtered_sections.sort(key=lambda x: x.get("relevance_score", 0), reverse=True)
+        filtered_sections = filtered_sections[:limit]
     
-    # Return top sections with explanations
+    # Pass 5: Generate enhanced explanations
     related = []
-    for i, section in enumerate(filtered_sections[:limit]):
-        explanation = generate_relevance_explanation(section, current_section, persona, job)
+    for i, section in enumerate(filtered_sections):
+        explanation = generate_enhanced_relevance_explanation(section, current_section, persona, job)
         related.append({
             "document": section.get("document", "Unknown Document"),
             "section_title": section.get("section_title", "Unknown Section"),
@@ -244,12 +293,89 @@ def find_related_sections(current_page: int,
     
     return related
 
+def _get_current_document_from_page(current_page: int, all_sections: List[Dict[str, Any]]) -> str:
+    """Helper function to determine which document the current page belongs to."""
+    for section in all_sections:
+        if section.get("page_number", section.get("page", 0)) == current_page:
+            return section.get("document", "Unknown Document")
+    return None
+
+def generate_enhanced_relevance_explanation(section: Dict[str, Any], 
+                                         current_section: str,
+                                         persona: str, 
+                                         job: str) -> str:
+    """
+    Generate an enhanced explanation of why a section is relevant using Round 1B logic.
+    """
+    section_text = section.get("text", "")
+    section_title = section.get("section_title", "")
+    document = section.get("document", "Unknown Document")
+    relevance_score = section.get("contextual_score", section.get("relevance_score", 0))
+    
+    # Enhanced keyword analysis
+    persona_keywords = scoring.keyword_set(persona)
+    job_keywords = scoring.keyword_set(job)
+    current_keywords = scoring.keyword_set(current_section) if current_section else set()
+    section_keywords = scoring.keyword_set(section_text + " " + section_title)
+    
+    # Find overlapping concepts
+    common_persona = persona_keywords & section_keywords
+    common_job = job_keywords & section_keywords
+    common_current = current_keywords & section_keywords
+    
+    # Determine relationship type
+    relationship_type = "complementary"
+    if relevance_score > 0.8:
+        relationship_type = "highly relevant"
+    elif relevance_score > 0.6:
+        relationship_type = "closely related"
+    elif common_current:
+        relationship_type = "topically connected"
+    
+    # Build contextual explanation
+    explanation_parts = []
+    
+    # Primary relevance reason
+    if common_persona and common_job:
+        key_terms = list((common_persona | common_job)[:3])
+        explanation_parts.append(f"Addresses {', '.join(key_terms)} directly relevant to your role and objectives")
+    elif common_current and len(common_current) >= 2:
+        key_terms = list(common_current[:2])
+        explanation_parts.append(f"Builds upon concepts like {', '.join(key_terms)} from your current reading")
+    elif common_persona:
+        key_terms = list(common_persona[:2])
+        explanation_parts.append(f"Contains insights about {', '.join(key_terms)} relevant to your {persona.lower()} role")
+    elif common_job:
+        key_terms = list(common_job[:2])
+        explanation_parts.append(f"Provides information about {', '.join(key_terms)} for your {job.lower()}")
+    
+    # Add document context if different document
+    if document and current_section:
+        if "current document" not in document.lower():
+            explanation_parts.append(f"from {document}")
+    
+    # Add relevance qualifier
+    if relevance_score > 0.7:
+        explanation_parts.append("with high contextual relevance")
+    elif relevance_score > 0.5:
+        explanation_parts.append("with moderate contextual relevance")
+    
+    # Combine explanation parts
+    if explanation_parts:
+        explanation = " ".join(explanation_parts).capitalize()
+        if not explanation.endswith('.'):
+            explanation += "."
+        return explanation
+    else:
+        # Fallback to original logic
+        return generate_relevance_explanation(section, current_section, persona, job)
+
 def generate_relevance_explanation(section: Dict[str, Any], 
                                  current_section: str,
                                  persona: str, 
                                  job: str) -> str:
     """
-    Generate a brief explanation of why a section is relevant.
+    Generate a brief explanation of why a section is relevant (fallback method).
     """
     # Simple heuristic-based explanation generation
     section_text = section.get("text", "")
