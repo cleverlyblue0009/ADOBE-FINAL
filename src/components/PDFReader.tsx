@@ -3,6 +3,8 @@ import { Button } from '@/components/ui/button';
 import { DocumentOutline } from './DocumentOutline';
 import { FloatingTools } from './FloatingTools';
 import { AdobePDFViewer, FallbackPDFViewer } from './AdobePDFViewer';
+import { CrossConnectionsPanel } from './CrossConnectionsPanel';
+import { StrategicInsightsPanel } from './StrategicInsightsPanel';
 
 // Hybrid PDF Viewer component that tries Adobe first, then falls back to iframe
 function HybridPDFViewer({ 
@@ -69,7 +71,9 @@ import {
   Upload, 
   BookOpen, 
   Settings,
-  Palette
+  Palette,
+  Link,
+  Brain
 } from 'lucide-react';
 
 export interface PDFDocument {
@@ -107,6 +111,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
   const [currentDocument, setCurrentDocument] = useState<PDFDocument | null>(null);
+  const { toast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(1.0);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
@@ -419,6 +424,8 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { key: 'insights', label: 'Insights', icon: BookOpen },
+                  { key: 'strategic', label: 'Strategic', icon: Brain },
+                  { key: 'connections', label: 'Connections', icon: Link },
                   { key: 'podcast', label: 'Podcast', icon: Settings },
                   { key: 'accessibility', label: 'Access', icon: Palette },
                   { key: 'simplifier', label: 'Simplify', icon: Upload },
@@ -447,6 +454,45 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                   currentText={selectedText || getCurrentSectionTitle()}
                   onPageNavigate={setCurrentPage}
                 />
+              )}
+              
+              {activeRightPanel === 'strategic' && (
+                <StrategicInsightsPanel 
+                  documentId={currentDocument?.id}
+                  persona={persona}
+                  jobToBeDone={jobToBeDone}
+                  currentText={selectedText || getCurrentSectionTitle()}
+                  currentPage={currentPage}
+                  onPageNavigate={setCurrentPage}
+                />
+              )}
+              
+              {activeRightPanel === 'connections' && currentDocument && (
+                <div className="p-4 overflow-y-auto h-full">
+                  <CrossConnectionsPanel 
+                    documentId={currentDocument.id}
+                    onNavigateToDocument={(docId) => {
+                      // Handle navigation to another document
+                      // For now, we'll show a toast since we need to implement document switching
+                      toast({
+                        title: "Document Reference",
+                        description: `Click to view related document: ${docId}`,
+                        action: (
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => {
+                              // TODO: Implement document switching within the reader
+                              console.log('Navigate to document:', docId);
+                            }}
+                          >
+                            View
+                          </Button>
+                        )
+                      });
+                    }}
+                  />
+                </div>
               )}
               
               {activeRightPanel === 'podcast' && (

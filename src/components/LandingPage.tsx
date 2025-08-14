@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -15,7 +16,8 @@ import {
   Accessibility,
   Palette,
   Volume2,
-  Loader2
+  Loader2,
+  Library
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -30,6 +32,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [showFeatureDemo, setShowFeatureDemo] = useState<string | null>(null);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   const handleFileUpload = (files: FileList) => {
     const pdfFiles = Array.from(files).filter(file => file.type === 'application/pdf');
@@ -65,7 +68,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
 
     setIsUploading(true);
     try {
-      const uploadedDocuments = await apiService.uploadPDFs(selectedFiles);
+      const uploadedDocuments = await apiService.uploadPDFs(selectedFiles, persona, jobToBeDone);
       
       toast({
         title: "Upload successful",
@@ -97,10 +100,20 @@ export function LandingPage({ onStart }: LandingPageProps) {
     <div className="min-h-screen bg-gradient-subtle flex flex-col">
       {/* Header */}
       <header className="p-6 border-b border-border-subtle bg-surface-elevated/80 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto flex items-center gap-3">
-          <BookOpen className="h-8 w-8 text-brand-primary" />
-          <h1 className="text-2xl font-bold text-text-primary">DocuSense</h1>
-          <span className="text-sm text-text-secondary">Intelligent PDF Reading</span>
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <BookOpen className="h-8 w-8 text-brand-primary" />
+            <h1 className="text-2xl font-bold text-text-primary">DocuSense</h1>
+            <span className="text-sm text-text-secondary">Intelligent PDF Reading</span>
+          </div>
+          <Button
+            onClick={() => navigate('/library')}
+            variant="outline"
+            className="flex items-center gap-2 hover:bg-brand-primary/10 hover:text-brand-primary hover:border-brand-primary/30"
+          >
+            <Library className="h-4 w-4" />
+            My Library
+          </Button>
         </div>
       </header>
 

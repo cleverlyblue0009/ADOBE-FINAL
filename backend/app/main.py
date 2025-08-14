@@ -39,6 +39,9 @@ class DocumentInfo(BaseModel):
     outline: List[Dict[str, Any]]
     language: str
     upload_timestamp: str
+    persona: Optional[str] = None
+    job_to_be_done: Optional[str] = None
+    tags: List[str] = []
 
 class AnalysisRequest(BaseModel):
     document_ids: List[str]
@@ -87,8 +90,12 @@ async def root():
     return {"message": "DocuSense API is running", "version": "1.0.0"}
 
 @app.post("/upload-pdfs", response_model=List[DocumentInfo])
-async def upload_pdfs(files: List[UploadFile] = File(...)):
-    """Upload and process multiple PDF files."""
+async def upload_pdfs(
+    files: List[UploadFile] = File(...),
+    persona: str = Form(None),
+    job_to_be_done: str = Form(None)
+):
+    """Upload and process multiple PDF files with persona and job context."""
     uploaded_docs = []
     
     for file in files:
@@ -113,7 +120,10 @@ async def upload_pdfs(files: List[UploadFile] = File(...)):
                 title=analysis["title"] or file.filename,
                 outline=analysis["outline"],
                 language=analysis.get("language", "unknown"),
-                upload_timestamp=datetime.utcnow().isoformat()
+                upload_timestamp=datetime.utcnow().isoformat(),
+                persona=persona,
+                job_to_be_done=job_to_be_done,
+                tags=[]
             )
             
             # Store document info and analysis
@@ -337,6 +347,169 @@ async def track_reading_progress(doc_id: str = Form(...),
         "estimated_remaining_minutes": max(0, remaining_time // 60),
         "estimated_total_minutes": estimated_total_time // 60
     }
+
+@app.get("/library/documents")
+async def get_library_documents(persona: Optional[str] = None, job_to_be_done: Optional[str] = None):
+    """Get documents for library view, optionally filtered by persona or job."""
+    docs = []
+    for doc_data in documents_store.values():
+        doc_info = doc_data["info"]
+        
+        # Apply filters if provided
+        if persona and doc_info.get("persona") != persona:
+            continue
+        if job_to_be_done and doc_info.get("job_to_be_done") != job_to_be_done:
+            continue
+            
+        docs.append(doc_info)
+    
+    # Sort by upload timestamp (newest first)
+    docs.sort(key=lambda x: x.get("upload_timestamp", ""), reverse=True)
+    return docs
+
+@app.get("/library/personas")
+async def get_personas():
+    """Get all unique personas from uploaded documents."""
+    personas = set()
+    for doc_data in documents_store.values():
+        persona = doc_data["info"].get("persona")
+        if persona:
+            personas.add(persona)
+    return sorted(list(personas))
+
+@app.get("/library/jobs")
+async def get_jobs():
+    """Get all unique job_to_be_done values from uploaded documents."""
+    jobs = set()
+    for doc_data in documents_store.values():
+        job = doc_data["info"].get("job_to_be_done")
+        if job:
+            jobs.add(job)
+    return sorted(list(jobs))
+
+@app.post("/documents/{doc_id}/cross-connections")
+async def get_cross_connections(doc_id: str):
+    """Get cross-connections and insights for a document based on existing library."""
+    if doc_id not in documents_store:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    current_doc = documents_store[doc_id]
+    current_text = extract_full_text(current_doc["file_path"])
+    current_info = current_doc["info"]
+    
+    # Find related documents
+    related_docs = []
+    insights = []
+    contradictions = []
+    
+    for other_id, other_data in documents_store.items():
+        if other_id == doc_id:
+            continue
+            
+        other_info = other_data["info"]
+        other_text = extract_full_text(other_data["file_path"])
+        
+        # Use LLM to find connections
+        try:
+            connection_analysis = await llm_service.find_document_connections(
+                current_text[:3000],  # Limit text for performance
+                other_text[:3000],
+                current_info.get("title", ""),
+                other_info.get("title", ""),
+                current_info.get("persona", ""),
+                current_info.get("job_to_be_done", "")
+            )
+            
+            if connection_analysis.get("has_connection", False):
+                related_docs.append({
+                    "document_id": other_id,
+                    "document_title": other_info.get("title", ""),
+                    "connection_type": connection_analysis.get("connection_type", "related"),
+                    "relevance_score": connection_analysis.get("relevance_score", 0.5),
+                    "explanation": connection_analysis.get("explanation", ""),
+                    "key_sections": connection_analysis.get("key_sections", [])
+                })
+                
+            # Check for contradictions
+            if connection_analysis.get("has_contradiction", False):
+                contradictions.append({
+                    "document_id": other_id,
+                    "document_title": other_info.get("title", ""),
+                    "contradiction": connection_analysis.get("contradiction", ""),
+                    "severity": connection_analysis.get("severity", "low")
+                })
+                
+        except Exception as e:
+            print(f"Error analyzing connection between {doc_id} and {other_id}: {e}")
+            continue
+    
+    # Generate additional insights
+    try:
+        additional_insights = await llm_service.generate_cross_document_insights(
+            current_text[:5000],
+            [doc["document_title"] for doc in related_docs[:3]],
+            current_info.get("persona", ""),
+            current_info.get("job_to_be_done", "")
+        )
+        insights.extend(additional_insights.get("insights", []))
+    except Exception as e:
+        print(f"Error generating cross-document insights: {e}")
+    
+    return {
+        "document_id": doc_id,
+        "related_documents": sorted(related_docs, key=lambda x: x["relevance_score"], reverse=True)[:5],
+        "contradictions": contradictions,
+        "insights": insights,
+        "total_connections": len(related_docs)
+    }
+
+@app.post("/strategic-insights")
+async def generate_strategic_insights(request: InsightsRequest):
+    """Generate strategic insights at specific areas of the PDF."""
+    if not llm_service.is_available():
+        raise HTTPException(status_code=503, detail="LLM service unavailable")
+    
+    try:
+        strategic_insights = await llm_service.generate_strategic_insights(
+            request.text,
+            request.persona,
+            request.job_to_be_done,
+            request.document_context
+        )
+        
+        return {"strategic_insights": strategic_insights}
+        
+    except Exception as e:
+        print(f"Error generating strategic insights: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate strategic insights")
+
+@app.post("/contextual-analysis")
+async def analyze_document_context(doc_id: str, page_number: int, section_text: str):
+    """Analyze specific document context for deeper insights."""
+    if doc_id not in documents_store:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    if not llm_service.is_available():
+        raise HTTPException(status_code=503, detail="LLM service unavailable")
+    
+    try:
+        doc_info = documents_store[doc_id]["info"]
+        full_text = extract_full_text(documents_store[doc_id]["file_path"])
+        
+        contextual_analysis = await llm_service.analyze_document_context(
+            section_text,
+            full_text[:5000],  # Context from full document
+            doc_info.get("title", ""),
+            page_number,
+            doc_info.get("persona", ""),
+            doc_info.get("job_to_be_done", "")
+        )
+        
+        return contextual_analysis
+        
+    except Exception as e:
+        print(f"Error analyzing document context: {e}")
+        raise HTTPException(status_code=500, detail="Failed to analyze document context")
 
 @app.get("/health")
 async def health_check():

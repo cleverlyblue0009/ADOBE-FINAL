@@ -62,11 +62,18 @@ class ApiService {
     this.baseUrl = API_BASE_URL;
   }
 
-  async uploadPDFs(files: File[]): Promise<DocumentInfo[]> {
+  async uploadPDFs(files: File[], persona?: string, jobToBeDone?: string): Promise<DocumentInfo[]> {
     const formData = new FormData();
     files.forEach(file => {
       formData.append('files', file);
     });
+    
+    if (persona) {
+      formData.append('persona', persona);
+    }
+    if (jobToBeDone) {
+      formData.append('job_to_be_done', jobToBeDone);
+    }
 
     const response = await fetch(`${this.baseUrl}/upload-pdfs`, {
       method: 'POST',
@@ -298,10 +305,183 @@ class ApiService {
     return `${this.baseUrl}/audio/${filename}`;
   }
 
+  async getLibraryDocuments(persona?: string, jobToBeDone?: string): Promise<DocumentInfo[]> {
+    const params = new URLSearchParams();
+    if (persona) params.append('persona', persona);
+    if (jobToBeDone) params.append('job_to_be_done', jobToBeDone);
+    
+    const url = `${this.baseUrl}/library/documents${params.toString() ? '?' + params.toString() : ''}`;
+    const response = await fetch(url);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch library documents: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async getPersonas(): Promise<string[]> {
+    const response = await fetch(`${this.baseUrl}/library/personas`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch personas: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async getJobs(): Promise<string[]> {
+    const response = await fetch(`${this.baseUrl}/library/jobs`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch jobs: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async getCrossConnections(docId: string): Promise<CrossConnectionsResponse> {
+    const response = await fetch(`${this.baseUrl}/documents/${docId}/cross-connections`, {
+      method: 'POST',
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to get cross connections: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async generateStrategicInsights(
+    text: string,
+    persona: string,
+    jobToBeDone: string,
+    documentContext?: string
+  ): Promise<StrategicInsights> {
+    const response = await fetch(`${this.baseUrl}/strategic-insights`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        persona,
+        job_to_be_done: jobToBeDone,
+        document_context: documentContext,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate strategic insights: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.strategic_insights;
+  }
+
+  async analyzeDocumentContext(
+    docId: string,
+    pageNumber: number,
+    sectionText: string
+  ): Promise<ContextualAnalysis> {
+    const response = await fetch(`${this.baseUrl}/contextual-analysis`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        doc_id: docId,
+        page_number: pageNumber,
+        section_text: sectionText,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to analyze document context: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
   async healthCheck() {
     const response = await fetch(`${this.baseUrl}/health`);
     return response.json();
   }
+}
+
+export interface CrossConnectionsResponse {
+  document_id: string;
+  related_documents: RelatedDocument[];
+  contradictions: Contradiction[];
+  insights: CrossDocumentInsight[];
+  total_connections: number;
+}
+
+export interface RelatedDocument {
+  document_id: string;
+  document_title: string;
+  connection_type: 'complementary' | 'contradictory' | 'similar' | 'related';
+  relevance_score: number;
+  explanation: string;
+  key_sections: string[];
+}
+
+export interface Contradiction {
+  document_id: string;
+  document_title: string;
+  contradiction: string;
+  severity: 'low' | 'medium' | 'high';
+}
+
+export interface CrossDocumentInsight {
+  type: 'pattern' | 'opportunity' | 'recommendation' | 'takeaway';
+  content: string;
+  confidence: number;
+}
+
+export interface StrategicInsights {
+  opportunities: Array<{
+    insight: string;
+    priority: 'high' | 'medium' | 'low';
+    timeframe: 'immediate' | 'short-term' | 'long-term';
+  }>;
+  critical_decisions: Array<{
+    decision: string;
+    factors: string[];
+    urgency: 'high' | 'medium' | 'low';
+  }>;
+  risks: Array<{
+    risk: string;
+    impact: 'high' | 'medium' | 'low';
+    mitigation: string;
+  }>;
+  action_items: Array<{
+    action: string;
+    priority: 'high' | 'medium' | 'low';
+    effort: 'low' | 'medium' | 'high';
+  }>;
+  knowledge_gaps: Array<{
+    gap: string;
+    importance: 'high' | 'medium' | 'low';
+    source_suggestions: string[];
+  }>;
+  strategic_context: {
+    relevance_to_role: string;
+    business_impact: string;
+    competitive_advantage: string;
+  };
+}
+
+export interface ContextualAnalysis {
+  section_summary: string;
+  contextual_significance: string;
+  personal_relevance: string;
+  deeper_implications: string[];
+  cross_references: string[];
+  expert_perspective: string;
+  questions_to_consider: string[];
+  next_steps: string[];
+  confidence_score: number;
 }
 
 export const apiService = new ApiService();
