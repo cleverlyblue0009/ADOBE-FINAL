@@ -81,12 +81,12 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
     }
 
     // Filter by persona
-    if (selectedPersona) {
+    if (selectedPersona && selectedPersona !== 'all' && selectedPersona !== '') {
       filtered = filtered.filter(doc => doc.persona === selectedPersona);
     }
 
     // Filter by job
-    if (selectedJob) {
+    if (selectedJob && selectedJob !== 'all' && selectedJob !== '') {
       filtered = filtered.filter(doc => doc.job_to_be_done === selectedJob);
     }
 
@@ -254,12 +254,15 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
                 />
               </div>
               
-              <Select value={selectedPersona} onValueChange={setSelectedPersona}>
+              <Select 
+                value={selectedPersona} 
+                onValueChange={(value) => setSelectedPersona(value === 'all' ? '' : value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by persona" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All personas</SelectItem>
+                  <SelectItem value="all">All personas</SelectItem>
                   {personas.map(persona => (
                     <SelectItem key={persona} value={persona}>
                       {persona}
@@ -268,12 +271,15 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
                 </SelectContent>
               </Select>
 
-              <Select value={selectedJob} onValueChange={setSelectedJob}>
+              <Select 
+                value={selectedJob} 
+                onValueChange={(value) => setSelectedJob(value === 'all' ? '' : value)}
+              >
                 <SelectTrigger>
                   <SelectValue placeholder="Filter by job" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All jobs</SelectItem>
+                  <SelectItem value="all">All jobs</SelectItem>
                   {jobs.map(job => (
                     <SelectItem key={job} value={job}>
                       {job}
