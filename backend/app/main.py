@@ -421,24 +421,33 @@ async def get_cross_connections(doc_id: str):
             )
             
             if connection_analysis.get("has_connection", False):
-                related_docs.append({
+                # Enhanced related document info
+                related_doc_info = {
                     "document_id": other_id,
                     "document_title": other_info.get("title", ""),
                     "connection_type": connection_analysis.get("connection_type", "related"),
                     "relevance_score": connection_analysis.get("relevance_score", 0.5),
                     "explanation": connection_analysis.get("explanation", ""),
-                    "key_sections": connection_analysis.get("key_sections", [])
-                })
+                    "key_sections": connection_analysis.get("key_sections", []),
+                    "similarities": connection_analysis.get("similarities", []),
+                    "complementary_insights": connection_analysis.get("complementary_insights", []),
+                    "key_facts": connection_analysis.get("key_facts", [])
+                }
+                related_docs.append(related_doc_info)
                 
-            # Check for contradictions
+            # Enhanced contradictions handling
             if connection_analysis.get("has_contradiction", False):
-                contradictions.append({
-                    "document_id": other_id,
-                    "document_title": other_info.get("title", ""),
-                    "contradiction": connection_analysis.get("contradiction", ""),
-                    "severity": connection_analysis.get("severity", "low")
-                })
-                
+                for contradiction in connection_analysis.get("contradictions", []):
+                    contradictions.append({
+                        "document_id": other_id,
+                        "document_title": other_info.get("title", ""),
+                        "topic": contradiction.get("topic", ""),
+                        "doc1_claim": contradiction.get("doc1_claim", ""),
+                        "doc2_claim": contradiction.get("doc2_claim", ""),
+                        "severity": contradiction.get("severity", "low"),
+                        "explanation": contradiction.get("explanation", "")
+                    })
+                    
         except Exception as e:
             print(f"Error analyzing connection between {doc_id} and {other_id}: {e}")
             continue
