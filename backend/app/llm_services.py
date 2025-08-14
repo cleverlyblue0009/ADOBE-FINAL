@@ -467,3 +467,276 @@ class LLMService:
         except Exception as e:
             print(f"Error defining term: {e}")
             return f"Unable to define '{term}'"
+    
+    async def find_document_connections(self, text1: str, text2: str, title1: str, title2: str, persona: str, job: str):
+        """Find connections between two documents."""
+        if not self.is_available():
+            return {"has_connection": False, "explanation": "LLM service unavailable"}
+        
+        try:
+            prompt = f"""
+            Analyze these two documents and find connections, similarities, contradictions, and insights.
+            
+            Document 1: "{title1}"
+            Content (excerpt): {text1[:2000]}
+            
+            Document 2: "{title2}"
+            Content (excerpt): {text2[:2000]}
+            
+            User Context:
+            - Persona: {persona}
+            - Job to be done: {job}
+            
+            Please analyze and return a JSON response with:
+            {{
+                "has_connection": boolean,
+                "connection_type": "complementary|contradictory|similar|related",
+                "relevance_score": float (0-1),
+                "explanation": "brief explanation of the connection",
+                "key_sections": ["section1", "section2"],
+                "has_contradiction": boolean,
+                "contradiction": "description if any",
+                "severity": "low|medium|high"
+            }}
+            
+            Focus on connections that would be valuable for someone with the given persona and job.
+            """
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content,
+                prompt
+            )
+            
+            # Try to parse JSON response
+            try:
+                import json
+                result = json.loads(response.text.strip())
+                return result
+            except:
+                # Fallback if JSON parsing fails
+                has_connection = "connection" in response.text.lower() or "related" in response.text.lower()
+                return {
+                    "has_connection": has_connection,
+                    "connection_type": "related",
+                    "relevance_score": 0.5,
+                    "explanation": response.text[:200],
+                    "key_sections": [],
+                    "has_contradiction": "contradict" in response.text.lower(),
+                    "contradiction": "",
+                    "severity": "low"
+                }
+                
+        except Exception as e:
+            print(f"Error finding document connections: {e}")
+            return {"has_connection": False, "explanation": f"Error: {e}"}
+    
+    async def generate_cross_document_insights(self, current_text: str, related_titles: list, persona: str, job: str):
+        """Generate insights based on cross-document analysis."""
+        if not self.is_available():
+            return {"insights": []}
+        
+        try:
+            prompt = f"""
+            Based on the current document and its connections to related documents, generate valuable insights.
+            
+            Current Document Content (excerpt):
+            {current_text}
+            
+            Related Documents:
+            {', '.join(related_titles)}
+            
+            User Context:
+            - Persona: {persona}
+            - Job to be done: {job}
+            
+            Generate 3-5 actionable insights that would be valuable for this persona, considering the connections between these documents. Focus on:
+            1. Patterns across documents
+            2. Gaps or opportunities
+            3. Actionable recommendations
+            4. Key takeaways for the specific job to be done
+            
+            Return as JSON:
+            {{
+                "insights": [
+                    {{
+                        "type": "pattern|opportunity|recommendation|takeaway",
+                        "content": "insight description",
+                        "confidence": float (0-1)
+                    }}
+                ]
+            }}
+            """
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content,
+                prompt
+            )
+            
+            try:
+                import json
+                result = json.loads(response.text.strip())
+                return result
+            except:
+                # Fallback
+                return {
+                    "insights": [{
+                        "type": "takeaway",
+                        "content": response.text[:300],
+                        "confidence": 0.7
+                    }]
+                }
+                
+        except Exception as e:
+            print(f"Error generating cross-document insights: {e}")
+            return {"insights": []}
+    
+    async def generate_strategic_insights(self, text: str, persona: str, job: str, document_context: str = None):
+        """Generate strategic insights for specific areas of the document."""
+        if not self.is_available():
+            return {"insights": []}
+        
+        try:
+            prompt = f"""
+            As an expert analyst, provide strategic insights for the following text, considering the user's specific role and objectives.
+            
+            Text to analyze:
+            {text}
+            
+            User Context:
+            - Persona: {persona}
+            - Job to be done: {job}
+            {f"- Document context: {document_context}" if document_context else ""}
+            
+            Provide strategic insights in these categories:
+            1. **Key Opportunities**: What opportunities does this text reveal for the user's role?
+            2. **Critical Decisions**: What decisions should the user consider based on this information?
+            3. **Risk Assessment**: What risks or challenges are implied by this content?
+            4. **Action Items**: What specific actions should the user take?
+            5. **Knowledge Gaps**: What additional information would be valuable?
+            6. **Strategic Context**: How does this fit into the bigger picture for their job?
+            
+            Return as JSON:
+            {{
+                "opportunities": [
+                    {{"insight": "description", "priority": "high|medium|low", "timeframe": "immediate|short-term|long-term"}}
+                ],
+                "critical_decisions": [
+                    {{"decision": "description", "factors": ["factor1", "factor2"], "urgency": "high|medium|low"}}
+                ],
+                "risks": [
+                    {{"risk": "description", "impact": "high|medium|low", "mitigation": "suggested approach"}}
+                ],
+                "action_items": [
+                    {{"action": "description", "priority": "high|medium|low", "effort": "low|medium|high"}}
+                ],
+                "knowledge_gaps": [
+                    {{"gap": "description", "importance": "high|medium|low", "source_suggestions": ["suggestion1", "suggestion2"]}}
+                ],
+                "strategic_context": {{
+                    "relevance_to_role": "explanation",
+                    "business_impact": "explanation",
+                    "competitive_advantage": "explanation"
+                }}
+            }}
+            """
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content,
+                prompt
+            )
+            
+            try:
+                import json
+                result = json.loads(response.text.strip())
+                return result
+            except:
+                # Fallback
+                return {
+                    "opportunities": [{"insight": response.text[:200], "priority": "medium", "timeframe": "short-term"}],
+                    "critical_decisions": [],
+                    "risks": [],
+                    "action_items": [],
+                    "knowledge_gaps": [],
+                    "strategic_context": {
+                        "relevance_to_role": "High relevance to current role",
+                        "business_impact": "Moderate business impact expected",
+                        "competitive_advantage": "Potential for competitive advantage"
+                    }
+                }
+                
+        except Exception as e:
+            print(f"Error generating strategic insights: {e}")
+            return {"insights": []}
+    
+    async def analyze_document_context(self, section_text: str, full_context: str, title: str, page: int, persona: str, job: str):
+        """Analyze specific document context for deeper insights."""
+        if not self.is_available():
+            return {"analysis": "LLM service unavailable"}
+        
+        try:
+            prompt = f"""
+            Analyze this specific section within the broader document context to provide deep, contextual insights.
+            
+            Document: "{title}" (Page {page})
+            
+            Current Section:
+            {section_text}
+            
+            Document Context (first part):
+            {full_context}
+            
+            User Profile:
+            - Role: {persona}
+            - Objective: {job}
+            
+            Provide a comprehensive analysis including:
+            
+            1. **Section Summary**: What is the core message of this section?
+            2. **Contextual Significance**: How does this section relate to the overall document?
+            3. **Personal Relevance**: Why is this specifically important for someone in the user's role?
+            4. **Deeper Implications**: What are the unstated implications or consequences?
+            5. **Cross-References**: What other parts of the document does this connect to?
+            6. **Expert Perspective**: What would a domain expert notice about this section?
+            7. **Questions to Consider**: What questions should the reader ask themselves?
+            8. **Next Steps**: What should the reader do with this information?
+            
+            Return as JSON:
+            {{
+                "section_summary": "brief summary",
+                "contextual_significance": "how it fits in the document",
+                "personal_relevance": "why it matters for this role",
+                "deeper_implications": ["implication1", "implication2"],
+                "cross_references": ["section1", "section2"],
+                "expert_perspective": "what an expert would notice",
+                "questions_to_consider": ["question1", "question2"],
+                "next_steps": ["step1", "step2"],
+                "confidence_score": float (0-1)
+            }}
+            """
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content,
+                prompt
+            )
+            
+            try:
+                import json
+                result = json.loads(response.text.strip())
+                return result
+            except:
+                # Fallback
+                return {
+                    "section_summary": response.text[:150],
+                    "contextual_significance": "This section provides important context within the document",
+                    "personal_relevance": f"Relevant for {persona} working on {job}",
+                    "deeper_implications": ["Consider the broader implications", "Evaluate potential impacts"],
+                    "cross_references": [],
+                    "expert_perspective": "This section contains valuable insights",
+                    "questions_to_consider": ["What are the key takeaways?", "How does this apply to your situation?"],
+                    "next_steps": ["Review related sections", "Consider implementation"],
+                    "confidence_score": 0.7
+                }
+                
+        except Exception as e:
+            print(f"Error analyzing document context: {e}")
+            return {"analysis": f"Error: {e}"}
