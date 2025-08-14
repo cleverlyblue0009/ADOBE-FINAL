@@ -263,24 +263,30 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-border-subtle">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="h-5 w-5 text-brand-primary" />
-          <h3 className="font-semibold text-text-primary">AI Insights</h3>
+    <div className="h-full flex flex-col bg-gradient-to-b from-slate-50 to-white">
+      <div className="p-4 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg shadow-sm">
+            <Sparkles className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-bold text-gray-900 text-lg">AI Insights</h3>
+            <p className="text-sm text-gray-600">
+              Generate contextual insights based on your persona and goals
+            </p>
+          </div>
         </div>
-        <p className="text-xs text-text-secondary">
-          Generate contextual insights based on your persona and goals
-        </p>
       </div>
 
       <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-6">
           {/* Persona Input */}
           <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-text-secondary" />
-              <label className="text-sm font-medium text-text-primary">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 bg-blue-100 rounded-lg">
+                <User className="h-4 w-4 text-blue-600" />
+              </div>
+              <label className="text-sm font-semibold text-gray-900">
                 Who are you?
               </label>
             </div>
@@ -288,16 +294,18 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
               placeholder="e.g., Medical researcher, Healthcare administrator, AI developer..."
               value={persona}
               onChange={(e) => setPersona(e.target.value)}
-              className="text-sm"
+              className="text-sm border-gray-200 focus:border-blue-400 focus:ring-blue-400/20 bg-white/50 backdrop-blur-sm"
               rows={2}
             />
           </section>
 
           {/* Job to be Done */}
           <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-text-secondary" />
-              <label className="text-sm font-medium text-text-primary">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="p-1.5 bg-green-100 rounded-lg">
+                <Target className="h-4 w-4 text-green-600" />
+              </div>
+              <label className="text-sm font-semibold text-gray-900">
                 What are you trying to achieve?
               </label>
             </div>
@@ -305,7 +313,7 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
               placeholder="e.g., Evaluate AI implementation feasibility, Understand current limitations, Research competitive landscape..."
               value={jobToBeDone}
               onChange={(e) => setJobToBeDone(e.target.value)}
-              className="text-sm"
+              className="text-sm border-gray-200 focus:border-green-400 focus:ring-green-400/20 bg-white/50 backdrop-blur-sm"
               rows={3}
             />
           </section>
@@ -314,7 +322,7 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
           <Button
             onClick={handleGenerateInsights}
             disabled={isGenerating || (!persona && !jobToBeDone)}
-            className="w-full gap-2"
+            className="w-full gap-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 py-3 font-semibold"
           >
             {isGenerating ? (
               <>
@@ -332,11 +340,14 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
           {/* Generated Insights */}
           {insights.length > 0 && (
             <section className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium text-text-primary">
+              <div className="flex items-center justify-between bg-white/60 p-3 rounded-lg border border-gray-200">
+                <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                  <div className="p-1 bg-yellow-100 rounded">
+                    <Lightbulb className="h-3 w-3 text-yellow-600" />
+                  </div>
                   Generated Insights
                 </h4>
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs font-medium bg-blue-100 text-blue-800 border-blue-200">
                   {insights.length} insights
                 </Badge>
               </div>
@@ -345,7 +356,7 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
                 {insights.map((insight) => (
                   <div
                     key={insight.id}
-                    className="p-3 bg-surface-elevated border border-border-subtle rounded-lg hover:border-border-moderate transition-colors cursor-pointer group"
+                    className="p-4 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:shadow-md transition-all duration-200 cursor-pointer group"
                     onClick={() => {
                       if (insight.pageReference) {
                         onPageNavigate?.(insight.pageReference);
@@ -353,41 +364,41 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
                     }}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5">
+                      <div className="flex-shrink-0 mt-0.5 p-2 bg-gradient-to-br from-gray-100 to-gray-200 rounded-lg group-hover:from-blue-100 group-hover:to-blue-200 transition-colors">
                         {getInsightIcon(insight.type)}
                       </div>
                       
                       <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-2">
                           <Badge 
                             variant="outline" 
-                            className="text-xs px-1.5 py-0.5"
+                            className="text-xs px-2 py-1 font-medium border-gray-300 bg-gray-50 text-gray-700"
                           >
                             {getInsightTypeLabel(insight.type)}
                           </Badge>
                           
                           <div className="flex items-center gap-1">
                             <div
-                              className={`w-2 h-2 rounded-full ${getRelevanceColor(insight.relevance)}`}
+                              className={`w-2.5 h-2.5 rounded-full ${getRelevanceColor(insight.relevance)}`}
                               title={`${Math.round(insight.relevance * 100)}% relevance`}
                             />
-                            <span className="text-xs text-text-tertiary">
-                              {Math.round(insight.relevance * 100)}%
+                            <span className="text-xs text-gray-600 font-medium">
+                              {Math.round(insight.relevance * 100)}% relevance
                             </span>
                           </div>
                         </div>
                         
-                        <h5 className="text-sm font-medium text-text-primary mb-2 group-hover:text-brand-primary transition-colors">
+                        <h5 className="text-sm font-semibold text-gray-900 mb-2 group-hover:text-blue-700 transition-colors">
                           {insight.title}
                         </h5>
                         
-                        <p className="text-xs text-text-secondary leading-relaxed mb-2">
+                        <p className="text-sm text-gray-700 leading-relaxed mb-3 bg-gray-50/50 p-2 rounded border-l-2 border-l-blue-200">
                           {insight.content}
                         </p>
                         
                         <div className="flex items-center justify-between">
                           {insight.pageReference && (
-                            <div className="flex items-center gap-1 text-xs text-text-tertiary">
+                            <div className="flex items-center gap-1 text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
                               <ExternalLink className="h-3 w-3" />
                               Page {insight.pageReference}
                               {insight.source && ` • ${insight.source}`}
@@ -395,7 +406,7 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
                           )}
                           
                           <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
+                            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs text-blue-600 hover:bg-blue-50">
                               View Details
                             </Button>
                           </div>
@@ -410,7 +421,7 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
                 variant="outline"
                 onClick={handleGenerateInsights}
                 disabled={isGenerating}
-                className="w-full gap-2 text-sm"
+                className="w-full gap-2 text-sm border-gray-300 hover:border-blue-400 hover:bg-blue-50"
               >
                 <RefreshCw className="h-4 w-4" />
                 Regenerate Insights
@@ -423,7 +434,7 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
             variant="outline"
             onClick={handleGenerateComprehensiveInsights}
             disabled={isGeneratingComprehensive || !currentText || !persona || !jobToBeDone}
-            className="w-full gap-2 text-sm border-brand-primary/20 text-brand-primary hover:bg-brand-primary/5"
+            className="w-full gap-2 text-sm border-purple-300 text-purple-700 hover:bg-purple-50 hover:border-purple-400 font-medium"
           >
             {isGeneratingComprehensive ? (
               <>
@@ -441,22 +452,28 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
           {/* Comprehensive Insights Display */}
           {comprehensiveInsights && (
             <section className="space-y-4 mt-6">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium text-text-primary">
+              <div className="flex items-center justify-between bg-gradient-to-r from-purple-50 to-blue-50 p-3 rounded-lg border border-purple-200">
+                <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                  <div className="p-1 bg-purple-100 rounded">
+                    <Brain className="h-3 w-3 text-purple-600" />
+                  </div>
                   Comprehensive Analysis
                 </h4>
-                <Badge variant="secondary" className="text-xs">
+                <Badge variant="secondary" className="text-xs font-medium bg-purple-100 text-purple-800 border-purple-200">
                   AI + Web Research
                 </Badge>
               </div>
 
               {/* Keywords */}
               {comprehensiveInsights.keywords && comprehensiveInsights.keywords.length > 0 && (
-                <div className="p-3 bg-surface-elevated/50 border border-border-subtle rounded-lg">
-                  <h5 className="text-xs font-medium text-text-primary mb-2">Key Terms & Concepts</h5>
-                  <div className="flex flex-wrap gap-1">
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <h5 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                    Key Terms & Concepts
+                  </h5>
+                  <div className="flex flex-wrap gap-2">
                     {comprehensiveInsights.keywords.slice(0, 8).map((keyword: string, index: number) => (
-                      <Badge key={index} variant="outline" className="text-xs px-2 py-1">
+                      <Badge key={index} variant="outline" className="text-xs px-3 py-1 bg-blue-50 border-blue-200 text-blue-800 font-medium">
                         {keyword}
                       </Badge>
                     ))}
@@ -466,16 +483,19 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
 
               {/* Persona Insights */}
               {comprehensiveInsights.persona_insights && comprehensiveInsights.persona_insights.length > 0 && (
-                <div className="p-3 bg-surface-elevated/50 border border-border-subtle rounded-lg">
-                  <h5 className="text-xs font-medium text-text-primary mb-2">Role-Specific Analysis</h5>
-                  <div className="space-y-2">
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <h5 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                    Role-Specific Analysis
+                  </h5>
+                  <div className="space-y-3">
                     {comprehensiveInsights.persona_insights.map((insight: any, index: number) => (
-                      <div key={index} className="text-xs text-text-secondary">
-                        <span className="font-medium text-text-primary">
-                          {insight.type === 'relevance' ? 'Relevance: ' : 
-                           insight.type === 'action' ? 'Action Items: ' : 'Skill Development: '}
+                      <div key={index} className="text-sm bg-gray-50 p-3 rounded border-l-2 border-l-green-300">
+                        <span className="font-semibold text-gray-900">
+                          {insight.type === 'relevance' ? '🎯 Relevance: ' : 
+                           insight.type === 'action' ? '⚡ Action Items: ' : '📚 Skill Development: '}
                         </span>
-                        {insight.content}
+                        <span className="text-gray-700">{insight.content}</span>
                       </div>
                     ))}
                   </div>
@@ -484,25 +504,28 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
 
               {/* Topic Analysis */}
               {comprehensiveInsights.topic_analysis && (
-                <div className="p-3 bg-surface-elevated/50 border border-border-subtle rounded-lg">
-                  <h5 className="text-xs font-medium text-text-primary mb-2">Topic Analysis</h5>
-                  <div className="space-y-2 text-xs text-text-secondary">
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <h5 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-orange-500 rounded-full"></div>
+                    Topic Analysis
+                  </h5>
+                  <div className="space-y-3 text-sm">
                     {comprehensiveInsights.topic_analysis.main_themes && (
-                      <div>
-                        <span className="font-medium text-text-primary">Main Themes: </span>
-                        {comprehensiveInsights.topic_analysis.main_themes}
+                      <div className="bg-orange-50 p-3 rounded border-l-2 border-l-orange-300">
+                        <span className="font-semibold text-gray-900">🔍 Main Themes: </span>
+                        <span className="text-gray-700">{comprehensiveInsights.topic_analysis.main_themes}</span>
                       </div>
                     )}
                     {comprehensiveInsights.topic_analysis.trending_topics && (
-                      <div>
-                        <span className="font-medium text-text-primary">Trending Topics: </span>
-                        {comprehensiveInsights.topic_analysis.trending_topics}
+                      <div className="bg-orange-50 p-3 rounded border-l-2 border-l-orange-300">
+                        <span className="font-semibold text-gray-900">📈 Trending Topics: </span>
+                        <span className="text-gray-700">{comprehensiveInsights.topic_analysis.trending_topics}</span>
                       </div>
                     )}
                     {comprehensiveInsights.topic_analysis.research_opportunities && (
-                      <div>
-                        <span className="font-medium text-text-primary">Research Opportunities: </span>
-                        {comprehensiveInsights.topic_analysis.research_opportunities}
+                      <div className="bg-orange-50 p-3 rounded border-l-2 border-l-orange-300">
+                        <span className="font-semibold text-gray-900">🔬 Research Opportunities: </span>
+                        <span className="text-gray-700">{comprehensiveInsights.topic_analysis.research_opportunities}</span>
                       </div>
                     )}
                   </div>
@@ -511,20 +534,23 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
 
               {/* Web Search Suggestions */}
               {comprehensiveInsights.web_facts && comprehensiveInsights.web_facts.length > 0 && (
-                <div className="p-3 bg-surface-elevated/50 border border-border-subtle rounded-lg">
-                  <h5 className="text-xs font-medium text-text-primary mb-2">Web Research Suggestions</h5>
-                  <div className="space-y-2">
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <h5 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-indigo-500 rounded-full"></div>
+                    Web Research Suggestions
+                  </h5>
+                  <div className="space-y-3">
                     {comprehensiveInsights.web_facts.map((fact: any, index: number) => (
-                      <div key={index} className="text-xs">
-                        <div className="text-text-secondary mb-1">{fact.description}</div>
+                      <div key={index} className="bg-indigo-50 p-3 rounded border-l-2 border-l-indigo-300">
+                        <div className="text-sm text-gray-700 mb-2">{fact.description}</div>
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs px-2 py-1">
+                          <Badge variant="outline" className="text-xs px-3 py-1 bg-white border-indigo-200 text-indigo-800">
                             {fact.query}
                           </Badge>
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-6 px-2 text-xs"
+                            className="h-6 px-2 text-xs text-indigo-600 hover:bg-indigo-100"
                             onClick={() => {
                               const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(fact.query)}`;
                               window.open(searchUrl, '_blank');
@@ -542,18 +568,21 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
 
               {/* Search Queries */}
               {comprehensiveInsights.search_queries && comprehensiveInsights.search_queries.length > 0 && (
-                <div className="p-3 bg-surface-elevated/50 border border-border-subtle rounded-lg">
-                  <h5 className="text-xs font-medium text-text-primary mb-2">Optimized Search Queries</h5>
+                <div className="p-4 bg-white border border-gray-200 rounded-lg">
+                  <h5 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                    Optimized Search Queries
+                  </h5>
                   <div className="space-y-2">
                     {comprehensiveInsights.search_queries.map((query: string, index: number) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs px-2 py-1 flex-1 text-left">
+                      <div key={index} className="flex items-center gap-2 bg-purple-50 p-2 rounded">
+                        <Badge variant="outline" className="text-xs px-3 py-1 flex-1 text-left bg-white border-purple-200 text-purple-800">
                           {query}
                         </Badge>
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-6 px-2 text-xs"
+                          className="h-6 px-2 text-xs text-purple-600 hover:bg-purple-100"
                           onClick={() => {
                             const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
                             window.open(searchUrl, '_blank');
@@ -571,13 +600,18 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
 
           {/* Placeholder when no insights */}
           {insights.length === 0 && !isGenerating && (
-            <div className="text-center py-8">
-              <Brain className="h-12 w-12 text-text-tertiary mx-auto mb-3" />
-              <p className="text-sm text-text-secondary mb-1">
-                No insights generated yet
+            <div className="text-center py-8 bg-white/50 rounded-lg border border-gray-200">
+              <div className="p-3 bg-gray-100 rounded-full w-fit mx-auto mb-4">
+                <Brain className="h-8 w-8 text-gray-400" />
+              </div>
+              <h4 className="text-lg font-semibold text-gray-900 mb-2">
+                Ready to Generate Insights
+              </h4>
+              <p className="text-sm text-gray-600 mb-1">
+                Fill in your persona and goals above
               </p>
-              <p className="text-xs text-text-tertiary">
-                Fill in your persona and goals to get started
+              <p className="text-xs text-gray-500">
+                Then select text in the document or click "Generate AI Insights"
               </p>
             </div>
           )}

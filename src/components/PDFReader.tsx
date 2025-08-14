@@ -124,7 +124,6 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [isActivelyReading, setIsActivelyReading] = useState(true);
   const [totalPages, setTotalPages] = useState(30); // Will be updated from PDF
   const [currentLanguage, setCurrentLanguage] = useState('en');
-  const { toast } = useToast();
 
 
 
@@ -274,9 +273,47 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
     setHighlights(prev => [...prev, highlight]);
     
     toast({
-      title: "Highlight created",
-      description: `Added highlight on page ${page}`,
+      title: "Text selected and highlighted",
+      description: `Added highlight on page ${page}. AI insights will be generated automatically.`,
     });
+  };
+
+  // Enhanced text selection handler
+  const handleTextSelection = async (text: string, page: number) => {
+    console.log('Text selected:', text, 'on page:', page);
+    setSelectedText(text);
+    setCurrentPage(page);
+    
+    // Create highlight from selection if text is long enough
+    if (text.length >= 10) {
+      createHighlightFromSelection(text, page);
+    }
+    
+    // Automatically generate insights for selected text if conditions are met
+    if (text.length > 50 && persona && jobToBeDone) {
+      try {
+        await generateInsightsForText(text);
+        
+        // Show success message
+        toast({
+          title: "AI Insights Generated",
+          description: `Generated insights for selected text. Check the Insights panel.`,
+        });
+      } catch (error) {
+        console.error('Failed to generate insights:', error);
+        toast({
+          title: "Insights Generation Failed",
+          description: "Unable to generate insights for selected text.",
+          variant: "destructive"
+        });
+      }
+    } else if (text.length > 50) {
+      toast({
+        title: "Text Selected",
+        description: "Set your persona and goals in the Insights panel to generate AI insights.",
+        variant: "default"
+      });
+    }
   };
 
   return (
@@ -376,21 +413,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               documentUrl={currentDocument.url}
               documentName={currentDocument.name}
               onPageChange={setCurrentPage}
-              onTextSelection={(text, page) => {
-                console.log('Text selected:', text, 'on page:', page);
-                setSelectedText(text);
-                setCurrentPage(page);
-                
-                // Create highlight from selection
-                if (text.length >= 10) {
-                  createHighlightFromSelection(text, page);
-                }
-                
-                // Automatically generate insights for selected text
-                if (text.length > 50) {
-                  generateInsightsForText(text);
-                }
-              }}
+              onTextSelection={handleTextSelection}
               clientId={import.meta.env.VITE_ADOBE_CLIENT_ID}
             />
           ) : (
