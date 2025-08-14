@@ -427,17 +427,37 @@ async def get_cross_connections(doc_id: str):
                     "connection_type": connection_analysis.get("connection_type", "related"),
                     "relevance_score": connection_analysis.get("relevance_score", 0.5),
                     "explanation": connection_analysis.get("explanation", ""),
-                    "key_sections": connection_analysis.get("key_sections", [])
+                    "key_sections": connection_analysis.get("key_sections", []),
+                    "similarities": connection_analysis.get("similarities", []),
+                    "complementary_insights": connection_analysis.get("complementary_insights", [])
                 })
                 
-            # Check for contradictions
+            # Check for contradictions with detailed analysis
             if connection_analysis.get("has_contradiction", False):
-                contradictions.append({
-                    "document_id": other_id,
-                    "document_title": other_info.get("title", ""),
-                    "contradiction": connection_analysis.get("contradiction", ""),
-                    "severity": connection_analysis.get("severity", "low")
-                })
+                # Add detailed contradictions from the enhanced analysis
+                detailed_contradictions = connection_analysis.get("contradictions", [])
+                if detailed_contradictions:
+                    for contradiction in detailed_contradictions:
+                        contradictions.append({
+                            "document_id": other_id,
+                            "document_title": other_info.get("title", ""),
+                            "contradiction": contradiction.get("explanation", ""),
+                            "severity": contradiction.get("severity", "low"),
+                            "doc1_quote": contradiction.get("doc1_quote", ""),
+                            "doc2_quote": contradiction.get("doc2_quote", ""),
+                            "contradiction_type": contradiction.get("contradiction_type", "direct")
+                        })
+                else:
+                    # Fallback to overall contradiction
+                    contradictions.append({
+                        "document_id": other_id,
+                        "document_title": other_info.get("title", ""),
+                        "contradiction": connection_analysis.get("overall_contradiction", ""),
+                        "severity": connection_analysis.get("severity", "low"),
+                        "doc1_quote": "",
+                        "doc2_quote": "",
+                        "contradiction_type": "general"
+                    })
                 
         except Exception as e:
             print(f"Error analyzing connection between {doc_id} and {other_id}: {e}")
@@ -510,6 +530,50 @@ async def analyze_document_context(doc_id: str, page_number: int, section_text: 
     except Exception as e:
         print(f"Error analyzing document context: {e}")
         raise HTTPException(status_code=500, detail="Failed to analyze document context")
+
+@app.post("/multi-document-insights")
+async def generate_multi_document_insights(request: AnalysisRequest):
+    """Generate comprehensive insights across multiple documents with patterns, contradictions, and recommendations."""
+    if not llm_service.is_available():
+        raise HTTPException(status_code=503, detail="LLM service unavailable")
+    
+    # Validate document IDs
+    valid_docs = []
+    for doc_id in request.document_ids:
+        if doc_id in documents_store:
+            valid_docs.append(doc_id)
+    
+    if not valid_docs:
+        raise HTTPException(status_code=404, detail="No valid documents found")
+    
+    try:
+        # Prepare document data for analysis
+        documents_data = []
+        for doc_id in valid_docs:
+            doc_info = documents_store[doc_id]["info"]
+            doc_text = extract_full_text(documents_store[doc_id]["file_path"])
+            documents_data.append({
+                "id": doc_id,
+                "title": doc_info.get("title", "Unknown Document"),
+                "text": doc_text
+            })
+        
+        # Generate multi-document insights
+        multi_insights = await llm_service.analyze_multi_document_insights(
+            documents_data,
+            request.persona,
+            request.job_to_be_done
+        )
+        
+        return {
+            "analyzed_documents": len(valid_docs),
+            "document_titles": [doc["title"] for doc in documents_data],
+            "insights": multi_insights
+        }
+        
+    except Exception as e:
+        print(f"Error generating multi-document insights: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate multi-document insights")
 
 @app.get("/health")
 async def health_check():

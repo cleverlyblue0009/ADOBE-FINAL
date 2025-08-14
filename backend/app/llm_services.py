@@ -469,37 +469,67 @@ class LLMService:
             return f"Unable to define '{term}'"
     
     async def find_document_connections(self, text1: str, text2: str, title1: str, title2: str, persona: str, job: str):
-        """Find connections between two documents."""
+        """Find connections between two documents with detailed analysis including specific quotes."""
         if not self.is_available():
             return {"has_connection": False, "explanation": "LLM service unavailable"}
         
         try:
             prompt = f"""
-            Analyze these two documents and find connections, similarities, contradictions, and insights.
+            Analyze these two documents and find detailed connections, similarities, contradictions, and insights.
             
             Document 1: "{title1}"
-            Content (excerpt): {text1[:2000]}
+            Content: {text1[:3000]}
             
             Document 2: "{title2}"
-            Content (excerpt): {text2[:2000]}
+            Content: {text2[:3000]}
             
             User Context:
             - Persona: {persona}
             - Job to be done: {job}
             
-            Please analyze and return a JSON response with:
+            Please provide a comprehensive analysis focusing on:
+            1. SPECIFIC SIMILARITIES: Find exact sentences or phrases that say similar things
+            2. CONTRADICTIONS: Find specific statements that contradict each other
+            3. COMPLEMENTARY INSIGHTS: How the documents support each other
+            4. KEY DIFFERENCES: Important differences in approach or conclusions
+            
+            Return a JSON response with:
             {{
                 "has_connection": boolean,
                 "connection_type": "complementary|contradictory|similar|related",
                 "relevance_score": float (0-1),
-                "explanation": "brief explanation of the connection",
+                "explanation": "overall connection summary",
+                "similarities": [
+                    {{
+                        "doc1_quote": "exact quote from document 1",
+                        "doc2_quote": "similar quote from document 2",
+                        "similarity_type": "identical|paraphrased|concept_match",
+                        "explanation": "why these are similar"
+                    }}
+                ],
+                "contradictions": [
+                    {{
+                        "doc1_quote": "contradicting statement from doc 1",
+                        "doc2_quote": "contradicting statement from doc 2",
+                        "contradiction_type": "direct|methodological|conclusion",
+                        "severity": "low|medium|high",
+                        "explanation": "explanation of the contradiction"
+                    }}
+                ],
+                "complementary_insights": [
+                    {{
+                        "insight": "how documents complement each other",
+                        "doc1_support": "supporting evidence from doc 1",
+                        "doc2_support": "supporting evidence from doc 2"
+                    }}
+                ],
                 "key_sections": ["section1", "section2"],
                 "has_contradiction": boolean,
-                "contradiction": "description if any",
+                "overall_contradiction": "description if any",
                 "severity": "low|medium|high"
             }}
             
-            Focus on connections that would be valuable for someone with the given persona and job.
+            Focus on providing SPECIFIC quotes and evidence. Be precise and detailed.
             """
             
             response = await asyncio.to_thread(
@@ -520,9 +550,12 @@ class LLMService:
                     "connection_type": "related",
                     "relevance_score": 0.5,
                     "explanation": response.text[:200],
+                    "similarities": [],
+                    "contradictions": [],
+                    "complementary_insights": [],
                     "key_sections": [],
                     "has_contradiction": "contradict" in response.text.lower(),
-                    "contradiction": "",
+                    "overall_contradiction": "",
                     "severity": "low"
                 }
                 
@@ -740,3 +773,102 @@ class LLMService:
         except Exception as e:
             print(f"Error analyzing document context: {e}")
             return {"analysis": f"Error: {e}"}
+
+    async def analyze_multi_document_insights(self, documents_data: List[Dict[str, Any]], persona: str, job: str):
+        """Analyze multiple documents to find overarching patterns, contradictions, and insights."""
+        if not self.is_available():
+            return {"insights": [], "patterns": [], "contradictions": [], "recommendations": []}
+        
+        try:
+            # Prepare document summaries for analysis
+            doc_summaries = []
+            for doc in documents_data[:5]:  # Limit to 5 documents for performance
+                doc_summaries.append(f"Document: {doc.get('title', 'Unknown')}\nContent: {doc.get('text', '')[:1500]}")
+            
+            prompt = f"""
+            Analyze these {len(doc_summaries)} documents to provide comprehensive insights for a {persona} working on {job}.
+            
+            Documents:
+            {chr(10).join([f"{i+1}. {summary}" for i, summary in enumerate(doc_summaries)])}
+            
+            Provide a comprehensive cross-document analysis including:
+            
+            1. **OVERARCHING PATTERNS**: What themes, concepts, or approaches appear across multiple documents?
+            2. **CONTRADICTIONS**: What specific statements or conclusions contradict each other across documents?
+            3. **KNOWLEDGE GAPS**: What important topics are missing or under-represented?
+            4. **SYNTHESIS INSIGHTS**: What new understanding emerges from reading these documents together?
+            5. **ACTIONABLE RECOMMENDATIONS**: What specific actions should the {persona} take based on all documents?
+            
+            Return as JSON:
+            {{
+                "overarching_patterns": [
+                    {{
+                        "pattern": "description of pattern",
+                        "documents": ["doc1", "doc2"],
+                        "evidence": ["quote1", "quote2"],
+                        "significance": "why this pattern matters"
+                    }}
+                ],
+                "contradictions": [
+                    {{
+                        "topic": "what the contradiction is about",
+                        "doc1_position": "position from document 1",
+                        "doc2_position": "conflicting position from document 2",
+                        "doc1_evidence": "supporting quote from doc 1",
+                        "doc2_evidence": "supporting quote from doc 2",
+                        "impact": "how this affects the {persona}",
+                        "resolution_suggestion": "how to resolve or navigate this contradiction"
+                    }}
+                ],
+                "knowledge_gaps": [
+                    {{
+                        "gap": "missing information or topic",
+                        "importance": "high|medium|low",
+                        "impact_on_job": "how this gap affects the job to be done",
+                        "suggested_research": "what to research to fill this gap"
+                    }}
+                ],
+                "synthesis_insights": [
+                    {{
+                        "insight": "new understanding from combining documents",
+                        "supporting_documents": ["doc1", "doc2"],
+                        "implications": "what this means for the persona",
+                        "confidence": float (0-1)
+                    }}
+                ],
+                "actionable_recommendations": [
+                    {{
+                        "recommendation": "specific action to take",
+                        "priority": "high|medium|low",
+                        "timeframe": "immediate|short-term|long-term",
+                        "based_on": "which documents support this recommendation",
+                        "success_metrics": "how to measure success"
+                    }}
+                ]
+            }}
+            
+            Focus on providing specific quotes and evidence. Be precise and actionable.
+            """
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content,
+                prompt
+            )
+            
+            try:
+                import json
+                result = json.loads(response.text.strip())
+                return result
+            except:
+                # Fallback
+                return {
+                    "overarching_patterns": [],
+                    "contradictions": [],
+                    "knowledge_gaps": [],
+                    "synthesis_insights": [{"insight": response.text[:300], "supporting_documents": [], "implications": "General insight", "confidence": 0.7}],
+                    "actionable_recommendations": []
+                }
+                
+        except Exception as e:
+            print(f"Error analyzing multi-document insights: {e}")
+            return {"insights": [], "patterns": [], "contradictions": [], "recommendations": []}
