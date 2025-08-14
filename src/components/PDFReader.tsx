@@ -117,6 +117,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | null>('insights');
   const [selectedText, setSelectedText] = useState<string>('');
+  const [selectedTextPage, setSelectedTextPage] = useState(1);
   const [currentInsights, setCurrentInsights] = useState<Array<{ type: string; content: string }>>([]);
   const [relatedSections, setRelatedSections] = useState<RelatedSection[]>([]);
   const [isLoadingRelated, setIsLoadingRelated] = useState(false);
@@ -126,7 +127,64 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const { toast } = useToast();
 
+  // Handle text selection for AI insights and simplification
+  const handleTextSelection = (text: string, page: number) => {
+    if (text && text.trim().length > 0) {
+      setSelectedText(text);
+      setSelectedTextPage(page);
+      
+      // Show toast with options
+      toast({
+        title: "Text Selected",
+        description: "Click 'Insights' or 'Simplify' in the right panel to analyze the selected text.",
+        action: (
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setActiveRightPanel('insights')}
+            >
+              Get Insights
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setActiveRightPanel('simplifier')}
+            >
+              Simplify
+            </Button>
+          </div>
+        )
+      });
+    }
+  };
 
+  // Handle document click event for text selection
+  useEffect(() => {
+    const handleDocumentClick = (e: MouseEvent) => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim()) {
+        handleTextSelection(selection.toString(), currentPage);
+      }
+    };
+
+    const handleDocumentMouseUp = (e: MouseEvent) => {
+      setTimeout(() => {
+        const selection = window.getSelection();
+        if (selection && selection.toString().trim()) {
+          handleTextSelection(selection.toString(), currentPage);
+        }
+      }, 100);
+    };
+
+    document.addEventListener('click', handleDocumentClick);
+    document.addEventListener('mouseup', handleDocumentMouseUp);
+
+    return () => {
+      document.removeEventListener('click', handleDocumentClick);
+      document.removeEventListener('mouseup', handleDocumentMouseUp);
+    };
+  }, [currentPage]);
 
   // Initialize with first document from props or mock document
   useEffect(() => {

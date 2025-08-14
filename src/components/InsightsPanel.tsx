@@ -210,26 +210,41 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
     }
   };
 
-  const getInsightIcon = (type: Insight['type']) => {
-    switch (type) {
+  const getInsightIcon = (type: string) => {
+    switch(type) {
       case 'takeaway':
         return <Lightbulb className="h-4 w-4 text-yellow-500" />;
       case 'fact':
-        return <Brain className="h-4 w-4 text-blue-500" />;
+        return <FileText className="h-4 w-4 text-blue-500" />;
       case 'contradiction':
-        return <AlertTriangle className="h-4 w-4 text-orange-500" />;
-      case 'connection':
-        return <Link2 className="h-4 w-4 text-purple-500" />;
-      case 'info':
-        return <Sparkles className="h-4 w-4 text-green-500" />;
-      case 'error':
         return <AlertTriangle className="h-4 w-4 text-red-500" />;
+      case 'connection':
+        return <Link2 className="h-4 w-4 text-green-500" />;
       case 'key-insight':
-        return <Lightbulb className="h-4 w-4 text-yellow-500" />;
+        return <Sparkles className="h-4 w-4 text-purple-500" />;
       case 'inspiration':
-        return <Sparkles className="h-4 w-4 text-green-500" />;
+        return <Brain className="h-4 w-4 text-indigo-500" />;
       default:
-        return <Lightbulb className="h-4 w-4 text-blue-500" />;
+        return <Lightbulb className="h-4 w-4 text-gray-500" />;
+    }
+  };
+
+  const getInsightBgColor = (type: string) => {
+    switch(type) {
+      case 'takeaway':
+        return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
+      case 'fact':
+        return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
+      case 'contradiction':
+        return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
+      case 'connection':
+        return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
+      case 'key-insight':
+        return 'bg-purple-50 dark:bg-purple-900/20 border-purple-200 dark:border-purple-800';
+      case 'inspiration':
+        return 'bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800';
+      default:
+        return 'bg-gray-50 dark:bg-gray-900/20 border-gray-200 dark:border-gray-800';
     }
   };
 
@@ -263,325 +278,243 @@ export function InsightsPanel({ documentId, persona: propPersona, jobToBeDone: p
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-border-subtle">
-        <div className="flex items-center gap-2 mb-2">
-          <Sparkles className="h-5 w-5 text-brand-primary" />
-          <h3 className="font-semibold text-text-primary">AI Insights</h3>
-        </div>
-        <p className="text-xs text-text-secondary">
-          Generate contextual insights based on your persona and goals
-        </p>
-      </div>
-
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
-          {/* Persona Input */}
-          <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <User className="h-4 w-4 text-text-secondary" />
-              <label className="text-sm font-medium text-text-primary">
-                Who are you?
-              </label>
+    <div className="h-full flex flex-col bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800">
+      {/* Header */}
+      <div className="p-6 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg shadow-md">
+              <Lightbulb className="h-5 w-5 text-white" />
             </div>
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-gray-100">AI Insights</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400">Intelligent analysis of your content</p>
+            </div>
+          </div>
+          <Badge variant="secondary" className="bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+            {insights.length} insights
+          </Badge>
+        </div>
+
+        {/* Persona and Job Context */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <User className="h-4 w-4 text-gray-500" />
             <Textarea
-              placeholder="e.g., Medical researcher, Healthcare administrator, AI developer..."
+              placeholder="Who are you? (e.g., Student, Researcher, Professional)"
               value={persona}
               onChange={(e) => setPersona(e.target.value)}
-              className="text-sm"
-              rows={2}
+              className="flex-1 min-h-[40px] max-h-[60px] resize-none bg-transparent border-0 focus:ring-0 text-sm"
             />
-          </section>
-
-          {/* Job to be Done */}
-          <section className="space-y-3">
-            <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-text-secondary" />
-              <label className="text-sm font-medium text-text-primary">
-                What are you trying to achieve?
-              </label>
-            </div>
+          </div>
+          
+          <div className="flex items-center gap-2 p-2 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+            <Target className="h-4 w-4 text-gray-500" />
             <Textarea
-              placeholder="e.g., Evaluate AI implementation feasibility, Understand current limitations, Research competitive landscape..."
+              placeholder="What are you trying to accomplish?"
               value={jobToBeDone}
               onChange={(e) => setJobToBeDone(e.target.value)}
-              className="text-sm"
-              rows={3}
+              className="flex-1 min-h-[40px] max-h-[60px] resize-none bg-transparent border-0 focus:ring-0 text-sm"
             />
-          </section>
+          </div>
+        </div>
 
-          {/* Generate Button */}
-          <Button
+        {/* Action Buttons */}
+        <div className="flex gap-2 mt-4">
+          <Button 
             onClick={handleGenerateInsights}
-            disabled={isGenerating || (!persona && !jobToBeDone)}
-            className="w-full gap-2"
+            disabled={isGenerating || !currentText || !persona || !jobToBeDone}
+            className="flex-1 bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white shadow-md"
           >
             {isGenerating ? (
               <>
-                <RefreshCw className="h-4 w-4 animate-spin" />
-                Generating Insights...
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Generating...
               </>
             ) : (
               <>
-                <Lightbulb className="h-4 w-4" />
-                Generate AI Insights
+                <Sparkles className="h-4 w-4 mr-2" />
+                Generate Insights
               </>
             )}
           </Button>
+          
+          <Button 
+            onClick={handleGenerateComprehensiveInsights}
+            disabled={isGeneratingComprehensive || !currentText || !persona || !jobToBeDone}
+            variant="outline"
+            className="border-2"
+          >
+            {isGeneratingComprehensive ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Brain className="h-4 w-4" />
+            )}
+          </Button>
+        </div>
+      </div>
 
-          {/* Generated Insights */}
-          {insights.length > 0 && (
-            <section className="space-y-4">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium text-text-primary">
-                  Generated Insights
-                </h4>
-                <Badge variant="secondary" className="text-xs">
-                  {insights.length} insights
-                </Badge>
+      {/* Insights Content */}
+      <ScrollArea className="flex-1 p-6">
+        {insights.length === 0 ? (
+          <div className="text-center py-12">
+            <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-full w-20 h-20 mx-auto mb-4 flex items-center justify-center">
+              <Brain className="h-10 w-10 text-gray-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+              No insights yet
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">
+              Select some text and click "Generate Insights" to get AI-powered analysis
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {/* Quick Stats */}
+            {insights.length > 0 && (
+              <div className="grid grid-cols-2 gap-3 mb-6">
+                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Avg Relevance</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                      {Math.round(insights.reduce((acc, i) => acc + i.relevance, 0) / insights.length * 100)}%
+                    </span>
+                  </div>
+                </div>
+                <div className="p-3 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-gray-500">Key Insights</span>
+                    <span className="text-sm font-bold text-gray-900 dark:text-gray-100">
+                      {insights.filter(i => i.type === 'key-insight' || i.type === 'takeaway').length}
+                    </span>
+                  </div>
+                </div>
               </div>
+            )}
 
-              <div className="space-y-3">
-                {insights.map((insight) => (
-                  <div
-                    key={insight.id}
-                    className="p-3 bg-surface-elevated border border-border-subtle rounded-lg hover:border-border-moderate transition-colors cursor-pointer group"
-                    onClick={() => {
-                      if (insight.pageReference) {
-                        onPageNavigate?.(insight.pageReference);
-                      }
-                    }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 mt-0.5">
-                        {getInsightIcon(insight.type)}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Badge 
-                            variant="outline" 
-                            className="text-xs px-1.5 py-0.5"
+            {/* Insights List */}
+            {insights.map((insight) => (
+              <div
+                key={insight.id}
+                className={`p-4 rounded-lg border-l-4 shadow-sm transition-all duration-200 hover:shadow-md ${getInsightBgColor(insight.type)}`}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={`p-2 rounded-lg ${
+                    insight.type === 'takeaway' ? 'bg-yellow-100 dark:bg-yellow-900/50' :
+                    insight.type === 'fact' ? 'bg-blue-100 dark:bg-blue-900/50' :
+                    insight.type === 'contradiction' ? 'bg-red-100 dark:bg-red-900/50' :
+                    insight.type === 'connection' ? 'bg-green-100 dark:bg-green-900/50' :
+                    insight.type === 'key-insight' ? 'bg-purple-100 dark:bg-purple-900/50' :
+                    insight.type === 'inspiration' ? 'bg-indigo-100 dark:bg-indigo-900/50' :
+                    'bg-gray-100 dark:bg-gray-900/50'
+                  }`}>
+                    {getInsightIcon(insight.type)}
+                  </div>
+                  
+                  <div className="flex-1">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100">
+                        {insight.title}
+                      </h3>
+                      <div className="flex items-center gap-2">
+                        {insight.pageReference && onPageNavigate && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => onPageNavigate(insight.pageReference!)}
+                            className="h-6 px-2 text-xs"
                           >
-                            {getInsightTypeLabel(insight.type)}
-                          </Badge>
-                          
-                          <div className="flex items-center gap-1">
-                            <div
-                              className={`w-2 h-2 rounded-full ${getRelevanceColor(insight.relevance)}`}
-                              title={`${Math.round(insight.relevance * 100)}% relevance`}
+                            <ExternalLink className="h-3 w-3 mr-1" />
+                            Page {insight.pageReference}
+                          </Button>
+                        )}
+                        <div className="flex items-center gap-1">
+                          <div className="w-12 bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                            <div 
+                              className={`h-1.5 rounded-full ${
+                                insight.relevance > 0.8 ? 'bg-green-500' :
+                                insight.relevance > 0.6 ? 'bg-yellow-500' :
+                                'bg-gray-400'
+                              }`}
+                              style={{width: `${insight.relevance * 100}%`}}
                             />
-                            <span className="text-xs text-text-tertiary">
-                              {Math.round(insight.relevance * 100)}%
-                            </span>
                           </div>
-                        </div>
-                        
-                        <h5 className="text-sm font-medium text-text-primary mb-2 group-hover:text-brand-primary transition-colors">
-                          {insight.title}
-                        </h5>
-                        
-                        <p className="text-xs text-text-secondary leading-relaxed mb-2">
-                          {insight.content}
-                        </p>
-                        
-                        <div className="flex items-center justify-between">
-                          {insight.pageReference && (
-                            <div className="flex items-center gap-1 text-xs text-text-tertiary">
-                              <ExternalLink className="h-3 w-3" />
-                              Page {insight.pageReference}
-                              {insight.source && ` • ${insight.source}`}
-                            </div>
-                          )}
-                          
-                          <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="ghost" size="sm" className="h-6 px-2 text-xs">
-                              View Details
-                            </Button>
-                          </div>
+                          <span className="text-xs text-gray-500 ml-1">
+                            {Math.round(insight.relevance * 100)}%
+                          </span>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-              
-              <Button
-                variant="outline"
-                onClick={handleGenerateInsights}
-                disabled={isGenerating}
-                className="w-full gap-2 text-sm"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Regenerate Insights
-              </Button>
-            </section>
-          )}
-
-          {/* Comprehensive Insights Button */}
-          <Button
-            variant="outline"
-            onClick={handleGenerateComprehensiveInsights}
-            disabled={isGeneratingComprehensive || !currentText || !persona || !jobToBeDone}
-            className="w-full gap-2 text-sm border-brand-primary/20 text-brand-primary hover:bg-brand-primary/5"
-          >
-            {isGeneratingComprehensive ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Generating Comprehensive Analysis...
-              </>
-            ) : (
-              <>
-                <Search className="h-4 w-4" />
-                Generate Comprehensive Insights
-              </>
-            )}
-          </Button>
-
-          {/* Comprehensive Insights Display */}
-          {comprehensiveInsights && (
-            <section className="space-y-4 mt-6">
-              <div className="flex items-center justify-between">
-                <h4 className="text-sm font-medium text-text-primary">
-                  Comprehensive Analysis
-                </h4>
-                <Badge variant="secondary" className="text-xs">
-                  AI + Web Research
-                </Badge>
-              </div>
-
-              {/* Keywords */}
-              {comprehensiveInsights.keywords && comprehensiveInsights.keywords.length > 0 && (
-                <div className="p-3 bg-surface-elevated/50 border border-border-subtle rounded-lg">
-                  <h5 className="text-xs font-medium text-text-primary mb-2">Key Terms & Concepts</h5>
-                  <div className="flex flex-wrap gap-1">
-                    {comprehensiveInsights.keywords.slice(0, 8).map((keyword: string, index: number) => (
-                      <Badge key={index} variant="outline" className="text-xs px-2 py-1">
-                        {keyword}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Persona Insights */}
-              {comprehensiveInsights.persona_insights && comprehensiveInsights.persona_insights.length > 0 && (
-                <div className="p-3 bg-surface-elevated/50 border border-border-subtle rounded-lg">
-                  <h5 className="text-xs font-medium text-text-primary mb-2">Role-Specific Analysis</h5>
-                  <div className="space-y-2">
-                    {comprehensiveInsights.persona_insights.map((insight: any, index: number) => (
-                      <div key={index} className="text-xs text-text-secondary">
-                        <span className="font-medium text-text-primary">
-                          {insight.type === 'relevance' ? 'Relevance: ' : 
-                           insight.type === 'action' ? 'Action Items: ' : 'Skill Development: '}
-                        </span>
-                        {insight.content}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Topic Analysis */}
-              {comprehensiveInsights.topic_analysis && (
-                <div className="p-3 bg-surface-elevated/50 border border-border-subtle rounded-lg">
-                  <h5 className="text-xs font-medium text-text-primary mb-2">Topic Analysis</h5>
-                  <div className="space-y-2 text-xs text-text-secondary">
-                    {comprehensiveInsights.topic_analysis.main_themes && (
-                      <div>
-                        <span className="font-medium text-text-primary">Main Themes: </span>
-                        {comprehensiveInsights.topic_analysis.main_themes}
-                      </div>
-                    )}
-                    {comprehensiveInsights.topic_analysis.trending_topics && (
-                      <div>
-                        <span className="font-medium text-text-primary">Trending Topics: </span>
-                        {comprehensiveInsights.topic_analysis.trending_topics}
-                      </div>
-                    )}
-                    {comprehensiveInsights.topic_analysis.research_opportunities && (
-                      <div>
-                        <span className="font-medium text-text-primary">Research Opportunities: </span>
-                        {comprehensiveInsights.topic_analysis.research_opportunities}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Web Search Suggestions */}
-              {comprehensiveInsights.web_facts && comprehensiveInsights.web_facts.length > 0 && (
-                <div className="p-3 bg-surface-elevated/50 border border-border-subtle rounded-lg">
-                  <h5 className="text-xs font-medium text-text-primary mb-2">Web Research Suggestions</h5>
-                  <div className="space-y-2">
-                    {comprehensiveInsights.web_facts.map((fact: any, index: number) => (
-                      <div key={index} className="text-xs">
-                        <div className="text-text-secondary mb-1">{fact.description}</div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs px-2 py-1">
-                            {fact.query}
-                          </Badge>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-xs"
-                            onClick={() => {
-                              const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(fact.query)}`;
-                              window.open(searchUrl, '_blank');
-                            }}
-                          >
-                            <ExternalLink className="h-3 w-3 mr-1" />
-                            Search
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Search Queries */}
-              {comprehensiveInsights.search_queries && comprehensiveInsights.search_queries.length > 0 && (
-                <div className="p-3 bg-surface-elevated/50 border border-border-subtle rounded-lg">
-                  <h5 className="text-xs font-medium text-text-primary mb-2">Optimized Search Queries</h5>
-                  <div className="space-y-2">
-                    {comprehensiveInsights.search_queries.map((query: string, index: number) => (
-                      <div key={index} className="flex items-center gap-2">
-                        <Badge variant="outline" className="text-xs px-2 py-1 flex-1 text-left">
-                          {query}
+                    
+                    <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                      {insight.content}
+                    </p>
+                    
+                    {insight.source && (
+                      <div className="mt-2 flex items-center gap-1">
+                        <Badge variant="outline" className="text-xs px-2 py-0.5">
+                          {insight.source}
                         </Badge>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 px-2 text-xs"
-                          onClick={() => {
-                            const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(query)}`;
-                            window.open(searchUrl, '_blank');
-                          }}
-                        >
-                          <ExternalLink className="h-3 w-3" />
-                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Comprehensive Insights Section */}
+        {comprehensiveInsights && (
+          <div className="mt-8 space-y-6">
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                <Brain className="h-5 w-5 text-purple-500" />
+                Comprehensive Analysis
+              </h3>
+              
+              {/* Summary */}
+              {comprehensiveInsights.summary && (
+                <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 rounded-lg mb-4">
+                  <h4 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-2">Executive Summary</h4>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                    {comprehensiveInsights.summary}
+                  </p>
+                </div>
+              )}
+              
+              {/* Persona Analysis */}
+              {comprehensiveInsights.persona_analysis && (
+                <div className="p-4 bg-green-50 dark:bg-green-900/20 rounded-lg mb-4">
+                  <h4 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-2 flex items-center gap-2">
+                    <User className="h-4 w-4 text-green-600" />
+                    Personalized for {persona}
+                  </h4>
+                  <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+                    {comprehensiveInsights.persona_analysis}
+                  </p>
+                </div>
+              )}
+              
+              {/* Web Search Suggestions */}
+              {comprehensiveInsights.web_search_suggestions && comprehensiveInsights.web_search_suggestions.length > 0 && (
+                <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                  <h4 className="font-semibold text-sm text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
+                    <Search className="h-4 w-4 text-blue-600" />
+                    Suggested Further Reading
+                  </h4>
+                  <div className="space-y-2">
+                    {comprehensiveInsights.web_search_suggestions.map((suggestion, idx) => (
+                      <div key={idx} className="flex items-center gap-2">
+                        <span className="text-sm text-gray-700 dark:text-gray-300">• {suggestion}</span>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
-            </section>
-          )}
-
-          {/* Placeholder when no insights */}
-          {insights.length === 0 && !isGenerating && (
-            <div className="text-center py-8">
-              <Brain className="h-12 w-12 text-text-tertiary mx-auto mb-3" />
-              <p className="text-sm text-text-secondary mb-1">
-                No insights generated yet
-              </p>
-              <p className="text-xs text-text-tertiary">
-                Fill in your persona and goals to get started
-              </p>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </ScrollArea>
     </div>
   );
