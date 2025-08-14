@@ -475,31 +475,64 @@ class LLMService:
         
         try:
             prompt = f"""
-            Analyze these two documents and find connections, similarities, contradictions, and insights.
+            Analyze these two documents for deep connections, similarities, and contradictions.
             
             Document 1: "{title1}"
-            Content (excerpt): {text1[:2000]}
+            Content: {text1[:3000]}
             
-            Document 2: "{title2}"
-            Content (excerpt): {text2[:2000]}
+            Document 2: "{title2}"  
+            Content: {text2[:3000]}
             
             User Context:
             - Persona: {persona}
             - Job to be done: {job}
             
-            Please analyze and return a JSON response with:
+            Provide a DETAILED analysis in JSON format:
             {{
                 "has_connection": boolean,
                 "connection_type": "complementary|contradictory|similar|related",
                 "relevance_score": float (0-1),
-                "explanation": "brief explanation of the connection",
-                "key_sections": ["section1", "section2"],
+                "explanation": "detailed explanation of the connection",
+                "key_sections": ["specific section names from documents"],
+                "similarities": [
+                    {{
+                        "topic": "topic of similarity",
+                        "doc1_statement": "exact quote from document 1",
+                        "doc2_statement": "exact quote from document 2", 
+                        "explanation": "why these are similar"
+                    }}
+                ],
                 "has_contradiction": boolean,
-                "contradiction": "description if any",
-                "severity": "low|medium|high"
+                "contradictions": [
+                    {{
+                        "topic": "topic of contradiction",
+                        "doc1_claim": "exact claim from document 1",
+                        "doc2_claim": "exact contradicting claim from document 2",
+                        "severity": "low|medium|high",
+                        "explanation": "why these contradict"
+                    }}
+                ],
+                "complementary_insights": [
+                    {{
+                        "insight": "how documents complement each other",
+                        "doc1_contribution": "what doc1 adds",
+                        "doc2_contribution": "what doc2 adds"
+                    }}
+                ],
+                "key_facts": [
+                    {{
+                        "fact": "important fact found",
+                        "source": "doc1|doc2|both",
+                        "relevance_to_persona": "why this matters to the persona"
+                    }}
+                ]
             }}
             
-            Focus on connections that would be valuable for someone with the given persona and job.
+            IMPORTANT: 
+            - Extract ACTUAL quotes and statements from the documents
+            - Focus on concrete facts and claims, not generalizations
+            - Identify both subtle and obvious contradictions
+            - Find meaningful patterns across documents
             """
             
             response = await asyncio.to_thread(
