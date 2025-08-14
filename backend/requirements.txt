@@ -1,0 +1,14 @@
+fastapi
+uvicorn[standard]
+python-multipart
+PyMuPDF
+langdetect
+scikit-learn
+numpy
+python-dotenv
+aiofiles
+requests
+azure-cognitiveservices-speech
+google-generativeai
+pydantic
+typing-extensions
