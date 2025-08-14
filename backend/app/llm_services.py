@@ -476,6 +476,7 @@ class LLMService:
         try:
             prompt = f"""
             Analyze these two documents and find detailed connections, similarities, contradictions, and insights.
+            Focus particularly on identifying SPECIFIC contradictory statements with exact quotes.
             
             Document 1: "{title1}"
             Content: {text1[:3000]}
@@ -487,11 +488,16 @@ class LLMService:
             - Persona: {persona}
             - Job to be done: {job}
             
-            Please provide a comprehensive analysis focusing on:
-            1. SPECIFIC SIMILARITIES: Find exact sentences or phrases that say similar things
-            2. CONTRADICTIONS: Find specific statements that contradict each other
-            3. COMPLEMENTARY INSIGHTS: How the documents support each other
-            4. KEY DIFFERENCES: Important differences in approach or conclusions
+            CRITICAL INSTRUCTIONS FOR CONTRADICTIONS:
+            - Only report contradictions if you can find EXACT quotes that directly contradict each other
+            - Look for statements where Document 1 says X and Document 2 says NOT X about the same topic
+            - Include the specific topic being contradicted
+            - Provide clear, specific quotes, not summaries or paraphrases
+            
+            Examples of valid contradictions:
+            - Doc1: "The weather in Madrid is humid" vs Doc2: "Madrid has a dry climate"
+            - Doc1: "Method A is recommended" vs Doc2: "Method A should be avoided"
+            - Doc1: "The study shows 85% success rate" vs Doc2: "Success rates were only 45%"
             
             Return a JSON response with:
             {{
@@ -509,11 +515,12 @@ class LLMService:
                 ],
                 "contradictions": [
                     {{
-                        "doc1_quote": "contradicting statement from doc 1",
-                        "doc2_quote": "contradicting statement from doc 2",
-                        "contradiction_type": "direct|methodological|conclusion",
+                        "topic": "specific topic being contradicted",
+                        "doc1_quote": "exact contradicting statement from {title1}",
+                        "doc2_quote": "exact contradicting statement from {title2}",
+                        "contradiction_type": "direct|methodological|conclusion|factual",
                         "severity": "low|medium|high",
-                        "explanation": "explanation of the contradiction"
+                        "explanation": "clear explanation of how these statements contradict each other"
                     }}
                 ],
                 "complementary_insights": [
@@ -529,7 +536,7 @@ class LLMService:
                 "severity": "low|medium|high"
             }}
             
-            Focus on providing SPECIFIC quotes and evidence. Be precise and detailed.
+            ONLY include contradictions if you have specific, exact quotes that clearly contradict each other.
             """
             
             response = await asyncio.to_thread(

@@ -209,7 +209,20 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
           explanation: section.explanation
         }));
         
-        setHighlights(newHighlights);
+        // Add to existing highlights instead of replacing them
+        setHighlights(prev => {
+          const existingIds = new Set(prev.filter(h => !h.id.startsWith('related-')).map(h => h.id));
+          const filteredPrev = prev.filter(h => !h.id.startsWith('related-'));
+          return [...filteredPrev, ...newHighlights];
+        });
+        
+        toast({
+          title: "Related Sections Found",
+          description: `Found ${related.length} related sections for the current page.`,
+        });
+      } else {
+        // Clear only related highlights if no related sections found
+        setHighlights(prev => prev.filter(h => !h.id.startsWith('related-')));
       }
       
     } catch (error) {
@@ -219,8 +232,8 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
         description: "Unable to find related sections. Please try again.",
         variant: "destructive"
       });
-      // Clear highlights on error instead of using mock data
-      setHighlights([]);
+      // Clear only related highlights on error
+      setHighlights(prev => prev.filter(h => !h.id.startsWith('related-')));
     } finally {
       setIsLoadingRelated(false);
     }
@@ -483,9 +496,31 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               
               {/* Related Sections */}
               <div className="border-t border-border-subtle max-h-80">
+                <div className="p-3 bg-blue-50/50">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                      <Highlighter className="h-4 w-4 text-blue-600" />
+                      Related Highlights ({highlights.length})
+                    </h4>
+                    {isLoadingRelated && (
+                      <div className="text-xs text-blue-600">Loading...</div>
+                    )}
+                  </div>
+                  {highlights.length === 0 && !isLoadingRelated && (
+                    <p className="text-xs text-gray-500 italic">
+                      No related sections found. Try the "AI Highlights" button above.
+                    </p>
+                  )}
+                </div>
                 <HighlightPanel 
                   highlights={highlights}
-                  onHighlightClick={(highlight) => setCurrentPage(highlight.page)}
+                  onHighlightClick={(highlight) => {
+                    setCurrentPage(highlight.page);
+                    toast({
+                      title: "Navigated to Highlight",
+                      description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
+                    });
+                  }}
                 />
               </div>
             </div>
@@ -582,24 +617,22 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                   <CrossConnectionsPanel 
                     documentId={currentDocument.id}
                     onNavigateToDocument={(docId) => {
-                      // Handle navigation to another document
-                      // For now, we'll show a toast since we need to implement document switching
-                      toast({
-                        title: "Document Reference",
-                        description: `Click to view related document: ${docId}`,
-                        action: (
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => {
-                              // TODO: Implement document switching within the reader
-                              console.log('Navigate to document:', docId);
-                            }}
-                          >
-                            View
-                          </Button>
-                        )
-                      });
+                      // Find the document by ID and switch to it
+                      const targetDocument = documents.find(doc => doc.id === docId);
+                      if (targetDocument) {
+                        setCurrentDocument(targetDocument);
+                        setCurrentPage(1); // Start at the first page
+                        toast({
+                          title: "Document Switched",
+                          description: `Now viewing: ${targetDocument.title}`,
+                        });
+                      } else {
+                        toast({
+                          title: "Document Not Found",
+                          description: "The referenced document is not available in the current session.",
+                          variant: "destructive"
+                        });
+                      }
                     }}
                   />
                 </div>
