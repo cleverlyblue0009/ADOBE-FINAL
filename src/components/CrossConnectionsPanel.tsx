@@ -141,16 +141,16 @@ export function CrossConnectionsPanel({ documentId, onNavigateToDocument, classN
 
   return (
     <Card className={`${className}`}>
-      <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Link2 className="h-5 w-5" />
+      <CardHeader className="pb-3">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <Link2 className="h-5 w-5 text-blue-600" />
           Cross-Document Connections
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-sm">
           {connections.total_connections} connection{connections.total_connections !== 1 ? 's' : ''} found with your document library
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-6">
         {/* Related Documents */}
         {connections.related_documents.length > 0 && (
           <Collapsible 
@@ -158,32 +158,40 @@ export function CrossConnectionsPanel({ documentId, onNavigateToDocument, classN
             onOpenChange={() => toggleSection('related')}
           >
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-0 h-auto">
-                <div className="flex items-center gap-2">
-                  <Link2 className="h-4 w-4 text-blue-600" />
-                  <span className="font-medium">Related Documents ({connections.related_documents.length})</span>
+              <Button variant="ghost" className="w-full justify-between p-3 h-auto hover:bg-blue-50 rounded-lg border border-transparent hover:border-blue-200">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-blue-100 rounded-lg">
+                    <Link2 className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <div className="text-left">
+                    <span className="font-semibold text-gray-900">Related Documents</span>
+                    <div className="text-sm text-gray-500">{connections.related_documents.length} documents found</div>
+                  </div>
                 </div>
                 {expandedSections.has('related') ? 
-                  <ChevronDown className="h-4 w-4" /> : 
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronDown className="h-5 w-5 text-gray-400" /> : 
+                  <ChevronRight className="h-5 w-5 text-gray-400" />
                 }
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 mt-3">
+            <CollapsibleContent className="space-y-3 mt-4 pl-2">
               {connections.related_documents.map((doc, index) => (
-                <Card key={index} className="p-4 hover:shadow-md transition-shadow">
+                <Card key={index} className="p-4 hover:shadow-md transition-all duration-200 border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50/50 to-transparent">
                   <div className="space-y-3">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="font-medium text-sm line-clamp-2">{doc.document_title}</h4>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="secondary" className={`text-xs ${getConnectionTypeColor(doc.connection_type)}`}>
+                        <h4 className="font-semibold text-gray-900 text-sm line-clamp-2 mb-2">{doc.document_title}</h4>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge variant="secondary" className={`text-xs font-medium ${getConnectionTypeColor(doc.connection_type)} border`}>
                             {getConnectionTypeIcon(doc.connection_type)}
                             <span className="ml-1 capitalize">{doc.connection_type}</span>
                           </Badge>
-                          <span className="text-xs text-gray-500">
-                            {Math.round(doc.relevance_score * 100)}% relevance
-                          </span>
+                          <div className="flex items-center gap-1">
+                            <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                            <span className="text-xs text-gray-600 font-medium">
+                              {Math.round(doc.relevance_score * 100)}% match
+                            </span>
+                          </div>
                         </div>
                       </div>
                       {onNavigateToDocument && (
@@ -191,22 +199,23 @@ export function CrossConnectionsPanel({ documentId, onNavigateToDocument, classN
                           size="sm"
                           variant="outline"
                           onClick={() => onNavigateToDocument(doc.document_id)}
-                          className="ml-2"
+                          className="ml-3 border-blue-200 text-blue-700 hover:bg-blue-50"
                         >
-                          <ExternalLink className="h-3 w-3" />
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          View
                         </Button>
                       )}
                     </div>
-                    <p className="text-xs text-gray-600 leading-relaxed">{doc.explanation}</p>
+                    <p className="text-xs text-gray-700 leading-relaxed bg-white/50 p-2 rounded border-l-2 border-l-blue-200">{doc.explanation}</p>
                     {doc.key_sections.length > 0 && (
-                      <div className="flex flex-wrap gap-1">
+                      <div className="flex flex-wrap gap-1.5">
                         {doc.key_sections.slice(0, 3).map((section, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
+                          <Badge key={idx} variant="outline" className="text-xs px-2 py-1 bg-blue-50 border-blue-200 text-blue-800">
                             {section}
                           </Badge>
                         ))}
                         {doc.key_sections.length > 3 && (
-                          <Badge variant="outline" className="text-xs">
+                          <Badge variant="outline" className="text-xs px-2 py-1 bg-gray-50 border-gray-200 text-gray-600">
                             +{doc.key_sections.length - 3} more
                           </Badge>
                         )}
@@ -226,35 +235,42 @@ export function CrossConnectionsPanel({ documentId, onNavigateToDocument, classN
             onOpenChange={() => toggleSection('contradictions')}
           >
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-0 h-auto">
-                <div className="flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-red-600" />
-                  <span className="font-medium">Contradictions ({connections.contradictions.length})</span>
+              <Button variant="ghost" className="w-full justify-between p-3 h-auto hover:bg-red-50 rounded-lg border border-transparent hover:border-red-200">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <AlertTriangle className="h-4 w-4 text-red-600" />
+                  </div>
+                  <div className="text-left">
+                    <span className="font-semibold text-gray-900">Contradictions</span>
+                    <div className="text-sm text-gray-500">{connections.contradictions.length} conflicts identified</div>
+                  </div>
                 </div>
                 {expandedSections.has('contradictions') ? 
-                  <ChevronDown className="h-4 w-4" /> : 
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronDown className="h-5 w-5 text-gray-400" /> : 
+                  <ChevronRight className="h-5 w-5 text-gray-400" />
                 }
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 mt-3">
+            <CollapsibleContent className="space-y-3 mt-4 pl-2">
               {connections.contradictions.map((contradiction, index) => (
-                <Card key={index} className="p-4 border-red-200 bg-red-50/50">
-                  <div className="space-y-2">
+                <Card key={index} className="p-4 border-l-4 border-l-red-500 bg-gradient-to-r from-red-50/50 to-transparent">
+                  <div className="space-y-3">
                     <div className="flex items-start justify-between">
-                      <h4 className="font-medium text-sm text-red-900">{contradiction.document_title}</h4>
-                      <Badge variant="secondary" className={`text-xs ${getSeverityColor(contradiction.severity)}`}>
-                        <AlertCircle className="h-3 w-3 mr-1" />
-                        {contradiction.severity}
-                      </Badge>
+                      <div className="flex-1">
+                        <h4 className="font-semibold text-gray-900 text-sm mb-2">{contradiction.document_title}</h4>
+                        <Badge variant="secondary" className={`text-xs font-medium ${getSeverityColor(contradiction.severity)} border mb-2`}>
+                          <AlertCircle className="h-3 w-3 mr-1" />
+                          {contradiction.severity.toUpperCase()} SEVERITY
+                        </Badge>
+                      </div>
                     </div>
-                    <p className="text-xs text-red-800 leading-relaxed">{contradiction.contradiction}</p>
+                    <p className="text-sm text-gray-800 leading-relaxed bg-white/50 p-3 rounded border-l-2 border-l-red-300">{contradiction.contradiction}</p>
                     {onNavigateToDocument && (
                       <Button
                         size="sm"
                         variant="outline"
                         onClick={() => onNavigateToDocument(contradiction.document_id)}
-                        className="mt-2 text-red-700 border-red-200 hover:bg-red-100"
+                        className="mt-2 border-red-200 text-red-700 hover:bg-red-50"
                       >
                         <ExternalLink className="h-3 w-3 mr-1" />
                         Review Document
@@ -274,32 +290,42 @@ export function CrossConnectionsPanel({ documentId, onNavigateToDocument, classN
             onOpenChange={() => toggleSection('insights')}
           >
             <CollapsibleTrigger asChild>
-              <Button variant="ghost" className="w-full justify-between p-0 h-auto">
-                <div className="flex items-center gap-2">
-                  <Lightbulb className="h-4 w-4 text-yellow-600" />
-                  <span className="font-medium">AI Insights ({connections.insights.length})</span>
+              <Button variant="ghost" className="w-full justify-between p-3 h-auto hover:bg-yellow-50 rounded-lg border border-transparent hover:border-yellow-200">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-yellow-100 rounded-lg">
+                    <Lightbulb className="h-4 w-4 text-yellow-600" />
+                  </div>
+                  <div className="text-left">
+                    <span className="font-semibold text-gray-900">AI Insights</span>
+                    <div className="text-sm text-gray-500">{connections.insights.length} strategic insights</div>
+                  </div>
                 </div>
                 {expandedSections.has('insights') ? 
-                  <ChevronDown className="h-4 w-4" /> : 
-                  <ChevronRight className="h-4 w-4" />
+                  <ChevronDown className="h-5 w-5 text-gray-400" /> : 
+                  <ChevronRight className="h-5 w-5 text-gray-400" />
                 }
               </Button>
             </CollapsibleTrigger>
-            <CollapsibleContent className="space-y-3 mt-3">
+            <CollapsibleContent className="space-y-3 mt-4 pl-2">
               {connections.insights.map((insight, index) => (
-                <Card key={index} className="p-4 bg-gradient-to-r from-blue-50 to-purple-50 border-blue-200">
+                <Card key={index} className="p-4 bg-gradient-to-r from-purple-50 via-blue-50 to-indigo-50 border border-purple-200/50 hover:shadow-md transition-all duration-200">
                   <div className="flex items-start gap-3">
-                    {getInsightIcon(insight.type)}
+                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                      {getInsightIcon(insight.type)}
+                    </div>
                     <div className="flex-1 space-y-2">
                       <div className="flex items-center gap-2">
-                        <Badge variant="secondary" className="text-xs capitalize">
+                        <Badge variant="secondary" className="text-xs capitalize font-medium bg-purple-100 text-purple-800 border-purple-200">
                           {insight.type}
                         </Badge>
-                        <span className="text-xs text-gray-500">
-                          {Math.round(insight.confidence * 100)}% confidence
-                        </span>
+                        <div className="flex items-center gap-1">
+                          <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                          <span className="text-xs text-gray-600 font-medium">
+                            {Math.round(insight.confidence * 100)}% confidence
+                          </span>
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-700 leading-relaxed">{insight.content}</p>
+                      <p className="text-sm text-gray-800 leading-relaxed bg-white/60 p-3 rounded border-l-2 border-l-purple-300">{insight.content}</p>
                     </div>
                   </div>
                 </Card>
