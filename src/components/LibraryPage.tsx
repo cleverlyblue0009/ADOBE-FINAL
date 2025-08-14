@@ -81,12 +81,12 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
     }
 
     // Filter by persona
-    if (selectedPersona) {
+    if (selectedPersona && selectedPersona !== 'all-personas') {
       filtered = filtered.filter(doc => doc.persona === selectedPersona);
     }
 
     // Filter by job
-    if (selectedJob) {
+    if (selectedJob && selectedJob !== 'all-jobs') {
       filtered = filtered.filter(doc => doc.job_to_be_done === selectedJob);
     }
 
@@ -259,7 +259,7 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
                   <SelectValue placeholder="Filter by persona" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All personas</SelectItem>
+                  <SelectItem value="all-personas">All personas</SelectItem>
                   {personas.map(persona => (
                     <SelectItem key={persona} value={persona}>
                       {persona}
@@ -273,7 +273,7 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
                   <SelectValue placeholder="Filter by job" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All jobs</SelectItem>
+                  <SelectItem value="all-jobs">All jobs</SelectItem>
                   {jobs.map(job => (
                     <SelectItem key={job} value={job}>
                       {job}
