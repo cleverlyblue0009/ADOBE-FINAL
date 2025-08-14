@@ -83,7 +83,52 @@ async def startup_event():
     """Initialize services on startup."""
     os.makedirs("uploads", exist_ok=True)
     os.makedirs("audio_cache", exist_ok=True)
+    
+    # Populate documents_store from existing uploads
+    await populate_documents_from_uploads()
+    
     print("DocuSense API started successfully")
+
+async def populate_documents_from_uploads():
+    """Populate documents_store from existing PDF files in uploads directory."""
+    uploads_dir = "uploads"
+    if not os.path.exists(uploads_dir):
+        return
+    
+    for filename in os.listdir(uploads_dir):
+        if filename.endswith('.pdf'):
+            file_path = os.path.join(uploads_dir, filename)
+            doc_id = filename[:-4]  # Remove .pdf extension to get ID
+            
+            try:
+                # Analyze the PDF
+                analysis = analyze_pdf(file_path)
+                
+                # Create document info with some default values
+                doc_info = DocumentInfo(
+                    id=doc_id,
+                    name=f"Document_{doc_id[:8]}.pdf",  # Short name
+                    title=analysis["title"] or f"Document {doc_id[:8]}",
+                    outline=analysis["outline"],
+                    language=analysis.get("language", "en"),
+                    upload_timestamp=datetime.utcnow().isoformat(),
+                    persona="Sample User",  # Default persona
+                    job_to_be_done="Document Analysis",  # Default job
+                    tags=[]
+                )
+                
+                # Store document info and analysis
+                documents_store[doc_id] = {
+                    "info": doc_info.dict(),
+                    "file_path": file_path,
+                    "analysis": analysis
+                }
+                
+                print(f"Loaded existing document: {doc_info.title}")
+                
+            except Exception as e:
+                print(f"Failed to load document {filename}: {e}")
+                continue
 
 @app.get("/")
 async def root():

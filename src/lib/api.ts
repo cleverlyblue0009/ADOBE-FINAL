@@ -306,38 +306,78 @@ class ApiService {
   }
 
   async getLibraryDocuments(persona?: string, jobToBeDone?: string): Promise<DocumentInfo[]> {
-    const params = new URLSearchParams();
-    if (persona) params.append('persona', persona);
-    if (jobToBeDone) params.append('job_to_be_done', jobToBeDone);
-    
-    const url = `${this.baseUrl}/library/documents${params.toString() ? '?' + params.toString() : ''}`;
-    const response = await fetch(url);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch library documents: ${response.statusText}`);
+    try {
+      const params = new URLSearchParams();
+      if (persona) params.append('persona', persona);
+      if (jobToBeDone) params.append('job_to_be_done', jobToBeDone);
+      
+      const url = `/library/documents${params.toString() ? '?' + params.toString() : ''}`;
+      console.log('Fetching library documents from:', url);
+      
+      const response = await fetch(`${this.baseUrl}${url}`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Library documents fetch failed:', response.status, errorText);
+        throw new Error(`Failed to fetch library documents: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Library documents response:', data);
+      return data;
+    } catch (error) {
+      console.error('Error fetching library documents:', error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Cannot connect to backend server. Please ensure the backend is running on http://localhost:8000');
+      }
+      throw error;
     }
-
-    return response.json();
   }
 
   async getPersonas(): Promise<string[]> {
-    const response = await fetch(`${this.baseUrl}/library/personas`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch personas: ${response.statusText}`);
+    try {
+      console.log('Fetching personas...');
+      const response = await fetch(`${this.baseUrl}/library/personas`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Personas fetch failed:', response.status, errorText);
+        throw new Error(`Failed to fetch personas: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Personas response:', data);
+      return data;
+    } catch (error) {
+      console.error('Error fetching personas:', error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Cannot connect to backend server. Please ensure the backend is running on http://localhost:8000');
+      }
+      throw error;
     }
-
-    return response.json();
   }
 
   async getJobs(): Promise<string[]> {
-    const response = await fetch(`${this.baseUrl}/library/jobs`);
-    
-    if (!response.ok) {
-      throw new Error(`Failed to fetch jobs: ${response.statusText}`);
+    try {
+      console.log('Fetching jobs...');
+      const response = await fetch(`${this.baseUrl}/library/jobs`);
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Jobs fetch failed:', response.status, errorText);
+        throw new Error(`Failed to fetch jobs: ${response.status} ${errorText}`);
+      }
+      
+      const data = await response.json();
+      console.log('Jobs response:', data);
+      return data;
+    } catch (error) {
+      console.error('Error fetching jobs:', error);
+      if (error instanceof TypeError && error.message.includes('fetch')) {
+        throw new Error('Cannot connect to backend server. Please ensure the backend is running on http://localhost:8000');
+      }
+      throw error;
     }
-
-    return response.json();
   }
 
   async getCrossConnections(docId: string): Promise<CrossConnectionsResponse> {

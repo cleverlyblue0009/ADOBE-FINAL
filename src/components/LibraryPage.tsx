@@ -17,7 +17,9 @@ import {
   Trash2, 
   Eye,
   ArrowLeft,
-  Loader2
+  Loader2,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 
 interface LibraryPageProps {
@@ -31,6 +33,8 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPersona, setSelectedPersona] = useState<string>('');
   const [selectedJob, setSelectedJob] = useState<string>('');
+  const [sortBy, setSortBy] = useState<'date' | 'persona' | 'job' | 'title'>('date');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [personas, setPersonas] = useState<string[]>([]);
   const [jobs, setJobs] = useState<string[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,25 +47,39 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
 
   useEffect(() => {
     filterDocuments();
-  }, [documents, searchQuery, selectedPersona, selectedJob]);
+  }, [documents, searchQuery, selectedPersona, selectedJob, sortBy, sortOrder]);
 
   const loadLibraryData = async () => {
     try {
       setIsLoading(true);
+      console.log('Loading library data...');
+      
       const [docsData, personasData, jobsData] = await Promise.all([
         apiService.getLibraryDocuments(),
         apiService.getPersonas(),
         apiService.getJobs()
       ]);
       
-      setDocuments(docsData);
-      setPersonas(personasData);
-      setJobs(jobsData);
+      console.log('Loaded documents:', docsData);
+      console.log('Loaded personas:', personasData);
+      console.log('Loaded jobs:', jobsData);
+      
+      setDocuments(docsData || []);
+      setPersonas(personasData || []);
+      setJobs(jobsData || []);
+      
+      if (docsData && docsData.length > 0) {
+        toast({
+          title: "Library loaded",
+          description: `Found ${docsData.length} documents in your library.`,
+        });
+      }
     } catch (error) {
       console.error('Failed to load library data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       toast({
-        title: "Error",
-        description: "Failed to load your document library. Please try again.",
+        title: "Connection Error",
+        description: `Failed to load your document library: ${errorMessage}. Make sure the backend is running.`,
         variant: "destructive"
       });
     } finally {
@@ -70,7 +88,7 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
   };
 
   const filterDocuments = () => {
-    let filtered = documents;
+    let filtered = [...documents];
 
     // Filter by search query
     if (searchQuery) {
@@ -89,6 +107,41 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
     if (selectedJob) {
       filtered = filtered.filter(doc => doc.job_to_be_done === selectedJob);
     }
+
+    // Sort documents
+    filtered.sort((a, b) => {
+      let aValue: string | undefined;
+      let bValue: string | undefined;
+      
+      switch (sortBy) {
+        case 'date':
+          aValue = a.upload_timestamp;
+          bValue = b.upload_timestamp;
+          break;
+        case 'persona':
+          aValue = a.persona || '';
+          bValue = b.persona || '';
+          break;
+        case 'job':
+          aValue = a.job_to_be_done || '';
+          bValue = b.job_to_be_done || '';
+          break;
+        case 'title':
+          aValue = a.title;
+          bValue = b.title;
+          break;
+        default:
+          aValue = a.upload_timestamp;
+          bValue = b.upload_timestamp;
+      }
+      
+      if (!aValue && !bValue) return 0;
+      if (!aValue) return 1;
+      if (!bValue) return -1;
+      
+      const comparison = aValue.localeCompare(bValue);
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
 
     setFilteredDocuments(filtered);
   };
@@ -199,8 +252,14 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Loading your document library...</p>
+          <div className="bg-white rounded-lg p-8 shadow-lg max-w-md mx-auto">
+            <Loader2 className="h-12 w-12 animate-spin mx-auto mb-6 text-blue-600" />
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Loading Document Library</h3>
+            <p className="text-gray-600 mb-4">Connecting to backend and fetching your documents...</p>
+            <div className="text-xs text-gray-500">
+              This may take a moment if the backend is starting up
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -211,7 +270,7 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
       <div className="container mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
@@ -232,19 +291,33 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
               </div>
             </div>
             <div className="text-right">
-              <p className="text-sm text-gray-500">
-                {documents.length} total documents
-              </p>
-              <p className="text-sm text-gray-500">
-                {selectedDocuments.size} selected
-              </p>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-sm text-gray-500">
+                    {documents.length} total documents
+                  </p>
+                  <p className="text-sm text-gray-500">
+                    {selectedDocuments.size} selected
+                  </p>
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={loadLibraryData}
+                  disabled={isLoading}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              </div>
             </div>
           </div>
 
           {/* Filters and Search */}
           <div className="bg-white rounded-lg p-6 shadow-sm border">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
+            <div className="grid grid-cols-1 md:grid-cols-6 gap-4">
+              <div className="relative md:col-span-2">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
                 <Input
                   placeholder="Search documents..."
@@ -270,15 +343,35 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
 
               <Select value={selectedJob} onValueChange={setSelectedJob}>
                 <SelectTrigger>
-                  <SelectValue placeholder="Filter by job" />
+                  <SelectValue placeholder="Filter by purpose" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All jobs</SelectItem>
+                  <SelectItem value="">All purposes</SelectItem>
                   {jobs.map(job => (
                     <SelectItem key={job} value={job}>
                       {job}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={`${sortBy}-${sortOrder}`} onValueChange={(value) => {
+                const [newSortBy, newSortOrder] = value.split('-') as ['date' | 'persona' | 'job' | 'title', 'asc' | 'desc'];
+                setSortBy(newSortBy);
+                setSortOrder(newSortOrder);
+              }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sort by" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="date-desc">Newest first</SelectItem>
+                  <SelectItem value="date-asc">Oldest first</SelectItem>
+                  <SelectItem value="title-asc">Title A-Z</SelectItem>
+                  <SelectItem value="title-desc">Title Z-A</SelectItem>
+                  <SelectItem value="persona-asc">Persona A-Z</SelectItem>
+                  <SelectItem value="persona-desc">Persona Z-A</SelectItem>
+                  <SelectItem value="job-asc">Purpose A-Z</SelectItem>
+                  <SelectItem value="job-desc">Purpose Z-A</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -291,40 +384,74 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
                 Analyze Selected ({selectedDocuments.size})
               </Button>
             </div>
+            
+            {/* Quick stats */}
+            <div className="mt-4 pt-4 border-t border-gray-100">
+              <div className="flex items-center justify-between text-sm text-gray-600">
+                <div className="flex items-center gap-6">
+                  <span>Showing {filteredDocuments.length} of {documents.length} documents</span>
+                  {personas.length > 0 && <span>{personas.length} unique personas</span>}
+                  {jobs.length > 0 && <span>{jobs.length} unique purposes</span>}
+                </div>
+                <div className="flex items-center gap-2">
+                  <Filter className="h-4 w-4" />
+                  <span>
+                    {searchQuery || selectedPersona || selectedJob ? 'Filtered view' : 'All documents'}
+                  </span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Document Grid */}
         {filteredDocuments.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              {documents.length === 0 ? 'No documents yet' : 'No documents match your filters'}
-            </h3>
-            <p className="text-gray-500">
-              {documents.length === 0 
-                ? 'Upload your first PDF to get started with intelligent document analysis.'
-                : 'Try adjusting your search or filter criteria.'
-              }
-            </p>
+          <div className="text-center py-16">
+            <div className="max-w-md mx-auto">
+              <FileText className="h-16 w-16 text-gray-300 mx-auto mb-6" />
+              <h3 className="text-xl font-semibold text-gray-900 mb-3">
+                {documents.length === 0 ? 'No documents in your library yet' : 'No documents match your filters'}
+              </h3>
+              <p className="text-gray-500 mb-6">
+                {documents.length === 0 
+                  ? 'Upload your first PDF to get started with intelligent document analysis and cross-document insights.'
+                  : 'Try adjusting your search terms or filter criteria to find what you\'re looking for.'
+                }
+              </p>
+              {documents.length === 0 && (
+                <Button 
+                  onClick={onBack}
+                  className="bg-blue-600 hover:bg-blue-700"
+                >
+                  Upload Documents
+                </Button>
+              )}
+            </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {filteredDocuments.map((doc) => (
               <Card 
                 key={doc.id}
-                className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 ${
+                className={`cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-2 group ${
                   selectedDocuments.has(doc.id) 
-                    ? 'ring-2 ring-blue-500 shadow-lg' 
-                    : 'hover:shadow-md'
+                    ? 'ring-2 ring-blue-500 shadow-lg bg-blue-50/50' 
+                    : 'hover:shadow-lg bg-white hover:bg-gray-50/50'
                 }`}
                 onClick={() => handleDocumentToggle(doc.id)}
               >
-                <CardHeader className="pb-3">
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg line-clamp-2 flex-1">
-                      {doc.title}
-                    </CardTitle>
+                <CardHeader className="pb-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex items-center gap-3 flex-1">
+                      <div className={`p-2 rounded-lg ${selectedDocuments.has(doc.id) ? 'bg-blue-100' : 'bg-gray-100 group-hover:bg-blue-100'} transition-colors`}>
+                        <FileText className={`h-5 w-5 ${selectedDocuments.has(doc.id) ? 'text-blue-600' : 'text-gray-600 group-hover:text-blue-600'}`} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <CardTitle className="text-base font-semibold line-clamp-2 text-gray-900 group-hover:text-blue-900 transition-colors">
+                          {doc.title}
+                        </CardTitle>
+                      </div>
+                    </div>
                     <Button
                       variant="ghost"
                       size="sm"
@@ -332,50 +459,54 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
                         e.stopPropagation();
                         handleDeleteDocument(doc.id);
                       }}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <CardDescription className="text-sm text-gray-500">
+                  <CardDescription className="text-sm text-gray-500 truncate">
                     {doc.name}
                   </CardDescription>
                 </CardHeader>
                 
-                <CardContent>
-                  <div className="space-y-3">
+                <CardContent className="pt-0">
+                  <div className="space-y-4">
                     {/* Persona and Job badges */}
-                    <div className="flex flex-wrap gap-2">
+                    <div className="space-y-2">
                       {doc.persona && (
-                        <Badge variant="secondary" className={getPersonaColor(doc.persona)}>
+                        <Badge variant="secondary" className={`${getPersonaColor(doc.persona)} text-xs font-medium`}>
                           <User className="h-3 w-3 mr-1" />
-                          {doc.persona}
+                          {doc.persona.length > 20 ? `${doc.persona.substring(0, 20)}...` : doc.persona}
                         </Badge>
                       )}
                       {doc.job_to_be_done && (
-                        <Badge variant="secondary" className={getJobColor(doc.job_to_be_done)}>
+                        <Badge variant="secondary" className={`${getJobColor(doc.job_to_be_done)} text-xs font-medium mt-1 block w-fit`}>
                           <Target className="h-3 w-3 mr-1" />
-                          {doc.job_to_be_done}
+                          {doc.job_to_be_done.length > 25 ? `${doc.job_to_be_done.substring(0, 25)}...` : doc.job_to_be_done}
                         </Badge>
                       )}
                     </div>
 
                     {/* Document info */}
-                    <div className="text-xs text-gray-500 space-y-1">
+                    <div className="text-xs text-gray-500 space-y-2">
                       <div className="flex items-center gap-2">
-                        <Calendar className="h-3 w-3" />
-                        {formatDate(doc.upload_timestamp)}
+                        <Calendar className="h-3 w-3 flex-shrink-0" />
+                        <span>{formatDate(doc.upload_timestamp)}</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <FileText className="h-3 w-3" />
-                        {doc.language} • {doc.outline.length} sections
+                        <FileText className="h-3 w-3 flex-shrink-0" />
+                        <span>{doc.language.toUpperCase()} • {doc.outline.length} sections</span>
                       </div>
                     </div>
 
                     {/* Selection indicator */}
-                    {selectedDocuments.has(doc.id) && (
-                      <div className="flex items-center justify-center py-2 bg-blue-50 rounded-md">
-                        <span className="text-blue-600 text-sm font-medium">✓ Selected</span>
+                    {selectedDocuments.has(doc.id) ? (
+                      <div className="flex items-center justify-center py-2 bg-blue-100 rounded-lg border border-blue-200">
+                        <span className="text-blue-700 text-sm font-semibold">✓ Selected for Analysis</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center py-2 bg-gray-50 rounded-lg border border-gray-200 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-gray-600 text-sm font-medium">Click to select</span>
                       </div>
                     )}
                   </div>
