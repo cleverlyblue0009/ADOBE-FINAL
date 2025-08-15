@@ -64,6 +64,8 @@ import { PodcastPanel } from './PodcastPanel';
 import { HighlightPanel } from './HighlightPanel';
 import { TextSimplifier } from './TextSimplifier';
 import { CopyDownloadPanel } from './CopyDownloadPanel';
+import { TextSelectionToolbar } from './ui/text-selection-toolbar';
+import { HighlightColor } from './ui/color-picker';
 import { apiService, RelatedSection } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -125,6 +127,8 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [isActivelyReading, setIsActivelyReading] = useState(true);
   const [totalPages, setTotalPages] = useState(30); // Will be updated from PDF
   const [currentLanguage, setCurrentLanguage] = useState('en');
+  const [showSelectionToolbar, setShowSelectionToolbar] = useState(false);
+  const [selectionPosition, setSelectionPosition] = useState({ x: 0, y: 0 });
 
 
 
@@ -249,6 +253,52 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
     return currentOutlineItem?.title || "";
   };
 
+  // Toolbar action handlers
+  const handleHighlightSelection = (text: string, color: HighlightColor) => {
+    if (!currentDocument) return;
+    
+    const highlight: Highlight = {
+      id: `highlight-${Date.now()}`,
+      text,
+      page: currentPage,
+      color: color.value as 'primary' | 'secondary' | 'tertiary',
+      relevanceScore: 0.85,
+      explanation: `User highlighted text with ${color.name.toLowerCase()} color`
+    };
+
+    setHighlights(prev => [...prev, highlight]);
+    toast({
+      title: "Text Highlighted",
+      description: `Added ${color.name.toLowerCase()} highlight on page ${currentPage}`,
+    });
+  };
+
+  const handleSimplifySelection = (text: string) => {
+    setActiveRightPanel('simplifier');
+    setRightPanelOpen(true);
+    toast({
+      title: "Simplifying Text",
+      description: "Opening text simplifier with selected text",
+    });
+  };
+
+  const handleAnalyzeSelection = (text: string) => {
+    setActiveRightPanel('insights');
+    setRightPanelOpen(true);
+    generateInsightsForText(text);
+    toast({
+      title: "Analyzing Text",
+      description: "Generating AI insights for selected text",
+    });
+  };
+
+  const handleCopySelection = (text: string) => {
+    toast({
+      title: "Text Copied",
+      description: "Selected text has been copied to clipboard",
+    });
+  };
+
   const generateInsightsForText = async (text: string) => {
     if (!persona || !jobToBeDone) return;
     
@@ -305,9 +355,20 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
     setSelectedText(text);
     setCurrentPage(page);
     
-    // Create highlight from selection if text is long enough
-    if (text.length >= 10) {
-      createHighlightFromSelection(text, page);
+    if (text && text.trim().length > 5) {
+      // Show selection toolbar at cursor position
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        setSelectionPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.top - 10
+        });
+        setShowSelectionToolbar(true);
+      }
+    } else {
+      setShowSelectionToolbar(false);
     }
     
     // Automatically generate insights for selected text if conditions are met
@@ -421,11 +482,16 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
             )}
             
             <div className="flex items-center gap-4">
-              <div className="h-10 w-10 bg-brand-primary/10 rounded-lg flex items-center justify-center">
-                <BookOpen className="h-6 w-6 text-brand-primary" />
+              <div className="relative">
+                <div className="w-10 h-10 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-xl flex items-center justify-center shadow-lg">
+                  <BookOpen className="h-5 w-5 text-white" />
+                </div>
+                <div className="absolute -top-1 -right-1 w-4 h-4 bg-brand-accent rounded-full flex items-center justify-center">
+                  <Brain className="h-2.5 w-2.5 text-white" />
+                </div>
               </div>
               <div>
-                <h1 className="text-xl font-bold text-text-primary">DocuSense</h1>
+                <h1 className="text-xl font-black text-text-primary font-display tracking-tight">DocuSense</h1>
                 {persona && (
                   <p className="text-sm text-text-secondary font-medium">
                     {persona} • {jobToBeDone}
@@ -494,33 +560,37 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               </div>
               
               {/* Related Sections */}
-              <div className="border-t border-border-subtle max-h-80">
-                <div className="p-3 bg-blue-50/50">
+              <div className="border-t border-border-subtle flex flex-col min-h-0 flex-1">
+                <div className="p-3 bg-surface-elevated/50 border-b border-border-subtle">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                      <Highlighter className="h-4 w-4 text-blue-600" />
+                    <h4 className="text-sm font-semibold text-text-primary flex items-center gap-2">
+                      <Highlighter className="h-4 w-4 text-brand-primary" />
                       Related Highlights ({highlights.length})
                     </h4>
                     {isLoadingRelated && (
-                      <div className="text-xs text-blue-600">Loading...</div>
+                      <div className="text-xs text-brand-primary">Loading...</div>
                     )}
                   </div>
                   {highlights.length === 0 && !isLoadingRelated && (
-                    <p className="text-xs text-gray-500 italic">
+                    <p className="text-xs text-text-secondary italic">
                       No related sections found. Try the "AI Highlights" button above.
                     </p>
                   )}
                 </div>
-                <HighlightPanel 
-                  highlights={highlights}
-                  onHighlightClick={(highlight) => {
-                    setCurrentPage(highlight.page);
-                    toast({
-                      title: "Navigated to Highlight",
-                      description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
-                    });
-                  }}
-                />
+                <div className="flex-1 min-h-0">
+                  <HighlightPanel 
+                    highlights={highlights}
+                    documentName={currentDocument?.name}
+                    documentUrl={currentDocument?.url}
+                    onHighlightClick={(highlight) => {
+                      setCurrentPage(highlight.page);
+                      toast({
+                        title: "Navigated to Highlight",
+                        description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
+                      });
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </aside>
@@ -692,6 +762,18 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
             </div>
           </aside>
         )}
+
+        {/* Text Selection Toolbar */}
+        <TextSelectionToolbar
+          selectedText={selectedText}
+          isVisible={showSelectionToolbar}
+          position={selectionPosition}
+          onHighlight={handleHighlightSelection}
+          onSimplify={handleSimplifySelection}
+          onAnalyze={handleAnalyzeSelection}
+          onCopy={handleCopySelection}
+          onClose={() => setShowSelectionToolbar(false)}
+        />
       </div>
     </div>
   );

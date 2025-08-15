@@ -21,14 +21,18 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
+import { ExpandableText } from '@/components/ui/expandable-text';
+import { PDFUtils } from '@/lib/pdf-utils';
 import { Highlight } from './PDFReader';
 
 interface HighlightPanelProps {
   highlights: Highlight[];
   onHighlightClick: (highlight: Highlight) => void;
+  documentName?: string;
+  documentUrl?: string;
 }
 
-export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelProps) {
+export function HighlightPanel({ highlights, onHighlightClick, documentName, documentUrl }: HighlightPanelProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterColor, setFilterColor] = useState<'all' | 'primary' | 'secondary' | 'tertiary'>('all');
   const [sortBy, setSortBy] = useState<'relevance' | 'page' | 'recent'>('relevance');
@@ -99,6 +103,37 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
       // Would show success toast
     } catch (err) {
       console.error('Failed to copy highlights:', err);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!documentUrl || !documentName) {
+      console.error('Document URL or name not available');
+      return;
+    }
+
+    try {
+      await PDFUtils.downloadPDFWithHighlights(
+        documentUrl,
+        documentName,
+        highlights,
+        { includeHighlights: true, includeNotes: true, format: 'pdf' }
+      );
+    } catch (error) {
+      console.error('Failed to download PDF with highlights:', error);
+    }
+  };
+
+  const handleDownloadSummary = async () => {
+    if (!documentName) {
+      console.error('Document name not available');
+      return;
+    }
+
+    try {
+      await PDFUtils.downloadHighlightsSummary(documentName, highlights);
+    } catch (error) {
+      console.error('Failed to download highlights summary:', error);
     }
   };
 
@@ -176,25 +211,49 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
 
         {/* Action Buttons */}
         {highlights.length > 0 && (
-          <div className="flex gap-2 mt-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyAll}
-              className="flex-1 gap-2"
-            >
-              <Copy className="h-4 w-4" />
-              Copy All
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportHighlights}
-              className="flex-1 gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
+          <div className="space-y-2 mt-3">
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCopyAll}
+                className="flex-1 gap-2"
+              >
+                <Copy className="h-4 w-4" />
+                Copy All
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleExportHighlights}
+                className="flex-1 gap-2"
+              >
+                <Download className="h-4 w-4" />
+                Export JSON
+              </Button>
+            </div>
+            {documentUrl && documentName && (
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadPDF}
+                  className="flex-1 gap-2 bg-brand-primary/5 hover:bg-brand-primary/10 text-brand-primary border-brand-primary/20"
+                >
+                  <Download className="h-4 w-4" />
+                  Download PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleDownloadSummary}
+                  className="flex-1 gap-2"
+                >
+                  <Download className="h-4 w-4" />
+                  Summary
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -275,13 +334,17 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
                   </DropdownMenu>
                 </div>
 
-                <p className="text-sm text-text-primary mb-2 leading-relaxed">
-                  "{highlight.text}"
-                </p>
+                <ExpandableText
+                  text={`"${highlight.text}"`}
+                  maxLength={120}
+                  className="text-sm text-text-primary mb-2 leading-relaxed"
+                />
 
-                <p className="text-xs text-text-secondary">
-                  {highlight.explanation}
-                </p>
+                <ExpandableText
+                  text={highlight.explanation}
+                  maxLength={80}
+                  className="text-xs text-text-secondary"
+                />
               </div>
             ))
           ) : (

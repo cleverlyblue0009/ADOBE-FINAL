@@ -105,6 +105,10 @@ export default {
 					ring: 'hsl(var(--focus-ring))'
 				}
 			},
+			fontFamily: {
+				'display': ['Inter', 'system-ui', 'sans-serif'],
+				'sans': ['Inter', 'system-ui', 'sans-serif'],
+			},
 			borderRadius: {
 				lg: 'var(--radius)',
 				md: 'calc(var(--radius) - 2px)',

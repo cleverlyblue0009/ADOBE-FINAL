@@ -197,18 +197,30 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center">
         <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-gray-600">Loading your document library...</p>
+          <div className="relative mx-auto w-16 h-16 mb-6">
+            <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 rounded-full blur-xl"></div>
+            <div className="relative w-16 h-16 bg-surface-elevated rounded-full flex items-center justify-center border border-border-subtle">
+              <Loader2 className="h-6 w-6 animate-spin text-brand-primary" />
+            </div>
+          </div>
+          <p className="text-text-secondary font-medium">Loading your document library...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
-      <div className="container mx-auto px-4 py-8">
+    <div className="min-h-screen bg-gradient-subtle">
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-brand-primary/5 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute bottom-40 right-20 w-96 h-96 bg-brand-secondary/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-1/2 left-1/3 w-80 h-80 bg-brand-accent/5 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }} />
+      </div>
+      
+      <div className="container mx-auto px-4 py-8 relative z-10">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-6">
@@ -216,46 +228,53 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
               <Button
                 variant="ghost"
                 onClick={onBack}
-                className="flex items-center gap-2"
+                className="flex items-center gap-2 hover:bg-surface-hover"
               >
                 <ArrowLeft className="h-4 w-4" />
                 Back
               </Button>
               <div>
-                <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
-                  <BookOpen className="h-8 w-8 text-blue-600" />
+                <h1 className="text-3xl font-black text-text-primary flex items-center gap-3 font-display">
+                  <div className="relative">
+                    <div className="w-10 h-10 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-xl flex items-center justify-center shadow-lg">
+                      <BookOpen className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="absolute -top-1 -right-1 w-4 h-4 bg-brand-accent rounded-full flex items-center justify-center">
+                      <Eye className="h-2.5 w-2.5 text-white" />
+                    </div>
+                  </div>
                   Document Library
                 </h1>
-                <p className="text-gray-600 mt-1">
+                <p className="text-text-secondary mt-1 font-medium">
                   Manage and analyze your uploaded documents
                 </p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm text-gray-500">
-                {documents.length} total documents
+            <div className="text-right bg-surface-elevated/80 backdrop-blur-sm rounded-lg p-4 border border-border-subtle">
+              <p className="text-sm text-text-secondary font-medium">
+                <span className="text-brand-primary font-bold">{documents.length}</span> total documents
               </p>
-              <p className="text-sm text-gray-500">
-                {selectedDocuments.size} selected
+              <p className="text-sm text-text-secondary font-medium">
+                <span className="text-brand-secondary font-bold">{selectedDocuments.size}</span> selected
               </p>
             </div>
           </div>
 
           {/* Filters and Search */}
-          <div className="bg-white rounded-lg p-6 shadow-sm border">
+          <div className="bg-surface-elevated/80 backdrop-blur-md rounded-xl p-6 shadow-xl border border-border-subtle">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-tertiary h-4 w-4" />
                 <Input
                   placeholder="Search documents..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 bg-surface-elevated border-border-subtle focus:border-brand-primary focus:ring-brand-primary/20"
                 />
               </div>
               
               <Select value={selectedPersona} onValueChange={setSelectedPersona}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-surface-elevated border-border-subtle focus:border-brand-primary">
                   <SelectValue placeholder="Filter by persona" />
                 </SelectTrigger>
                 <SelectContent>
@@ -269,7 +288,7 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
               </Select>
 
               <Select value={selectedJob} onValueChange={setSelectedJob}>
-                <SelectTrigger>
+                <SelectTrigger className="bg-surface-elevated border-border-subtle focus:border-brand-primary">
                   <SelectValue placeholder="Filter by job" />
                 </SelectTrigger>
                 <SelectContent>
@@ -285,7 +304,7 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
               <Button 
                 onClick={handleAnalyzeSelected}
                 disabled={selectedDocuments.size === 0}
-                className="bg-blue-600 hover:bg-blue-700"
+                className="bg-gradient-to-r from-brand-primary to-brand-secondary hover:from-brand-primary/90 hover:to-brand-secondary/90 text-white shadow-lg hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 <Eye className="h-4 w-4 mr-2" />
                 Analyze Selected ({selectedDocuments.size})
@@ -296,12 +315,17 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
 
         {/* Document Grid */}
         {filteredDocuments.length === 0 ? (
-          <div className="text-center py-12">
-            <FileText className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <div className="text-center py-16">
+            <div className="relative mx-auto w-24 h-24 mb-6">
+              <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 rounded-full blur-xl"></div>
+              <div className="relative w-24 h-24 bg-surface-elevated rounded-full flex items-center justify-center border border-border-subtle">
+                <FileText className="h-8 w-8 text-text-tertiary" />
+              </div>
+            </div>
+            <h3 className="text-xl font-bold text-text-primary mb-3 font-display">
               {documents.length === 0 ? 'No documents yet' : 'No documents match your filters'}
             </h3>
-            <p className="text-gray-500">
+            <p className="text-text-secondary max-w-md mx-auto">
               {documents.length === 0 
                 ? 'Upload your first PDF to get started with intelligent document analysis.'
                 : 'Try adjusting your search or filter criteria.'
@@ -309,20 +333,21 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredDocuments.map((doc) => (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {filteredDocuments.map((doc, index) => (
               <Card 
                 key={doc.id}
-                className={`cursor-pointer transition-all duration-200 hover:shadow-lg hover:-translate-y-1 ${
+                className={`group cursor-pointer transition-all duration-300 hover:shadow-2xl hover:-translate-y-2 bg-surface-elevated/80 backdrop-blur-sm border-border-subtle ${
                   selectedDocuments.has(doc.id) 
-                    ? 'ring-2 ring-blue-500 shadow-lg' 
-                    : 'hover:shadow-md'
+                    ? 'ring-2 ring-brand-primary shadow-2xl bg-brand-primary/5 border-brand-primary/30' 
+                    : 'hover:shadow-xl hover:border-brand-primary/20'
                 }`}
                 onClick={() => handleDocumentToggle(doc.id)}
+                style={{ animationDelay: `${index * 100}ms` }}
               >
-                <CardHeader className="pb-3">
+                <CardHeader className="pb-4">
                   <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg line-clamp-2 flex-1">
+                    <CardTitle className="text-lg line-clamp-2 flex-1 text-text-primary font-bold group-hover:text-brand-primary transition-colors">
                       {doc.title}
                     </CardTitle>
                     <Button
@@ -332,28 +357,28 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
                         e.stopPropagation();
                         handleDeleteDocument(doc.id);
                       }}
-                      className="text-red-500 hover:text-red-700 hover:bg-red-50"
+                      className="opacity-0 group-hover:opacity-100 transition-opacity text-error hover:text-error-dark hover:bg-error/10"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </div>
-                  <CardDescription className="text-sm text-gray-500">
+                  <CardDescription className="text-sm text-text-secondary font-medium">
                     {doc.name}
                   </CardDescription>
                 </CardHeader>
                 
                 <CardContent>
-                  <div className="space-y-3">
+                  <div className="space-y-4">
                     {/* Persona and Job badges */}
                     <div className="flex flex-wrap gap-2">
                       {doc.persona && (
-                        <Badge variant="secondary" className={getPersonaColor(doc.persona)}>
+                        <Badge variant="secondary" className="bg-brand-primary/10 text-brand-primary border-brand-primary/20 hover:bg-brand-primary/20">
                           <User className="h-3 w-3 mr-1" />
                           {doc.persona}
                         </Badge>
                       )}
                       {doc.job_to_be_done && (
-                        <Badge variant="secondary" className={getJobColor(doc.job_to_be_done)}>
+                        <Badge variant="secondary" className="bg-brand-secondary/10 text-brand-secondary border-brand-secondary/20 hover:bg-brand-secondary/20">
                           <Target className="h-3 w-3 mr-1" />
                           {doc.job_to_be_done}
                         </Badge>
@@ -361,7 +386,7 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
                     </div>
 
                     {/* Document info */}
-                    <div className="text-xs text-gray-500 space-y-1">
+                    <div className="text-xs text-text-tertiary space-y-2">
                       <div className="flex items-center gap-2">
                         <Calendar className="h-3 w-3" />
                         {formatDate(doc.upload_timestamp)}
@@ -374,8 +399,8 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
 
                     {/* Selection indicator */}
                     {selectedDocuments.has(doc.id) && (
-                      <div className="flex items-center justify-center py-2 bg-blue-50 rounded-md">
-                        <span className="text-blue-600 text-sm font-medium">✓ Selected</span>
+                      <div className="flex items-center justify-center py-3 bg-gradient-to-r from-brand-primary/10 to-brand-secondary/10 rounded-lg border border-brand-primary/20">
+                        <span className="text-brand-primary text-sm font-bold">✓ Selected</span>
                       </div>
                     )}
                   </div>
