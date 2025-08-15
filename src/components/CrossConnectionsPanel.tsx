@@ -5,6 +5,7 @@ import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { useToast } from '@/hooks/use-toast';
 import { apiService, CrossConnectionsResponse, RelatedDocument, Contradiction, CrossDocumentInsight } from '@/lib/api';
+import { ExpandablePanelModal } from '@/components/ui/ExpandablePanelModal';
 import { 
   Link2, 
   AlertTriangle, 
@@ -83,10 +84,10 @@ export function CrossConnectionsPanel({ documentId, onNavigateToDocument, classN
 
   const getInsightIcon = (type: string) => {
     switch (type) {
-      case 'pattern': return <TrendingUp className="h-4 w-4 text-purple-600" />;
-      case 'opportunity': return <Target className="h-4 w-4 text-orange-600" />;
-      case 'recommendation': return <Zap className="h-4 w-4 text-blue-600" />;
-      default: return <Lightbulb className="h-4 w-4 text-yellow-600" />;
+      case 'pattern': return <TrendingUp className="h-4 w-4 text-secondary" />;
+      case 'opportunity': return <Target className="h-4 w-4 text-accent-foreground" />;
+      case 'recommendation': return <Zap className="h-4 w-4 text-primary" />;
+      default: return <Lightbulb className="h-4 w-4 text-primary" />;
     }
   };
 
@@ -142,13 +143,52 @@ export function CrossConnectionsPanel({ documentId, onNavigateToDocument, classN
   return (
     <Card className={`${className}`}>
       <CardHeader className="pb-3">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <Link2 className="h-5 w-5 text-blue-600" />
-          Cross-Document Connections
-        </CardTitle>
-        <CardDescription className="text-sm">
-          {connections.total_connections} connection{connections.total_connections !== 1 ? 's' : ''} found with your document library
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Link2 className="h-5 w-5 text-primary" />
+              Cross-Document Connections
+            </CardTitle>
+            <CardDescription className="text-sm">
+              {connections.total_connections} connection{connections.total_connections !== 1 ? 's' : ''} found with your document library
+            </CardDescription>
+          </div>
+          <ExpandablePanelModal
+            title="Cross-Document Connections"
+            icon={<Link2 className="h-5 w-5 text-primary" />}
+          >
+            <div className="space-y-6">
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg text-primary">Connection Analysis</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    Found {connections.total_connections} connection{connections.total_connections !== 1 ? 's' : ''} across your document library, 
+                    including related documents, contradictions, and cross-document insights.
+                  </p>
+                </CardContent>
+              </Card>
+              
+              {/* Show summary of connections in modal */}
+              {connections.related_documents.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-foreground">Related Documents</h4>
+                  <div className="grid gap-2">
+                    {connections.related_documents.slice(0, 3).map((doc) => (
+                      <Card key={doc.id} className="border-border/50">
+                        <CardContent className="p-3">
+                          <h5 className="font-medium text-foreground text-sm">{doc.title}</h5>
+                          <p className="text-xs text-muted-foreground">{doc.relationship_type}</p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </ExpandablePanelModal>
+        </div>
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Related Documents */}
