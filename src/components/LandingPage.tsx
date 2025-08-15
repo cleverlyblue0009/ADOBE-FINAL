@@ -21,6 +21,7 @@ import {
   Library,
   ArrowRight
 } from 'lucide-react';
+import { TypingAnimation } from '@/components/ui/typing-animation';
 
 interface LandingPageProps {
   onStart: (documents: DocumentInfo[], persona: string, jobToBeDone: string) => void;
@@ -122,9 +123,18 @@ export function LandingPage({ onStart }: LandingPageProps) {
       <header className="relative z-10 p-6 border-b border-border-subtle bg-surface-elevated/80 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <BookOpen className="h-8 w-8 text-brand-primary" />
-            <h1 className="text-2xl font-bold text-text-primary">DocuSense</h1>
-            <span className="text-sm text-text-secondary">Intelligent PDF Reading</span>
+            <div className="relative">
+              <div className="w-10 h-10 bg-gradient-to-br from-brand-primary to-brand-secondary rounded-xl flex items-center justify-center shadow-lg">
+                <BookOpen className="h-5 w-5 text-white" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-4 h-4 bg-brand-accent rounded-full flex items-center justify-center">
+                <Brain className="h-2.5 w-2.5 text-white" />
+              </div>
+            </div>
+            <div className="flex flex-col">
+              <h1 className="text-2xl font-black text-text-primary font-display tracking-tight">DocuSense</h1>
+              <span className="text-xs text-text-secondary font-medium -mt-1">Intelligent PDF Reading</span>
+            </div>
           </div>
           <div className="flex items-center gap-3">
             <ThemeToggle />
@@ -148,10 +158,24 @@ export function LandingPage({ onStart }: LandingPageProps) {
               <div className="w-2 h-2 bg-brand-primary rounded-full animate-pulse"></div>
               AI-Powered Reading Assistant
             </div>
-            <h2 className="text-5xl md:text-7xl font-bold text-text-primary leading-[1.05] tracking-tight">
-              Transform PDFs into
-              <span className="text-transparent bg-gradient-primary bg-clip-text block mt-2">intelligent reading</span>
-              experiences
+            <h2 className="text-5xl md:text-7xl font-black text-text-primary leading-[1.05] tracking-tight font-display min-h-[3.5em] md:min-h-[4em]">
+              <TypingAnimation 
+                text="Transform PDFs into"
+                speed={80}
+                className="block"
+              />
+              <span className="text-transparent bg-gradient-primary bg-clip-text block mt-2">
+                <TypingAnimation 
+                  text="intelligent reading"
+                  speed={80}
+                  className="inline"
+                />
+              </span>
+              <TypingAnimation 
+                text="experiences"
+                speed={80}
+                className="block"
+              />
             </h2>
             <p className="text-xl md:text-2xl text-text-secondary max-w-4xl mx-auto leading-relaxed font-light">
               Upload your documents and unlock AI-powered insights, personalized highlights, 
