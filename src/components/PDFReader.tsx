@@ -580,7 +580,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               page: subsection.page_number,
               color: 'secondary',
               relevanceScore: 0.85, // High relevance for refined text
-              explanation: `AI-identified key insight from ${subsection.document}`
+              explanation: `Key insight for ${persona} - ${jobToBeDone}`
             };
             intelligenceHighlights.push(highlight);
           });
