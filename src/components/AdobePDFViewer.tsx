@@ -4,6 +4,7 @@ import { Loader2, Copy } from 'lucide-react';
 import { TextSelectionMenu } from './TextSelectionMenu';
 import { useToast } from '@/hooks/use-toast';
 import { apiService } from '@/lib/api';
+import { Highlight } from './PDFReader';
 
 declare global {
   interface Window {
@@ -17,6 +18,342 @@ interface AdobePDFViewerProps {
   onPageChange?: (page: number) => void;
   onTextSelection?: (text: string, page: number) => void;
   clientId?: string;
+  highlights?: Highlight[];
+  onHighlightApplied?: (highlight: Highlight) => void;
+}
+
+// PDF Text Search and Highlighting Utilities
+class PDFTextSearcher {
+  private static instance: PDFTextSearcher;
+  private searchCache = new Map<string, { text: string; page: number; elements: Element[] }>();
+  
+  static getInstance(): PDFTextSearcher {
+    if (!PDFTextSearcher.instance) {
+      PDFTextSearcher.instance = new PDFTextSearcher();
+    }
+    return PDFTextSearcher.instance;
+  }
+
+  // Find text in PDF content with fuzzy matching
+  findTextInPDF(searchText: string, targetPage?: number): Array<{
+    element: Element;
+    textNode: Text;
+    startOffset: number;
+    endOffset: number;
+    page: number;
+    confidence: number;
+  }> {
+    const results: Array<{
+      element: Element;
+      textNode: Text;
+      startOffset: number;
+      endOffset: number;
+      page: number;
+      confidence: number;
+    }> = [];
+
+    if (!searchText || searchText.trim().length < 3) return results;
+
+    const normalizedSearch = this.normalizeText(searchText);
+    const searchWords = normalizedSearch.split(/\s+/).filter(word => word.length > 2);
+    
+    // Get all text-containing elements in the PDF viewer
+    const pdfContainer = document.querySelector('#adobe-dc-view, .pdf-content, iframe');
+    if (!pdfContainer) return results;
+
+    // Try to find text in Adobe PDF viewer content
+    this.searchInContainer(pdfContainer, searchWords, normalizedSearch, targetPage, results);
+    
+    // Also try searching in any iframe content (fallback viewer)
+    const iframes = document.querySelectorAll('iframe');
+    iframes.forEach(iframe => {
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (iframeDoc) {
+          this.searchInContainer(iframeDoc.body, searchWords, normalizedSearch, targetPage, results);
+        }
+      } catch (e) {
+        console.log('Cannot access iframe content (cross-origin)');
+      }
+    });
+
+    return results.sort((a, b) => b.confidence - a.confidence);
+  }
+
+  private searchInContainer(
+    container: Element | Document, 
+    searchWords: string[], 
+    fullSearchText: string,
+    targetPage: number | undefined,
+    results: Array<{
+      element: Element;
+      textNode: Text;
+      startOffset: number;
+      endOffset: number;
+      page: number;
+      confidence: number;
+    }>
+  ) {
+    const walker = document.createTreeWalker(
+      container,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (node) => {
+          const text = node.textContent || '';
+          return text.trim().length > 0 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        }
+      }
+    );
+
+    let currentNode: Text | null;
+    while (currentNode = walker.nextNode() as Text) {
+      const textContent = currentNode.textContent || '';
+      const normalizedText = this.normalizeText(textContent);
+      
+      // Try exact match first
+      let matchIndex = normalizedText.indexOf(fullSearchText);
+      let matchLength = fullSearchText.length;
+      let confidence = 1.0;
+
+      if (matchIndex === -1) {
+        // Try partial matching with words
+        const partialMatch = this.findPartialMatch(normalizedText, searchWords);
+        if (partialMatch) {
+          matchIndex = partialMatch.index;
+          matchLength = partialMatch.length;
+          confidence = partialMatch.confidence;
+        }
+      }
+
+      if (matchIndex !== -1) {
+        const element = currentNode.parentElement;
+        if (element) {
+          const page = this.estimatePageNumber(element, targetPage);
+          
+          results.push({
+            element,
+            textNode: currentNode,
+            startOffset: matchIndex,
+            endOffset: matchIndex + matchLength,
+            page,
+            confidence
+          });
+        }
+      }
+    }
+  }
+
+  private findPartialMatch(text: string, searchWords: string[]): { index: number; length: number; confidence: number } | null {
+    let bestMatch: { index: number; length: number; confidence: number } | null = null;
+    
+    // Try to find the longest sequence of matching words
+    for (let i = 0; i < searchWords.length; i++) {
+      const wordSequence = searchWords.slice(i, Math.min(i + 3, searchWords.length)).join(' ');
+      const index = text.indexOf(wordSequence);
+      
+      if (index !== -1) {
+        const confidence = wordSequence.length / searchWords.join(' ').length;
+        if (!bestMatch || confidence > bestMatch.confidence) {
+          bestMatch = {
+            index,
+            length: wordSequence.length,
+            confidence
+          };
+        }
+      }
+    }
+
+    return bestMatch;
+  }
+
+  private normalizeText(text: string): string {
+    return text
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/[^\w\s]/g, ' ')
+      .trim();
+  }
+
+  private estimatePageNumber(element: Element, targetPage?: number): number {
+    if (targetPage) return targetPage;
+    
+    // Try to find page indicators in the element or its parents
+    let current: Element | null = element;
+    while (current) {
+      const pageAttr = current.getAttribute('data-page') || 
+                      current.getAttribute('page') ||
+                      current.className.match(/page-(\d+)/)?.[1];
+      
+      if (pageAttr) {
+        return parseInt(pageAttr, 10);
+      }
+      
+      current = current.parentElement;
+    }
+    
+    // Fallback: estimate based on scroll position or element position
+    const rect = element.getBoundingClientRect();
+    const containerHeight = window.innerHeight;
+    const estimatedPage = Math.max(1, Math.floor(rect.top / containerHeight) + 1);
+    
+    return estimatedPage;
+  }
+
+  // Apply visual highlight to found text
+  applyHighlight(
+    textNode: Text,
+    startOffset: number,
+    endOffset: number,
+    highlight: Highlight,
+    onHighlightApplied?: (highlight: Highlight) => void
+  ): HTMLElement | null {
+    try {
+      const range = document.createRange();
+      range.setStart(textNode, startOffset);
+      range.setEnd(textNode, endOffset);
+
+      const highlightElement = document.createElement('mark');
+      highlightElement.id = `highlight-${highlight.id}`;
+      highlightElement.className = `pdf-highlight pdf-highlight-${highlight.color}`;
+      
+      // Set colors based on highlight type
+      const colorMap = {
+        'primary': { bg: 'rgba(255, 235, 59, 0.6)', border: '#FBC02D' },
+        'secondary': { bg: 'rgba(76, 175, 80, 0.6)', border: '#388E3C' },
+        'tertiary': { bg: 'rgba(33, 150, 243, 0.6)', border: '#1976D2' }
+      };
+      
+      const colors = colorMap[highlight.color] || colorMap.primary;
+      
+      highlightElement.style.cssText = `
+        background-color: ${colors.bg};
+        border-bottom: 2px solid ${colors.border};
+        border-radius: 2px;
+        padding: 1px 0;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        position: relative;
+      `;
+
+      // Add hover effects
+      highlightElement.addEventListener('mouseenter', () => {
+        highlightElement.style.backgroundColor = colors.bg.replace('0.6', '0.8');
+        highlightElement.style.transform = 'scale(1.02)';
+      });
+
+      highlightElement.addEventListener('mouseleave', () => {
+        highlightElement.style.backgroundColor = colors.bg;
+        highlightElement.style.transform = 'scale(1)';
+      });
+
+      // Add click handler
+      highlightElement.addEventListener('click', (e) => {
+        e.stopPropagation();
+        this.showHighlightTooltip(highlightElement, highlight);
+      });
+
+      // Add tooltip
+      highlightElement.title = `${highlight.explanation}\nRelevance: ${Math.round(highlight.relevanceScore * 100)}%`;
+
+      // Surround the range with the highlight element
+      try {
+        range.surroundContents(highlightElement);
+      } catch (e) {
+        // If we can't surround contents, extract and wrap
+        const contents = range.extractContents();
+        highlightElement.appendChild(contents);
+        range.insertNode(highlightElement);
+      }
+
+      // Animate the highlight
+      highlightElement.style.animation = 'highlightFadeIn 1s ease-out';
+
+      if (onHighlightApplied) {
+        onHighlightApplied(highlight);
+      }
+
+      return highlightElement;
+    } catch (error) {
+      console.error('Failed to apply highlight:', error);
+      return null;
+    }
+  }
+
+  private showHighlightTooltip(element: HTMLElement, highlight: Highlight) {
+    // Remove existing tooltips
+    document.querySelectorAll('.highlight-tooltip').forEach(tooltip => tooltip.remove());
+
+    const tooltip = document.createElement('div');
+    tooltip.className = 'highlight-tooltip';
+    tooltip.style.cssText = `
+      position: absolute;
+      background: rgba(0, 0, 0, 0.9);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      max-width: 300px;
+      z-index: 1000;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+      animation: fadeIn 0.3s ease-out;
+    `;
+
+    tooltip.innerHTML = `
+      <div style="font-weight: 600; margin-bottom: 8px; color: #FFC107;">
+        Page ${highlight.page} • ${Math.round(highlight.relevanceScore * 100)}% Relevant
+      </div>
+      <div style="margin-bottom: 8px;">
+        "${highlight.text.substring(0, 100)}${highlight.text.length > 100 ? '...' : ''}"
+      </div>
+      <div style="font-size: 12px; opacity: 0.9;">
+        ${highlight.explanation}
+      </div>
+    `;
+
+    const rect = element.getBoundingClientRect();
+    tooltip.style.left = `${rect.left}px`;
+    tooltip.style.top = `${rect.bottom + 8}px`;
+
+    document.body.appendChild(tooltip);
+
+    // Auto-remove tooltip after 5 seconds
+    setTimeout(() => {
+      tooltip.style.animation = 'fadeOut 0.3s ease-in forwards';
+      setTimeout(() => tooltip.remove(), 300);
+    }, 5000);
+
+    // Remove on click elsewhere
+    const removeTooltip = (e: Event) => {
+      if (!tooltip.contains(e.target as Node)) {
+        tooltip.remove();
+        document.removeEventListener('click', removeTooltip);
+      }
+    };
+    setTimeout(() => document.addEventListener('click', removeTooltip), 100);
+  }
+
+  // Remove all highlights
+  clearAllHighlights() {
+    document.querySelectorAll('.pdf-highlight').forEach(highlight => {
+      const parent = highlight.parentNode;
+      if (parent) {
+        parent.replaceChild(document.createTextNode(highlight.textContent || ''), highlight);
+        parent.normalize();
+      }
+    });
+  }
+
+  // Remove specific highlight
+  removeHighlight(highlightId: string) {
+    const highlightElement = document.getElementById(`highlight-${highlightId}`);
+    if (highlightElement) {
+      const parent = highlightElement.parentNode;
+      if (parent) {
+        parent.replaceChild(document.createTextNode(highlightElement.textContent || ''), highlightElement);
+        parent.normalize();
+      }
+    }
+  }
 }
 
 export function AdobePDFViewer({ 
@@ -24,7 +361,9 @@ export function AdobePDFViewer({
   documentName, 
   onPageChange, 
   onTextSelection,
-  clientId 
+  clientId,
+  highlights = [],
+  onHighlightApplied
 }: AdobePDFViewerProps) {
   const viewerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -35,6 +374,123 @@ export function AdobePDFViewer({
   const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
+  const textSearcher = PDFTextSearcher.getInstance();
+  const [appliedHighlights, setAppliedHighlights] = useState<Set<string>>(new Set());
+
+  // Apply highlights when they change or when PDF is ready
+  useEffect(() => {
+    if (!isReady || !highlights.length) return;
+
+    // Wait a bit for PDF content to be fully rendered
+    const timer = setTimeout(() => {
+      applyHighlightsToContent();
+    }, 1500);
+
+    return () => clearTimeout(timer);
+  }, [highlights, isReady, currentPage]);
+
+  // Function to apply all highlights to the current PDF content
+  const applyHighlightsToContent = async () => {
+    console.log('Applying highlights to PDF content:', highlights.length);
+    
+    for (const highlight of highlights) {
+      // Skip if already applied
+      if (appliedHighlights.has(highlight.id)) continue;
+      
+      try {
+        // Find text in the PDF
+        const searchResults = textSearcher.findTextInPDF(highlight.text, highlight.page);
+        console.log(`Found ${searchResults.length} matches for highlight:`, highlight.text.substring(0, 50));
+        
+        if (searchResults.length > 0) {
+          // Apply highlight to the best match
+          const bestMatch = searchResults[0];
+          const highlightElement = textSearcher.applyHighlight(
+            bestMatch.textNode,
+            bestMatch.startOffset,
+            bestMatch.endOffset,
+            highlight,
+            onHighlightApplied
+          );
+          
+          if (highlightElement) {
+            setAppliedHighlights(prev => new Set([...prev, highlight.id]));
+            console.log('Successfully applied highlight:', highlight.id);
+          }
+        } else {
+          console.log('No text found for highlight:', highlight.text.substring(0, 50));
+        }
+      } catch (error) {
+        console.error('Error applying highlight:', error);
+      }
+      
+      // Small delay between highlights to prevent overwhelming the DOM
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+  };
+
+  // Function to highlight specific text (called from HighlightPanel)
+  const highlightSpecificText = (highlight: Highlight) => {
+    console.log('Highlighting specific text:', highlight.text.substring(0, 50));
+    
+    // First navigate to the page if needed
+    if (currentPage !== highlight.page) {
+      setCurrentPage(highlight.page);
+      if (onPageChange) {
+        onPageChange(highlight.page);
+      }
+    }
+    
+    // Apply highlight after a short delay to ensure page navigation
+    setTimeout(() => {
+      const searchResults = textSearcher.findTextInPDF(highlight.text, highlight.page);
+      if (searchResults.length > 0) {
+        const bestMatch = searchResults[0];
+        const highlightElement = textSearcher.applyHighlight(
+          bestMatch.textNode,
+          bestMatch.startOffset,
+          bestMatch.endOffset,
+          highlight,
+          onHighlightApplied
+        );
+        
+        if (highlightElement) {
+          // Scroll to the highlight
+          highlightElement.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
+          });
+          
+          // Flash the highlight
+          highlightElement.style.animation = 'highlightFlash 2s ease-in-out';
+          
+          toast({
+            title: "Highlight Found",
+            description: `Navigated to highlight on page ${highlight.page}`,
+          });
+        }
+      } else {
+        toast({
+          title: "Text Not Found",
+          description: "Could not locate the highlighted text in the current page",
+          variant: "destructive"
+        });
+      }
+    }, 500);
+  };
+
+  // Expose highlight function to parent component
+  useEffect(() => {
+    if (window) {
+      (window as any).highlightTextInPDF = highlightSpecificText;
+    }
+    
+    return () => {
+      if (window) {
+        delete (window as any).highlightTextInPDF;
+      }
+    };
+  }, []);
 
   // Handle text selection
   useEffect(() => {
@@ -539,12 +995,82 @@ export function AdobePDFViewer({
         onSpeak={handleSpeak}
         onClose={clearSelection}
       />
+
+      {/* CSS Animations for Highlights */}
+      <style>{`
+        @keyframes highlightFadeIn {
+          0% { 
+            opacity: 0; 
+            transform: scale(0.95); 
+            background-color: rgba(255, 193, 7, 0.9);
+          }
+          50% { 
+            opacity: 1; 
+            transform: scale(1.05); 
+            background-color: rgba(255, 193, 7, 0.8);
+          }
+          100% { 
+            opacity: 1; 
+            transform: scale(1); 
+          }
+        }
+
+        @keyframes highlightFlash {
+          0%, 100% { opacity: 1; }
+          25% { opacity: 0.3; background-color: rgba(255, 193, 7, 0.9); }
+          50% { opacity: 1; background-color: rgba(255, 193, 7, 0.7); }
+          75% { opacity: 0.3; background-color: rgba(255, 193, 7, 0.9); }
+        }
+
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes fadeOut {
+          from { opacity: 1; transform: translateY(0); }
+          to { opacity: 0; transform: translateY(-10px); }
+        }
+
+        .pdf-highlight {
+          position: relative;
+          z-index: 10;
+        }
+
+        .pdf-highlight::before {
+          content: '';
+          position: absolute;
+          top: -2px;
+          left: -2px;
+          right: -2px;
+          bottom: -2px;
+          border-radius: 4px;
+          opacity: 0;
+          transition: opacity 0.3s ease;
+          pointer-events: none;
+        }
+
+        .pdf-highlight:hover::before {
+          opacity: 1;
+          box-shadow: 0 0 0 2px rgba(255, 193, 7, 0.5);
+        }
+      `}</style>
     </div>
   );
 }
 
 // Fallback PDF viewer for when Adobe API is not available
-export function FallbackPDFViewer({ documentUrl, documentName }: { documentUrl: string; documentName: string }) {
+export function FallbackPDFViewer({ 
+  documentUrl, 
+  documentName, 
+  highlights = [],
+  onHighlightApplied 
+}: { 
+  documentUrl: string; 
+  documentName: string;
+  highlights?: Highlight[];
+  onHighlightApplied?: (highlight: Highlight) => void;
+}) {
   const [selectedText, setSelectedText] = useState('');
   const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
   const { toast } = useToast();

@@ -13,13 +13,17 @@ function HybridPDFViewer({
   documentName, 
   onPageChange, 
   onTextSelection, 
-  clientId 
+  clientId,
+  highlights,
+  onHighlightApplied
 }: {
   documentUrl: string;
   documentName: string;
   onPageChange?: (page: number) => void;
   onTextSelection?: (text: string, page: number) => void;
   clientId?: string;
+  highlights?: Highlight[];
+  onHighlightApplied?: (highlight: Highlight) => void;
 }) {
   const [useAdobeViewer, setUseAdobeViewer] = useState(true);
   const [adobeFailed, setAdobeFailed] = useState(false);
@@ -31,7 +35,14 @@ function HybridPDFViewer({
   };
 
   if (!useAdobeViewer || adobeFailed) {
-    return <FallbackPDFViewer documentUrl={documentUrl} documentName={documentName} />;
+    return (
+      <FallbackPDFViewer 
+        documentUrl={documentUrl} 
+        documentName={documentName}
+        highlights={highlights}
+        onHighlightApplied={onHighlightApplied}
+      />
+    );
   }
 
   return (
@@ -42,6 +53,8 @@ function HybridPDFViewer({
         onPageChange={onPageChange}
         onTextSelection={onTextSelection}
         clientId={clientId}
+        highlights={highlights}
+        onHighlightApplied={onHighlightApplied}
       />
       {/* Fallback button */}
       <div className="absolute top-4 right-4 z-10">
@@ -760,6 +773,10 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               onPageChange={setCurrentPage}
               onTextSelection={handleTextSelection}
               clientId={import.meta.env.VITE_ADOBE_CLIENT_ID}
+              highlights={highlights}
+              onHighlightApplied={(highlight) => {
+                console.log('Highlight applied in PDF:', highlight.id);
+              }}
             />
           ) : (
             <div className="flex items-center justify-center h-full">
@@ -937,11 +954,21 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                   <HighlightPanel 
                     highlights={highlights}
                     onHighlightClick={(highlight) => {
+                      console.log('Highlight clicked in panel:', highlight.id);
+                      
+                      // Navigate to the page
                       setCurrentPage(highlight.page);
-                      // Apply visual highlight to PDF
+                      
+                      // Trigger highlighting in PDF viewer
                       setTimeout(() => {
-                        applyHighlightToPDF(highlight);
-                      }, 500); // Small delay to ensure page navigation completes
+                        if ((window as any).highlightTextInPDF) {
+                          (window as any).highlightTextInPDF(highlight);
+                        } else {
+                          // Fallback: apply highlight using the existing method
+                          applyHighlightToPDF(highlight);
+                        }
+                      }, 800); // Increased delay to ensure page navigation and content loading
+                      
                       toast({
                         title: "Navigated to Highlight",
                         description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
