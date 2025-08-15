@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { apiService, DocumentInfo } from '@/lib/api';
+import { ThemeToggle } from './ThemeToggle';
 import { 
   Upload, 
   Brain, 
@@ -17,7 +18,9 @@ import {
   Palette,
   Volume2,
   Loader2,
-  Library
+  Library,
+  Sparkles,
+  Zap
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -99,35 +102,41 @@ export function LandingPage({ onStart }: LandingPageProps) {
   return (
     <div className="min-h-screen bg-gradient-subtle flex flex-col">
       {/* Header */}
-      <header className="p-6 border-b border-border-subtle bg-surface-elevated/80 backdrop-blur-sm">
+      <header className="p-6 border-b border-border-subtle bg-surface-elevated/80 backdrop-blur-sm sticky top-0 z-40">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <BookOpen className="h-8 w-8 text-brand-primary" />
-            <h1 className="text-2xl font-bold text-text-primary">DocuSense</h1>
-            <span className="text-sm text-text-secondary">Intelligent PDF Reading</span>
+            <div className="relative">
+              <BookOpen className="h-8 w-8 text-brand-primary" />
+              <Sparkles className="h-4 w-4 text-brand-secondary absolute -top-1 -right-1" />
+            </div>
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">DocuSense</h1>
+            <span className="text-sm text-text-secondary hidden sm:inline">Intelligent PDF Reading</span>
           </div>
-          <Button
-            onClick={() => navigate('/library')}
-            variant="outline"
-            className="flex items-center gap-2 hover:bg-brand-primary/10 hover:text-brand-primary hover:border-brand-primary/30"
-          >
-            <Library className="h-4 w-4" />
-            My Library
-          </Button>
+          <div className="flex items-center gap-2">
+            <ThemeToggle />
+            <Button
+              onClick={() => navigate('/library')}
+              variant="outline"
+              className="flex items-center gap-2 hover:bg-brand-primary/10 hover:text-brand-primary hover:border-brand-primary/30 transition-all"
+            >
+              <Library className="h-4 w-4" />
+              <span className="hidden sm:inline">My Library</span>
+            </Button>
+          </div>
         </div>
       </header>
 
-          {/* Hero Section */}
+      {/* Hero Section */}
       <main className="flex-1 flex flex-col items-center justify-center p-6">
         <div className="max-w-5xl mx-auto text-center space-y-12 animate-fade-in">
           <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-primary/10 text-brand-primary text-sm font-medium border border-brand-primary/20">
-              <div className="w-2 h-2 bg-brand-primary rounded-full animate-pulse"></div>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-brand-primary/10 to-brand-secondary/10 text-brand-primary text-sm font-medium border border-brand-primary/20 backdrop-blur-sm">
+              <div className="w-2 h-2 bg-gradient-to-r from-brand-primary to-brand-secondary rounded-full animate-pulse"></div>
               AI-Powered Reading Assistant
             </div>
             <h2 className="text-5xl md:text-7xl font-bold text-text-primary leading-[1.05] tracking-tight">
               Transform PDFs into
-              <span className="text-transparent bg-gradient-primary bg-clip-text block mt-2">intelligent reading</span>
+              <span className="text-transparent bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text block mt-2">intelligent reading</span>
               experiences
             </h2>
             <p className="text-xl md:text-2xl text-text-secondary max-w-4xl mx-auto leading-relaxed font-light">
@@ -150,206 +159,232 @@ export function LandingPage({ onStart }: LandingPageProps) {
             </div>
           </div>
 
-          {/* Upload Zone */}
-          <Card id="upload-section" className="max-w-4xl mx-auto shadow-xl border-0 bg-surface-elevated/80 backdrop-blur-md">
-            <CardHeader className="pb-8 text-center">
-              <CardTitle className="text-3xl font-bold">Get Started</CardTitle>
-              <CardDescription className="text-lg text-text-secondary">
-                Upload your PDFs and personalize your reading experience
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* File Upload */}
-              <div
-                className={`
-                  border-2 border-dashed rounded-lg p-8 text-center transition-all duration-300 relative
-                  ${dragActive 
-                    ? 'border-brand-primary bg-surface-hover' 
-                    : 'border-border-subtle hover:border-brand-primary/50'
-                  }
-                `}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setDragActive(true);
-                }}
-                onDragLeave={() => setDragActive(false)}
-                onDrop={handleDrop}
-              >
-                <input
-                  type="file"
-                  accept=".pdf"
-                  multiple
-                  onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
-                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
-                />
-                <div className="relative z-20 pointer-events-none">
-                  <Upload className="h-12 w-12 text-text-tertiary mx-auto mb-4" />
-                  <div className="space-y-2">
-                    <p className="text-text-primary font-medium">
-                      Drop your PDFs here or click to browse
-                    </p>
-                    <p className="text-sm text-text-secondary">
-                      Supports multiple files • Max 10MB per file
-                    </p>
-                  </div>
-                </div>
-                
-                {selectedFiles.length > 0 && (
-                  <div className="mt-4 space-y-2 relative z-20 pointer-events-none">
-                    <p className="text-sm font-medium text-text-primary">
-                      {selectedFiles.length} file{selectedFiles.length > 1 ? 's' : ''} selected:
-                    </p>
-                    {selectedFiles.map((file, index) => (
-                      <div key={index} className="text-sm text-text-secondary bg-surface-elevated rounded px-3 py-1">
-                        {file.name}
+          {/* Upload Section */}
+          <div id="upload-section" className="space-y-8">
+            <Card className="p-8 bg-surface-elevated/80 backdrop-blur-xl border-border-subtle shadow-2xl">
+              <CardHeader className="space-y-3">
+                <CardTitle className="text-3xl font-bold bg-gradient-to-r from-brand-primary to-brand-secondary bg-clip-text text-transparent">
+                  Start Your Intelligent Reading Journey
+                </CardTitle>
+                <CardDescription className="text-lg text-text-secondary">
+                  Upload PDFs and let AI enhance your reading experience
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {/* File Upload */}
+                <div 
+                  className={`border-2 border-dashed rounded-xl p-8 text-center transition-all ${
+                    dragActive ? 'border-brand-primary bg-brand-primary/5' : 'border-border-subtle hover:border-brand-primary/50'
+                  }`}
+                  onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
+                  onDragLeave={() => setDragActive(false)}
+                  onDrop={handleDrop}
+                >
+                  <input
+                    type="file"
+                    id="file-upload"
+                    className="hidden"
+                    multiple
+                    accept=".pdf"
+                    onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
+                  />
+                  <label htmlFor="file-upload" className="cursor-pointer">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="h-16 w-16 bg-gradient-to-br from-brand-primary/10 to-brand-secondary/10 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Upload className="h-8 w-8 text-brand-primary" />
                       </div>
-                    ))}
+                      <div>
+                        <p className="text-lg font-medium text-text-primary">
+                          Drop PDFs here or click to browse
+                        </p>
+                        <p className="text-sm text-text-secondary mt-1">
+                          Support for multiple files • Max 50MB per file
+                        </p>
+                      </div>
+                    </div>
+                  </label>
+                </div>
+
+                {/* Selected Files */}
+                {selectedFiles.length > 0 && (
+                  <div className="space-y-2">
+                    <Label className="text-text-secondary">Selected Files ({selectedFiles.length})</Label>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedFiles.map((file, index) => (
+                        <div key={index} className="px-3 py-1.5 bg-surface-hover rounded-lg text-sm text-text-primary flex items-center gap-2">
+                          <BookOpen className="h-3.5 w-3.5 text-brand-primary" />
+                          {file.name}
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
-              </div>
 
-              {/* Persona & Job Input */}
-              <div className="grid md:grid-cols-2 gap-4">
+                {/* Persona Input */}
                 <div className="space-y-2">
-                  <Label htmlFor="persona">Your Role/Persona</Label>
+                  <Label htmlFor="persona" className="text-text-primary font-medium">
+                    Your Role <span className="text-text-tertiary">(e.g., Student, Researcher, Professional)</span>
+                  </Label>
                   <Input
                     id="persona"
-                    placeholder="e.g., Researcher, Student, Analyst"
+                    placeholder="I am a..."
                     value={persona}
                     onChange={(e) => setPersona(e.target.value)}
+                    className="bg-background/50 border-border-subtle focus:border-brand-primary transition-colors"
                   />
                 </div>
+
+                {/* Job to be Done Input */}
                 <div className="space-y-2">
-                  <Label htmlFor="job">Your Goal</Label>
+                  <Label htmlFor="job" className="text-text-primary font-medium">
+                    What You Want to Accomplish
+                  </Label>
                   <Input
                     id="job"
-                    placeholder="e.g., Exam prep, Market research"
+                    placeholder="I want to..."
                     value={jobToBeDone}
                     onChange={(e) => setJobToBeDone(e.target.value)}
+                    className="bg-background/50 border-border-subtle focus:border-brand-primary transition-colors"
                   />
                 </div>
-              </div>
 
-              <Button 
-                onClick={handleStart}
-                disabled={selectedFiles.length === 0 || isUploading}
-                size="lg"
-                className="w-full gap-3 h-16 text-xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-primary hover:bg-gradient-primary/90"
+                {/* Start Button - Fixed visibility */}
+                <Button 
+                  onClick={handleStart}
+                  disabled={selectedFiles.length === 0 || isUploading}
+                  size="lg"
+                  className="w-full gap-3 h-16 text-xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-to-r from-brand-primary to-brand-secondary hover:opacity-90 text-white disabled:opacity-50"
+                >
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="h-7 w-7 animate-spin" />
+                      Processing PDFs...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-7 w-7" />
+                      Start Intelligent Analysis
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Feature Cards - Enhanced Design */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Card 
+                className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-elevated/70 backdrop-blur-md cursor-pointer hover:scale-105 overflow-hidden relative"
+                onClick={() => handleFeatureClick('ai-insights')}
               >
-                {isUploading ? (
-                  <>
-                    <Loader2 className="h-7 w-7 animate-spin" />
-                    Processing PDFs...
-                  </>
-                ) : (
-                  <>
-                    <BookOpen className="h-7 w-7" />
-                    Start Intelligent Reading
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-brand-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <CardContent className="p-10 space-y-6 relative">
+                  <div className="h-20 w-20 bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                    <Brain className="h-10 w-10 text-brand-primary" />
+                  </div>
+                  <h3 className="font-bold text-xl text-text-primary">AI Insights</h3>
+                  <p className="text-text-secondary leading-relaxed">Get intelligent summaries and key takeaways instantly</p>
+                  <div className="text-xs text-brand-primary font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                    Click to learn more 
+                    <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                  </div>
+                </CardContent>
+              </Card>
 
-          {/* Features Grid */}
-          <div className="mt-20">
-            <div className="text-center mb-12">
-              <h3 className="text-3xl font-bold text-text-primary mb-4">Powerful Features</h3>
-              <p className="text-lg text-text-secondary max-w-2xl mx-auto">
-                Experience the future of document reading with our AI-powered tools
-              </p>
+              <Card 
+                className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-elevated/70 backdrop-blur-md cursor-pointer hover:scale-105 overflow-hidden relative"
+                onClick={() => handleFeatureClick('podcast')}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-brand-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <CardContent className="p-10 space-y-6 relative">
+                  <div className="h-20 w-20 bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                    <Mic className="h-10 w-10 text-brand-primary" />
+                  </div>
+                  <h3 className="font-bold text-xl text-text-primary">Podcast Mode</h3>
+                  <p className="text-text-secondary leading-relaxed">Listen to your documents as engaging audio summaries</p>
+                  <div className="text-xs text-brand-primary font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                    Click to learn more 
+                    <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-elevated/70 backdrop-blur-md cursor-pointer hover:scale-105 overflow-hidden relative"
+                onClick={() => handleFeatureClick('accessibility')}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-brand-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <CardContent className="p-10 space-y-6 relative">
+                  <div className="h-20 w-20 bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                    <Accessibility className="h-10 w-10 text-brand-primary" />
+                  </div>
+                  <h3 className="font-bold text-xl text-text-primary">Universal Access</h3>
+                  <p className="text-text-secondary leading-relaxed">Dyslexia-friendly fonts, voice reading, and accessibility support</p>
+                  <div className="text-xs text-brand-primary font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                    Click to learn more 
+                    <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-elevated/70 backdrop-blur-md cursor-pointer hover:scale-105 overflow-hidden relative"
+                onClick={() => handleFeatureClick('highlights')}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-brand-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <CardContent className="p-10 space-y-6 relative">
+                  <div className="h-20 w-20 bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                    <Eye className="h-10 w-10 text-brand-primary" />
+                  </div>
+                  <h3 className="font-bold text-xl text-text-primary">Smart Highlights</h3>
+                  <p className="text-text-secondary leading-relaxed">Automatically highlight content relevant to your role</p>
+                  <div className="text-xs text-brand-primary font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                    Click to learn more 
+                    <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-elevated/70 backdrop-blur-md cursor-pointer hover:scale-105 overflow-hidden relative"
+                onClick={() => handleFeatureClick('progress')}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-brand-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <CardContent className="p-10 space-y-6 relative">
+                  <div className="h-20 w-20 bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                    <Clock className="h-10 w-10 text-brand-primary" />
+                  </div>
+                  <h3 className="font-bold text-xl text-text-primary">Reading Progress</h3>
+                  <p className="text-text-secondary leading-relaxed">Track your progress with intelligent time estimates</p>
+                  <div className="text-xs text-brand-primary font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                    Click to learn more 
+                    <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card 
+                className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-elevated/70 backdrop-blur-md cursor-pointer hover:scale-105 overflow-hidden relative"
+                onClick={() => handleFeatureClick('themes')}
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-brand-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                <CardContent className="p-10 space-y-6 relative">
+                  <div className="h-20 w-20 bg-gradient-to-br from-brand-primary/20 to-brand-secondary/20 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
+                    <Palette className="h-10 w-10 text-brand-primary" />
+                  </div>
+                  <h3 className="font-bold text-xl text-text-primary">Adaptive Themes</h3>
+                  <p className="text-text-secondary leading-relaxed">Light, dark, and accessible themes for comfortable reading</p>
+                  <div className="text-xs text-brand-primary font-medium group-hover:translate-x-1 transition-transform inline-flex items-center gap-1">
+                    Click to learn more 
+                    <span className="group-hover:translate-x-0.5 transition-transform">→</span>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
-            <div className="grid md:grid-cols-3 gap-8">
-                {/* AI Insights */}
-                <Card 
-                  className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-surface-elevated/60 backdrop-blur-md cursor-pointer hover:bg-surface-elevated/80"
-                  onClick={() => handleFeatureClick('ai-insights')}
-                >
-                  <CardContent className="p-10 space-y-6">
-                    <div className="h-20 w-20 bg-gradient-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <Brain className="h-10 w-10 text-brand-primary" />
-                    </div>
-                    <h3 className="font-bold text-xl text-text-primary">AI Insights</h3>
-                    <p className="text-text-secondary leading-relaxed">Get comprehensive insights with web research, persona analysis, and keyword extraction</p>
-                    <div className="text-xs text-brand-primary font-medium">Click to learn more →</div>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-surface-elevated/60 backdrop-blur-md cursor-pointer hover:bg-surface-elevated/80"
-                  onClick={() => handleFeatureClick('podcast')}
-                >
-                  <CardContent className="p-10 space-y-6">
-                    <div className="h-20 w-20 bg-gradient-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <Volume2 className="h-10 w-10 text-brand-primary" />
-                    </div>
-                    <h3 className="font-bold text-xl text-text-primary">Podcast Mode</h3>
-                    <p className="text-text-secondary leading-relaxed">Listen to AI-narrated summaries of any section</p>
-                    <div className="text-xs text-brand-primary font-medium">Click to learn more →</div>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-surface-elevated/60 backdrop-blur-md cursor-pointer hover:bg-surface-elevated/80"
-                  onClick={() => handleFeatureClick('accessibility')}
-                >
-                  <CardContent className="p-10 space-y-6">
-                    <div className="h-20 w-20 bg-gradient-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <Accessibility className="h-10 w-10 text-brand-primary" />
-                    </div>
-                    <h3 className="font-bold text-xl text-text-primary">Universal Access</h3>
-                    <p className="text-text-secondary leading-relaxed">Dyslexia-friendly fonts, voice reading, and accessibility support</p>
-                    <div className="text-xs text-brand-primary font-medium">Click to learn more →</div>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-surface-elevated/60 backdrop-blur-md cursor-pointer hover:bg-surface-elevated/80"
-                  onClick={() => handleFeatureClick('highlights')}
-                >
-                  <CardContent className="p-10 space-y-6">
-                    <div className="h-20 w-20 bg-gradient-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <Eye className="h-10 w-10 text-brand-primary" />
-                    </div>
-                    <h3 className="font-bold text-xl text-text-primary">Smart Highlights</h3>
-                    <p className="text-text-secondary leading-relaxed">Automatically highlight content relevant to your role</p>
-                    <div className="text-xs text-brand-primary font-medium">Click to learn more →</div>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-surface-elevated/60 backdrop-blur-md cursor-pointer hover:bg-surface-elevated/80"
-                  onClick={() => handleFeatureClick('progress')}
-                >
-                  <CardContent className="p-10 space-y-6">
-                    <div className="h-20 w-20 bg-gradient-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <Clock className="h-10 w-10 text-brand-primary" />
-                    </div>
-                    <h3 className="font-bold text-xl text-text-primary">Reading Progress</h3>
-                    <p className="text-text-secondary leading-relaxed">Track your progress with intelligent time estimates</p>
-                    <div className="text-xs text-brand-primary font-medium">Click to learn more →</div>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-surface-elevated/60 backdrop-blur-md cursor-pointer hover:bg-surface-elevated/80"
-                  onClick={() => handleFeatureClick('themes')}
-                >
-                  <CardContent className="p-10 space-y-6">
-                    <div className="h-20 w-20 bg-gradient-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <Palette className="h-10 w-10 text-brand-primary" />
-                    </div>
-                    <h3 className="font-bold text-xl text-text-primary">Adaptive Themes</h3>
-                    <p className="text-text-secondary leading-relaxed">Light, dark, and accessible themes for comfortable reading</p>
-                    <div className="text-xs text-brand-primary font-medium">Click to learn more →</div>
-                  </CardContent>
-                </Card>
-              </div>
           </div>
         </div>
       </main>
 
-      {/* Feature Demo Modal */}
+      {/* Feature Demo Modal - Keep existing */}
       {showFeatureDemo && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
           <div className="bg-surface-elevated border border-border-subtle rounded-2xl p-8 max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
@@ -486,7 +521,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
       )}
 
       {/* Footer */}
-      <footer className="p-6 border-t border-border-subtle bg-surface-elevated/50">
+      <footer className="p-6 border-t border-border-subtle bg-surface-elevated/50 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto text-center text-sm text-text-secondary">
           <p>Built for intelligent reading • Powered by AI • Accessible by design</p>
         </div>

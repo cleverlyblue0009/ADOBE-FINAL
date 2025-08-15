@@ -8,14 +8,20 @@ import {
   DropdownMenuSeparator,
   DropdownMenuLabel
 } from '@/components/ui/dropdown-menu';
-import { Sun, Moon, Monitor, Palette } from 'lucide-react';
+import { Sun, Moon, Monitor, Palette, Coffee, Waves } from 'lucide-react';
 
 type Theme = 'light' | 'dark' | 'system';
-type ColorScheme = 'default' | 'ocean' | 'forest';
+type ColorScheme = 'default' | 'ocean' | 'beige' | 'warm';
 
 export function ThemeToggle() {
-  const [theme, setTheme] = useState<Theme>('system');
-  const [colorScheme, setColorScheme] = useState<ColorScheme>('default');
+  const [theme, setTheme] = useState<Theme>(() => {
+    const saved = localStorage.getItem('theme') as Theme;
+    return saved || 'system';
+  });
+  const [colorScheme, setColorScheme] = useState<ColorScheme>(() => {
+    const saved = localStorage.getItem('colorScheme') as ColorScheme;
+    return saved || 'default';
+  });
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -28,10 +34,14 @@ export function ThemeToggle() {
     }
 
     // Apply color scheme
-    root.classList.remove('theme-ocean', 'theme-forest');
+    root.classList.remove('theme-ocean', 'theme-beige', 'theme-warm');
     if (colorScheme !== 'default') {
       root.classList.add(`theme-${colorScheme}`);
     }
+
+    // Save preferences
+    localStorage.setItem('theme', theme);
+    localStorage.setItem('colorScheme', colorScheme);
   }, [theme, colorScheme]);
 
   const themeOptions = [
@@ -41,9 +51,10 @@ export function ThemeToggle() {
   ];
 
   const colorSchemeOptions = [
-    { value: 'default' as ColorScheme, label: 'Default', color: 'hsl(217, 91%, 60%)' },
-    { value: 'ocean' as ColorScheme, label: 'Ocean', color: 'hsl(200, 85%, 50%)' },
-    { value: 'forest' as ColorScheme, label: 'Forest', color: 'hsl(142, 76%, 36%)' }
+    { value: 'default' as ColorScheme, label: 'Modern Purple', color: 'linear-gradient(135deg, #8B5CF6, #6366F1)', icon: Palette },
+    { value: 'ocean' as ColorScheme, label: 'Ocean Blue', color: 'linear-gradient(135deg, #0EA5E9, #06B6D4)', icon: Waves },
+    { value: 'beige' as ColorScheme, label: 'Sepia Reading', color: 'linear-gradient(135deg, #F59E0B, #D97706)', icon: Coffee },
+    { value: 'warm' as ColorScheme, label: 'Warm Sunset', color: 'linear-gradient(135deg, #EF4444, #F97316)', icon: Sun }
   ];
 
   const currentThemeIcon = themeOptions.find(option => option.value === theme)?.icon || Monitor;
@@ -55,47 +66,60 @@ export function ThemeToggle() {
         <Button 
           variant="ghost" 
           size="sm" 
-          className="p-2"
+          className="relative p-2 hover:bg-surface-hover transition-colors"
           aria-label="Toggle theme"
         >
           <CurrentIcon className="h-4 w-4" />
+          <div 
+            className="absolute -bottom-1 -right-1 h-2.5 w-2.5 rounded-full border-2 border-background"
+            style={{ 
+              background: colorSchemeOptions.find(opt => opt.value === colorScheme)?.color 
+            }}
+          />
         </Button>
       </DropdownMenuTrigger>
       
-      <DropdownMenuContent align="end" className="w-48">
-        <DropdownMenuLabel>Appearance</DropdownMenuLabel>
+      <DropdownMenuContent align="end" className="w-56 bg-surface-elevated/95 backdrop-blur-lg border-border-subtle">
+        <DropdownMenuLabel className="text-text-secondary">Theme Mode</DropdownMenuLabel>
         
         {themeOptions.map(({ value, label, icon: Icon }) => (
           <DropdownMenuItem
             key={value}
             onClick={() => setTheme(value)}
-            className="gap-2"
+            className="gap-3 cursor-pointer hover:bg-surface-hover"
           >
-            <Icon className="h-4 w-4" />
-            {label}
+            <Icon className="h-4 w-4 text-text-secondary" />
+            <span className="flex-1">{label}</span>
             {theme === value && (
-              <div className="ml-auto h-2 w-2 bg-brand-primary rounded-full" />
+              <div className="h-2 w-2 bg-brand-primary rounded-full animate-pulse" />
             )}
           </DropdownMenuItem>
         ))}
 
-        <DropdownMenuSeparator />
+        <DropdownMenuSeparator className="bg-border-subtle" />
         
-        <DropdownMenuLabel>Color Scheme</DropdownMenuLabel>
+        <DropdownMenuLabel className="text-text-secondary">Color Scheme</DropdownMenuLabel>
         
-        {colorSchemeOptions.map(({ value, label, color }) => (
+        {colorSchemeOptions.map(({ value, label, color, icon: Icon }) => (
           <DropdownMenuItem
             key={value}
             onClick={() => setColorScheme(value)}
-            className="gap-2"
+            className="gap-3 cursor-pointer hover:bg-surface-hover"
           >
+            <div className="relative">
+              {Icon && <Icon className="h-4 w-4 text-text-secondary" />}
+              <div 
+                className="absolute inset-0 opacity-30 blur-sm"
+                style={{ background: color }}
+              />
+            </div>
+            <span className="flex-1">{label}</span>
             <div 
-              className="h-4 w-4 rounded-full border border-border-subtle"
-              style={{ backgroundColor: color }}
+              className="h-4 w-4 rounded-full border border-border-subtle shadow-sm"
+              style={{ background: color }}
             />
-            {label}
             {colorScheme === value && (
-              <div className="ml-auto h-2 w-2 bg-brand-primary rounded-full" />
+              <div className="h-2 w-2 bg-brand-primary rounded-full animate-pulse" />
             )}
           </DropdownMenuItem>
         ))}
