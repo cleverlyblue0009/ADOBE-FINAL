@@ -35,6 +35,35 @@ export function TextSelectionMenu({
 }: TextSelectionMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [adjustedPosition, setAdjustedPosition] = useState(position);
+
+  // Adjust position to keep menu in viewport
+  useEffect(() => {
+    if (position && menuRef.current) {
+      const menu = menuRef.current;
+      const rect = menu.getBoundingClientRect();
+      const viewport = {
+        width: window.innerWidth,
+        height: window.innerHeight
+      };
+
+      let { x, y } = position;
+      
+      // Adjust horizontal position
+      if (x + rect.width / 2 > viewport.width - 20) {
+        x = viewport.width - rect.width / 2 - 20;
+      } else if (x - rect.width / 2 < 20) {
+        x = rect.width / 2 + 20;
+      }
+      
+      // Adjust vertical position
+      if (y - rect.height - 20 < 20) {
+        y = y + 40; // Show below selection instead
+      }
+      
+      setAdjustedPosition({ x, y });
+    }
+  }, [position, showColorPicker]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,7 +87,7 @@ export function TextSelectionMenu({
     };
   }, [onClose]);
 
-  if (!position || !selectedText) return null;
+  if (!adjustedPosition || !selectedText) return null;
 
   const highlightColors = [
     { name: 'Yellow', value: 'yellow', color: 'bg-yellow-300' },
@@ -72,94 +101,97 @@ export function TextSelectionMenu({
       ref={menuRef}
       className="fixed z-50"
       style={{
-        left: `${position.x}px`,
-        top: `${position.y}px`,
+        left: `${adjustedPosition.x}px`,
+        top: `${adjustedPosition.y}px`,
         transform: 'translate(-50%, -100%)',
         marginTop: '-10px'
       }}
     >
-      <Card className="p-2 shadow-2xl border-0 bg-white/95 backdrop-blur-md">
-        <div className="flex flex-col gap-1">
+      <Card className="p-2 shadow-2xl border-2 border-gray-200 bg-white backdrop-blur-md animate-in fade-in-0 zoom-in-95 duration-200">
+        <div className="flex flex-col gap-1 min-w-max">
           {/* Main Actions Row */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-wrap">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowColorPicker(!showColorPicker)}
-              className="gap-2 hover:bg-yellow-50"
-              title="Highlight"
+              className="gap-2 hover:bg-yellow-50 text-yellow-700 border-yellow-200 hover:border-yellow-300"
+              title="Highlight text"
             >
-              <Highlighter className="h-4 w-4 text-yellow-600" />
-              <span className="text-xs">Highlight</span>
+              <Highlighter className="h-4 w-4" />
+              <span className="text-xs font-medium">Highlight</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
               onClick={onSimplify}
-              className="gap-2 hover:bg-blue-50"
-              title="Simplify"
+              className="gap-2 hover:bg-blue-50 text-blue-700 border-blue-200 hover:border-blue-300"
+              title="Simplify text"
             >
-              <BookOpen className="h-4 w-4 text-blue-600" />
-              <span className="text-xs">Simplify</span>
+              <BookOpen className="h-4 w-4" />
+              <span className="text-xs font-medium">Simplify</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
               onClick={onTranslate}
-              className="gap-2 hover:bg-green-50"
-              title="Translate"
+              className="gap-2 hover:bg-green-50 text-green-700 border-green-200 hover:border-green-300"
+              title="Translate text"
             >
-              <Languages className="h-4 w-4 text-green-600" />
-              <span className="text-xs">Translate</span>
+              <Languages className="h-4 w-4" />
+              <span className="text-xs font-medium">Translate</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
               onClick={onSpeak}
-              className="gap-2 hover:bg-purple-50"
-              title="Read Aloud"
+              className="gap-2 hover:bg-purple-50 text-purple-700 border-purple-200 hover:border-purple-300"
+              title="Read aloud"
             >
-              <Volume2 className="h-4 w-4 text-purple-600" />
-              <span className="text-xs">Speak</span>
+              <Volume2 className="h-4 w-4" />
+              <span className="text-xs font-medium">Speak</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
               onClick={onCopy}
-              className="gap-2 hover:bg-gray-50"
-              title="Copy"
+              className="gap-2 hover:bg-gray-50 text-gray-700 border-gray-200 hover:border-gray-300"
+              title="Copy to clipboard"
             >
-              <Copy className="h-4 w-4 text-gray-600" />
-              <span className="text-xs">Copy</span>
+              <Copy className="h-4 w-4" />
+              <span className="text-xs font-medium">Copy</span>
             </Button>
           </div>
 
           {/* Color Picker Row */}
           {showColorPicker && (
-            <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
-              <span className="text-xs text-gray-500">Color:</span>
-              {highlightColors.map((color) => (
-                <button
-                  key={color.value}
-                  onClick={() => {
-                    onHighlight(color.value as any);
-                    setShowColorPicker(false);
-                  }}
-                  className={`w-6 h-6 rounded-full ${color.color} hover:scale-110 transition-transform border-2 border-white shadow-sm`}
-                  title={color.name}
-                />
-              ))}
+            <div className="flex items-center gap-2 pt-2 border-t border-gray-200 animate-in slide-in-from-top-1 duration-200">
+              <span className="text-xs text-gray-600 font-medium">Choose color:</span>
+              <div className="flex gap-1">
+                {highlightColors.map((color) => (
+                  <button
+                    key={color.value}
+                    onClick={() => {
+                      onHighlight(color.value as any);
+                      setShowColorPicker(false);
+                    }}
+                    className={`w-7 h-7 rounded-full ${color.color} hover:scale-110 transition-all duration-200 border-2 border-white shadow-md hover:shadow-lg ring-2 ring-gray-200 hover:ring-gray-300`}
+                    title={`Highlight with ${color.name}`}
+                  />
+                ))}
+              </div>
             </div>
           )}
 
           {/* Selected Text Preview */}
           <div className="pt-2 border-t border-gray-200 max-w-xs">
-            <p className="text-xs text-gray-500 line-clamp-2">
-              "{selectedText.substring(0, 100)}{selectedText.length > 100 ? '...' : ''}"
+            <div className="text-xs text-gray-600 mb-1 font-medium">Selected text:</div>
+            <p className="text-xs text-gray-800 line-clamp-2 bg-gray-50 p-2 rounded border italic leading-relaxed">
+              "{selectedText.substring(0, 120)}{selectedText.length > 120 ? '...' : ''}"
             </p>
           </div>
         </div>
