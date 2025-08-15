@@ -211,7 +211,7 @@ export function AdobePDFViewer({
     clearSelection();
   };
 
-  // Fallback highlight overlay function
+  // Fallback highlight overlay function - Enhanced
   const addHighlightOverlay = (text: string, color: string, page: number) => {
     const selection = window.getSelection();
     if (!selection || selection.rangeCount === 0) return;
@@ -220,11 +220,56 @@ export function AdobePDFViewer({
       const range = selection.getRangeAt(0);
       const span = document.createElement('span');
       span.className = `pdf-highlight pdf-highlight-${color}`;
-      span.style.backgroundColor = color === 'yellow' ? '#FFFF0080' : 
-                                   color === 'green' ? '#00FF0080' : 
-                                   color === 'blue' ? '#0000FF80' : '#FF69B480';
-      span.style.borderRadius = '2px';
-      span.style.padding = '1px 2px';
+      
+      // Improved color mapping with better contrast and visual appeal
+      const colorMap = {
+        'yellow': {
+          bg: 'rgba(255, 235, 59, 0.35)',
+          border: '#FFC107'
+        },
+        'green': {
+          bg: 'rgba(76, 175, 80, 0.35)',
+          border: '#4CAF50'
+        },
+        'blue': {
+          bg: 'rgba(33, 150, 243, 0.35)',
+          border: '#2196F3'
+        },
+        'primary': {
+          bg: 'rgba(255, 235, 59, 0.35)',
+          border: '#FFC107'
+        },
+        'secondary': {
+          bg: 'rgba(76, 175, 80, 0.35)',
+          border: '#4CAF50'
+        },
+        'tertiary': {
+          bg: 'rgba(33, 150, 243, 0.35)',
+          border: '#2196F3'
+        }
+      };
+      
+      const colors = colorMap[color] || colorMap.yellow;
+      
+      span.style.cssText = `
+        background: linear-gradient(135deg, ${colors.bg}, ${colors.bg.replace('0.35', '0.25')});
+        border-bottom: 2px solid ${colors.border};
+        border-radius: 3px;
+        padding: 2px 4px;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      `;
+      
+      // Add hover effect
+      span.addEventListener('mouseenter', () => {
+        span.style.transform = 'translateY(-1px)';
+        span.style.boxShadow = `0 2px 6px rgba(0,0,0,0.15), 0 0 0 1px ${colors.border}40`;
+      });
+      
+      span.addEventListener('mouseleave', () => {
+        span.style.transform = 'translateY(0)';
+        span.style.boxShadow = '0 1px 3px rgba(0,0,0,0.1)';
+      });
       
       try {
         range.surroundContents(span);

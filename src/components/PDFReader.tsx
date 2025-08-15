@@ -302,168 +302,86 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
     }
   };
 
-  // Function to apply visual highlights to PDF content
+  // Debug function to log available text content
+  const debugPDFTextContent = () => {
+    console.log('=== PDF Text Content Debug ===');
+    
+    // Check different containers
+    const containers = [
+      '.adobe-dc-view',
+      'iframe',
+      '.pdf-viewer-container',
+      '#adobe-pdf-viewer',
+      '[data-adobe-dc-view]',
+      '.pdf-container'
+    ];
+    
+    containers.forEach(selector => {
+      const container = document.querySelector(selector);
+      if (container) {
+        console.log(`Found container: ${selector}`);
+        const textNodes = getAllTextNodes(container);
+        console.log(`Text nodes found: ${textNodes.length}`);
+        
+        // Log first few text nodes
+        textNodes.slice(0, 5).forEach((node, index) => {
+          const text = node.textContent?.trim() || '';
+          if (text.length > 10) {
+            console.log(`Node ${index}: "${text.substring(0, 100)}..."`);
+          }
+        });
+        
+        // Try to get all text content
+        const allText = textNodes
+          .map(node => node.textContent?.trim() || '')
+          .filter(text => text.length > 0)
+          .join(' ')
+          .substring(0, 500);
+        
+        console.log(`Combined text preview: "${allText}..."`);
+      }
+    });
+    
+    // Check iframe content specifically
+    const iframe = document.querySelector('iframe');
+    if (iframe) {
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (iframeDoc) {
+          console.log('Iframe content accessible');
+          const iframeText = iframeDoc.body?.textContent?.substring(0, 200) || '';
+          console.log(`Iframe text preview: "${iframeText}..."`);
+        }
+      } catch (e) {
+        console.log('Iframe content blocked by CORS');
+      }
+    }
+    
+    console.log('=== End Debug ===');
+  };
+
+  // Function to apply visual highlights to PDF content - Text-based highlighting
   const applyHighlightToPDF = (highlight: Highlight) => {
     try {
-      // Find the PDF viewer container
-      const pdfContainer = document.querySelector('.adobe-dc-view, iframe, .pdf-viewer-container, #adobe-pdf-viewer');
-      if (!pdfContainer) {
-        console.log('PDF container not found for highlighting');
-        return;
+      console.log('Attempting to highlight text:', highlight.text.substring(0, 50) + '...');
+      
+      // Debug: Log available PDF content (only for first few highlights to avoid spam)
+      if (highlights.length < 3) {
+        debugPDFTextContent();
       }
-
-      // Create a highlight overlay container if it doesn't exist
-      let overlayContainer = document.getElementById('pdf-highlight-overlay-container');
-      if (!overlayContainer) {
-        overlayContainer = document.createElement('div');
-        overlayContainer.id = 'pdf-highlight-overlay-container';
-        overlayContainer.style.cssText = `
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          pointer-events: none;
-          z-index: 100;
-        `;
-        
-        // If it's an iframe, create overlay next to it
-        if (pdfContainer.tagName === 'IFRAME') {
-          const parent = pdfContainer.parentElement;
-          if (parent) {
-            parent.style.position = 'relative';
-            parent.appendChild(overlayContainer);
-          }
-        } else {
-          pdfContainer.appendChild(overlayContainer);
-        }
-      }
-
-      // Create a highlight indicator
-      const highlightId = `highlight-overlay-${highlight.id}`;
       
-      // Remove existing highlight overlay if it exists
-      const existingHighlight = document.getElementById(highlightId);
-      if (existingHighlight) {
-        existingHighlight.remove();
-      }
-
-      // Create a visual highlight indicator
-      const highlightOverlay = document.createElement('div');
-      highlightOverlay.id = highlightId;
-      highlightOverlay.className = 'pdf-highlight-overlay';
+      // Try multiple approaches to find and highlight the text
+      const success = highlightTextInPDF(highlight.text, highlight.color, highlight.page) ||
+                     highlightTextInIframe(highlight.text, highlight.color, highlight.page) ||
+                     highlightTextInAdobeViewer(highlight.text, highlight.color, highlight.page);
       
-      // Calculate position based on page (approximate positioning)
-      const pageHeight = pdfContainer.clientHeight;
-      const estimatedPagePosition = (highlight.page - 1) * pageHeight;
-      
-      // Set color based on highlight type
-      const colorMap = {
-        'primary': 'rgba(255, 235, 59, 0.4)',
-        'secondary': 'rgba(76, 175, 80, 0.4)',
-        'tertiary': 'rgba(33, 150, 243, 0.4)'
-      };
-      
-      highlightOverlay.style.cssText = `
-        position: absolute;
-        left: 10%;
-        right: 10%;
-        top: ${estimatedPagePosition + 100}px;
-        height: 40px;
-        background: ${colorMap[highlight.color] || colorMap.primary};
-        border-left: 4px solid ${colorMap[highlight.color]?.replace('0.4', '1') || '#FFD700'};
-        border-radius: 4px;
-        pointer-events: auto;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        animation: highlightPulse 2s ease-in-out;
-      `;
-
-      // Add hover effect
-      highlightOverlay.onmouseenter = () => {
-        highlightOverlay.style.transform = 'scale(1.02)';
-        highlightOverlay.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-      };
-      
-      highlightOverlay.onmouseleave = () => {
-        highlightOverlay.style.transform = 'scale(1)';
-        highlightOverlay.style.boxShadow = 'none';
-      };
-
-      // Add click handler to show highlight details
-      highlightOverlay.onclick = () => {
-        toast({
-          title: "Highlight Details",
-          description: `${highlight.explanation}\n\nText: "${highlight.text.substring(0, 100)}..."`,
-        });
-      };
-
-      // Add tooltip
-      highlightOverlay.title = `${highlight.explanation}\nRelevance: ${Math.round(highlight.relevanceScore * 100)}%`;
-
-      overlayContainer.appendChild(highlightOverlay);
-
-      // Also create a floating indicator
-      const floatingIndicator = document.createElement('div');
-      floatingIndicator.className = 'pdf-highlight-indicator';
-      floatingIndicator.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: linear-gradient(135deg, ${colorMap[highlight.color] || '#FFD700'}, ${colorMap[highlight.color]?.replace('0.4', '0.8') || '#FFA500'});
-        color: #333;
-        padding: 12px 16px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 1000;
-        font-size: 14px;
-        font-weight: 500;
-        animation: slideInRight 0.3s ease-out;
-        max-width: 300px;
-      `;
-      floatingIndicator.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <div style="width: 8px; height: 8px; background: white; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
-          <div>
-            <div style="font-weight: 600; margin-bottom: 4px;">Highlight Added</div>
-            <div style="font-size: 12px; opacity: 0.9;">Page ${highlight.page}: ${highlight.text.substring(0, 60)}${highlight.text.length > 60 ? '...' : ''}</div>
-          </div>
-        </div>
-      `;
-
-      document.body.appendChild(floatingIndicator);
-
-      // Remove floating indicator after 4 seconds
-      setTimeout(() => {
-        floatingIndicator.style.animation = 'slideOutRight 0.3s ease-in forwards';
-        setTimeout(() => floatingIndicator.remove(), 300);
-      }, 4000);
-
-      // Add CSS animations if not already present
-      if (!document.getElementById('highlight-animations')) {
-        const style = document.createElement('style');
-        style.id = 'highlight-animations';
-        style.textContent = `
-          @keyframes highlightPulse {
-            0%, 100% { opacity: 0.4; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.02); }
-          }
-          @keyframes fadeOut {
-            to { opacity: 0; transform: scale(0.95); }
-          }
-          @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-          }
-          @keyframes slideOutRight {
-            to { transform: translateX(100%); opacity: 0; }
-          }
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-          }
-        `;
-        document.head.appendChild(style);
+      if (success) {
+        console.log('✅ Successfully found and highlighted text in PDF');
+        showHighlightNotification(highlight, true);
+      } else {
+        console.log('❌ Text not found in PDF, showing fallback notification');
+        createFallbackHighlight(highlight);
+        showHighlightNotification(highlight, false);
       }
 
     } catch (error) {
@@ -474,6 +392,296 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
         description: `Added highlight on page ${highlight.page}: "${highlight.text.substring(0, 50)}..."`,
       });
     }
+  };
+
+  // Method 1: Search and highlight text in standard PDF viewers
+  const highlightTextInPDF = (searchText: string, color: string, targetPage: number): boolean => {
+    try {
+      // Get all text content from the PDF viewer
+      const pdfContainer = document.querySelector('.adobe-dc-view, iframe, .pdf-viewer-container, #adobe-pdf-viewer');
+      if (!pdfContainer) return false;
+
+      // Search for text in the current page content
+      const textNodes = getAllTextNodes(pdfContainer);
+      const found = searchAndHighlightInNodes(textNodes, searchText, color);
+      
+      return found;
+    } catch (error) {
+      console.log('highlightTextInPDF failed:', error);
+      return false;
+    }
+  };
+
+  // Method 2: Search in iframe content
+  const highlightTextInIframe = (searchText: string, color: string, targetPage: number): boolean => {
+    try {
+      const iframe = document.querySelector('iframe');
+      if (!iframe) return false;
+
+      // Try to access iframe content (may fail due to CORS)
+      try {
+        const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+        if (!iframeDoc) return false;
+
+        const textNodes = getAllTextNodes(iframeDoc.body);
+        return searchAndHighlightInNodes(textNodes, searchText, color);
+      } catch (corsError) {
+        console.log('Cannot access iframe content due to CORS:', corsError);
+        return false;
+      }
+    } catch (error) {
+      console.log('highlightTextInIframe failed:', error);
+      return false;
+    }
+  };
+
+  // Method 3: Use Adobe PDF API if available
+  const highlightTextInAdobeViewer = (searchText: string, color: string, targetPage: number): boolean => {
+    try {
+      // Check if Adobe DC API is available
+      if (typeof window !== 'undefined' && window.AdobeDC) {
+        // This would require Adobe PDF Services API
+        // For now, return false as we need to implement Adobe-specific search
+        console.log('Adobe DC API available but search not implemented');
+        return false;
+      }
+      return false;
+    } catch (error) {
+      console.log('highlightTextInAdobeViewer failed:', error);
+      return false;
+    }
+  };
+
+  // Helper function to get all text nodes from an element
+  const getAllTextNodes = (element: Element | Document): Text[] => {
+    const textNodes: Text[] = [];
+    const walker = document.createTreeWalker(
+      element,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (node) => {
+          // Skip empty text nodes and those in script/style tags
+          if (!node.textContent?.trim()) return NodeFilter.FILTER_REJECT;
+          const parent = node.parentElement;
+          if (parent && ['SCRIPT', 'STYLE', 'NOSCRIPT'].includes(parent.tagName)) {
+            return NodeFilter.FILTER_REJECT;
+          }
+          return NodeFilter.FILTER_ACCEPT;
+        }
+      }
+    );
+
+    let node;
+    while (node = walker.nextNode()) {
+      textNodes.push(node as Text);
+    }
+    return textNodes;
+  };
+
+  // Search for text in nodes and highlight matches
+  const searchAndHighlightInNodes = (textNodes: Text[], searchText: string, color: string): boolean => {
+    const cleanSearchText = searchText.trim().toLowerCase();
+    let found = false;
+
+    // Try exact match first
+    found = findAndHighlightExactMatch(textNodes, searchText, color) || found;
+    
+    // If not found, try partial matches (useful for text that spans multiple nodes)
+    if (!found) {
+      found = findAndHighlightPartialMatch(textNodes, searchText, color) || found;
+    }
+
+    // If still not found, try fuzzy matching
+    if (!found) {
+      found = findAndHighlightFuzzyMatch(textNodes, searchText, color) || found;
+    }
+
+    return found;
+  };
+
+  // Find exact text match
+  const findAndHighlightExactMatch = (textNodes: Text[], searchText: string, color: string): boolean => {
+    const cleanSearchText = searchText.trim();
+    let found = false;
+
+    for (const node of textNodes) {
+      const text = node.textContent || '';
+      const index = text.toLowerCase().indexOf(cleanSearchText.toLowerCase());
+      
+      if (index !== -1) {
+        highlightTextInNode(node, index, cleanSearchText.length, color);
+        found = true;
+      }
+    }
+    return found;
+  };
+
+  // Find partial matches across multiple nodes
+  const findAndHighlightPartialMatch = (textNodes: Text[], searchText: string, color: string): boolean => {
+    // This is more complex - would need to reconstruct text across nodes
+    // For now, try to find the first few words
+    const words = searchText.trim().split(/\s+/);
+    if (words.length < 2) return false;
+
+    const firstWords = words.slice(0, Math.min(3, words.length)).join(' ');
+    return findAndHighlightExactMatch(textNodes, firstWords, color);
+  };
+
+  // Find fuzzy matches (similar text)
+  const findAndHighlightFuzzyMatch = (textNodes: Text[], searchText: string, color: string): boolean => {
+    // Simple fuzzy matching - look for text with similar length and some common words
+    const searchWords = searchText.toLowerCase().split(/\s+/).filter(w => w.length > 3);
+    if (searchWords.length === 0) return false;
+
+    for (const node of textNodes) {
+      const text = (node.textContent || '').toLowerCase();
+      const textWords = text.split(/\s+/);
+      
+      // If at least 50% of significant words match, consider it a match
+      const matchingWords = searchWords.filter(word => text.includes(word));
+      if (matchingWords.length >= Math.ceil(searchWords.length * 0.5)) {
+        // Highlight the entire text node content
+        highlightTextInNode(node, 0, text.length, color);
+        return true;
+      }
+    }
+    return false;
+  };
+
+  // Apply highlight to specific text within a node
+  const highlightTextInNode = (textNode: Text, startIndex: number, length: number, color: string) => {
+    try {
+      const parent = textNode.parentElement;
+      if (!parent) return;
+
+      // Create range for the text to highlight
+      const range = document.createRange();
+      range.setStart(textNode, startIndex);
+      range.setEnd(textNode, Math.min(startIndex + length, textNode.textContent?.length || 0));
+
+      // Create highlight span
+      const highlightSpan = document.createElement('span');
+      highlightSpan.className = `pdf-text-highlight pdf-highlight-${color}`;
+      
+      // Color mapping
+      const colorMap = {
+        'primary': {
+          bg: 'rgba(255, 235, 59, 0.4)',
+          border: '#FFC107'
+        },
+        'secondary': {
+          bg: 'rgba(76, 175, 80, 0.4)',
+          border: '#4CAF50'
+        },
+        'tertiary': {
+          bg: 'rgba(33, 150, 243, 0.4)',
+          border: '#2196F3'
+        }
+      };
+      
+      const colors = colorMap[color as keyof typeof colorMap] || colorMap.primary;
+      
+      highlightSpan.style.cssText = `
+        background: linear-gradient(135deg, ${colors.bg}, ${colors.bg.replace('0.4', '0.3')});
+        border-bottom: 2px solid ${colors.border};
+        border-radius: 2px;
+        padding: 1px 2px;
+        transition: all 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      `;
+
+      // Wrap the text in the highlight span
+      try {
+        range.surroundContents(highlightSpan);
+      } catch (e) {
+        // If surrounding fails, extract and wrap
+        const contents = range.extractContents();
+        highlightSpan.appendChild(contents);
+        range.insertNode(highlightSpan);
+      }
+
+      console.log('Successfully highlighted text in PDF');
+    } catch (error) {
+      console.error('Failed to highlight text in node:', error);
+    }
+  };
+
+  // Fallback highlight for when text can't be found
+  const createFallbackHighlight = (highlight: Highlight) => {
+    // Create a subtle indicator that shows the text wasn't found in the PDF
+    const indicator = document.createElement('div');
+    indicator.style.cssText = `
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      background: rgba(255, 152, 0, 0.9);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      z-index: 1000;
+      font-size: 13px;
+      max-width: 300px;
+      animation: slideInRight 0.3s ease-out;
+    `;
+    indicator.innerHTML = `
+      <div style="font-weight: 600; margin-bottom: 4px;">⚠️ Text Not Found</div>
+      <div style="font-size: 12px; opacity: 0.9;">
+        Could not locate this text in the PDF viewer:<br>
+        "${highlight.text.substring(0, 60)}..."
+      </div>
+    `;
+    
+    document.body.appendChild(indicator);
+    setTimeout(() => indicator.remove(), 5000);
+  };
+
+  // Show highlight notification
+  const showHighlightNotification = (highlight: Highlight, success: boolean) => {
+    const colorMap = {
+      'primary': '#FFC107',
+      'secondary': '#4CAF50', 
+      'tertiary': '#2196F3'
+    };
+    
+    const color = colorMap[highlight.color];
+    
+    const notification = document.createElement('div');
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, ${color}, ${color}dd);
+      color: white;
+      padding: 16px 20px;
+      border-radius: 12px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+      z-index: 1000;
+      font-size: 14px;
+      animation: slideInRight 0.5s ease-out;
+      max-width: 350px;
+    `;
+    
+    notification.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <div style="font-size: 18px;">${success ? '✅' : '📍'}</div>
+        <div>
+          <div style="font-weight: 600; margin-bottom: 4px;">
+            ${success ? 'Text Highlighted' : 'Highlight Added'}
+          </div>
+          <div style="font-size: 13px; opacity: 0.95;">
+            Page ${highlight.page} • ${Math.round(highlight.relevanceScore * 100)}% relevance<br>
+            "${highlight.text.substring(0, 60)}${highlight.text.length > 60 ? '...' : ''}"
+          </div>
+        </div>
+      </div>
+    `;
+    
+    document.body.appendChild(notification);
+    setTimeout(() => {
+      notification.style.animation = 'slideOutRight 0.4s ease-in forwards';
+      setTimeout(() => notification.remove(), 400);
+    }, 4000);
   };
 
   const handleOutlineClick = (item: OutlineItem) => {

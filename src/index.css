@@ -50,17 +50,64 @@
     background-color: var(--pdf-bg-color) !important;
   }
 
-  /* PDF Highlight Colors */
+  /* PDF Highlight Colors - Enhanced */
   .pdf-highlight-primary {
     background-color: var(--pdf-highlight-primary) !important;
+    border-left: 3px solid var(--highlight-primary-border) !important;
   }
 
   .pdf-highlight-secondary {
     background-color: var(--pdf-highlight-secondary) !important;
+    border-left: 3px solid var(--highlight-secondary-border) !important;
   }
 
   .pdf-highlight-tertiary {
     background-color: var(--pdf-highlight-tertiary) !important;
+    border-left: 3px solid var(--highlight-tertiary-border) !important;
+  }
+
+  /* PDF Highlight Overlay Improvements */
+  .pdf-highlight-overlay {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    backdrop-filter: blur(1px) !important;
+    will-change: transform, box-shadow !important;
+  }
+
+  .pdf-highlight-overlay:hover {
+    z-index: 110 !important;
+  }
+
+  /* Floating highlight indicators */
+  .pdf-highlight-indicator {
+    backdrop-filter: blur(10px) !important;
+    -webkit-backdrop-filter: blur(10px) !important;
+  }
+
+  /* Text-based highlights */
+  .pdf-text-highlight {
+    transition: all 0.2s ease !important;
+    cursor: pointer !important;
+  }
+
+  .pdf-text-highlight:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.15) !important;
+  }
+
+  /* Specific text highlight colors */
+  .pdf-text-highlight.pdf-highlight-primary {
+    background: linear-gradient(135deg, rgba(255, 235, 59, 0.4), rgba(255, 235, 59, 0.3)) !important;
+    border-bottom: 2px solid #FFC107 !important;
+  }
+
+  .pdf-text-highlight.pdf-highlight-secondary {
+    background: linear-gradient(135deg, rgba(76, 175, 80, 0.4), rgba(76, 175, 80, 0.3)) !important;
+    border-bottom: 2px solid #4CAF50 !important;
+  }
+
+  .pdf-text-highlight.pdf-highlight-tertiary {
+    background: linear-gradient(135deg, rgba(33, 150, 243, 0.4), rgba(33, 150, 243, 0.3)) !important;
+    border-bottom: 2px solid #2196F3 !important;
   }
 
   /* Adobe PDF Embed API specific selectors */
@@ -100,6 +147,9 @@
     --highlight-primary: 45 100% 85%;    /* Yellow highlight */
     --highlight-secondary: 142 76% 85%;  /* Green highlight */
     --highlight-tertiary: 217 91% 85%;   /* Blue highlight */
+    --highlight-primary-border: 45 100% 60%;    /* Yellow border */
+    --highlight-secondary-border: 142 76% 50%;  /* Green border */
+    --highlight-tertiary-border: 217 91% 60%;   /* Blue border */
     
     /* Accessibility Colors */
     --focus-ring: 217 91% 60%;           /* Focus indicators */
@@ -204,6 +254,9 @@
     --highlight-primary: 45 100% 75%;    /* Dimmer yellow highlight */
     --highlight-secondary: 142 76% 75%;  /* Dimmer green highlight */
     --highlight-tertiary: 217 91% 75%;   /* Dimmer blue highlight */
+    --highlight-primary-border: 45 100% 65%;    /* Yellow border for dark mode */
+    --highlight-secondary-border: 142 76% 60%;  /* Green border for dark mode */
+    --highlight-tertiary-border: 217 91% 70%;   /* Blue border for dark mode */
     
     /* Text Hierarchy - Dark Mode */
     --text-primary: 220 13% 92%;         /* Main text */
