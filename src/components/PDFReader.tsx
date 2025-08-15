@@ -171,31 +171,39 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
           generateIntelligenceHighlights();
         }, 1000); // Small delay to ensure everything is loaded
       } else {
-        // Add some sample highlights to demonstrate the feature
+        // Add sample highlights that match the actual PDF content
         const sampleHighlights: Highlight[] = [
           {
             id: 'sample-1',
-            text: 'This is an important concept that relates to the main topic of the document.',
+            text: 'machine learning algorithms achieve 94% accuracy in diagnostic imaging applications',
             page: 1,
             color: 'primary',
             relevanceScore: 0.95,
-            explanation: 'Key concept relevant to your analysis'
+            explanation: 'Key performance metric demonstrating AI effectiveness in healthcare'
           },
           {
             id: 'sample-2', 
-            text: 'Supporting evidence and data that reinforces the primary arguments.',
-            page: 2,
+            text: 'data privacy concerns and regulatory compliance requirements',
+            page: 1,
             color: 'secondary',
             relevanceScore: 0.87,
-            explanation: 'Supporting evidence for main thesis'
+            explanation: 'Critical challenges for AI implementation in healthcare'
           },
           {
             id: 'sample-3',
-            text: 'Critical analysis point that requires further consideration.',
-            page: 3,
+            text: 'Integration with existing EHR systems requires standardized protocols',
+            page: 2,
             color: 'tertiary',
             relevanceScore: 0.82,
-            explanation: 'Requires deeper analysis for your job role'
+            explanation: 'Technical requirement for successful AI deployment'
+          },
+          {
+            id: 'sample-4',
+            text: 'three primary areas: diagnostic imaging, predictive analytics, and personalized medicine',
+            page: 2,
+            color: 'primary',
+            relevanceScore: 0.88,
+            explanation: 'Core research areas in healthcare AI implementation'
           }
         ];
         
@@ -938,10 +946,34 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                     highlights={highlights}
                     onHighlightClick={(highlight) => {
                       setCurrentPage(highlight.page);
-                      // Apply visual highlight to PDF
+                      
+                      // Scroll to the actual highlighted text in the PDF
                       setTimeout(() => {
-                        applyHighlightToPDF(highlight);
-                      }, 500); // Small delay to ensure page navigation completes
+                        const pdfCanvas = document.querySelector('.pdf-canvas');
+                        if (!pdfCanvas) return;
+
+                        // Find the highlighted span with matching text
+                        const spans = pdfCanvas.querySelectorAll('.highlight-primary, .highlight-secondary, .highlight-tertiary');
+                        for (const span of spans) {
+                          if (span.textContent === highlight.text) {
+                            span.scrollIntoView({ 
+                              behavior: 'smooth', 
+                              block: 'center' 
+                            });
+                            
+                            // Add a temporary pulse animation
+                            const originalAnimation = (span as HTMLElement).style.animation;
+                            (span as HTMLElement).style.animation = 'highlightPulse 2s ease-in-out';
+                            
+                            setTimeout(() => {
+                              (span as HTMLElement).style.animation = originalAnimation;
+                            }, 2000);
+                            
+                            break;
+                          }
+                        }
+                      }, 300); // Small delay to ensure page navigation completes
+                      
                       toast({
                         title: "Navigated to Highlight",
                         description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
