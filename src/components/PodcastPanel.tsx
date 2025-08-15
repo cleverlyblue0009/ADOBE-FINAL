@@ -112,15 +112,19 @@ export function PodcastPanel({
       
       // Fallback: Create a mock podcast with browser text-to-speech
       try {
-        const fallbackScript = `Welcome to your AI-generated podcast summary. 
-        
-        Based on your current reading: ${currentText?.slice(0, 200)}...
-        
-        Here are the key insights: ${insights.slice(0, 2).join('. ')}
-        
-        Related sections include: ${relatedSections.slice(0, 2).join(', ')}
-        
-        This completes your personalized podcast summary.`;
+        const fallbackScript = `Welcome to your AI-generated podcast summary. I'm your AI reading companion, and today we're diving deep into some fascinating content.
+
+        Let me start by giving you the context. We're currently exploring: ${currentText?.slice(0, 300) || 'the current section of your document'}. This is particularly interesting because it connects to several key themes we've been tracking.
+
+        Now, here's what really caught my attention. ${insights.length > 0 ? insights.slice(0, 2).map((insight, i) => `First, ${insight.toLowerCase()}. ${i === 0 && insights.length > 1 ? `And secondly, ${insights[1].toLowerCase()}.` : ''}`).join(' ') : 'The content reveals some compelling insights that align with your learning objectives.'}
+
+        What makes this especially relevant is how it connects to other parts of your reading. ${relatedSections.length > 0 ? `We've seen similar themes in sections covering ${relatedSections.slice(0, 2).join(' and ')}.` : 'This builds on concepts we\'ve encountered throughout the document.'} These connections aren't just coincidental - they're part of a larger narrative that's emerging.
+
+        Let me put this in perspective for you. This isn't just information - it's actionable intelligence. The patterns we're seeing here suggest some practical implications for your work. Think about how you might apply these insights in your current role or upcoming projects.
+
+        As we wrap up this summary, remember that the real value lies not just in understanding these individual points, but in seeing how they interconnect. This is the kind of strategic thinking that separates surface-level reading from deep comprehension.
+
+        That's your personalized podcast summary for this section. Keep reading, keep connecting the dots, and I'll be here to help you make sense of it all.`;
         
         setPodcastScript(fallbackScript);
         
