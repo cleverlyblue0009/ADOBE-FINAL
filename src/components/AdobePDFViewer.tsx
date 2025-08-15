@@ -4,6 +4,8 @@ import { Loader2, Copy } from 'lucide-react';
 import { TextSelectionMenu } from './TextSelectionMenu';
 import { useToast } from '@/hooks/use-toast';
 import { apiService } from '@/lib/api';
+import { pdfHighlighter } from '@/lib/pdfHighlighter';
+import { Highlight } from './PDFReader';
 
 declare global {
   interface Window {
@@ -17,6 +19,8 @@ interface AdobePDFViewerProps {
   onPageChange?: (page: number) => void;
   onTextSelection?: (text: string, page: number) => void;
   clientId?: string;
+  highlights?: Highlight[];
+  currentHighlightPage?: number;
 }
 
 export function AdobePDFViewer({ 
@@ -24,7 +28,9 @@ export function AdobePDFViewer({
   documentName, 
   onPageChange, 
   onTextSelection,
-  clientId 
+  clientId,
+  highlights = [],
+  currentHighlightPage = 1
 }: AdobePDFViewerProps) {
   const viewerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -146,6 +152,21 @@ export function AdobePDFViewer({
       }
     };
   }, [currentPage, onTextSelection, selectedText]);
+
+  // Apply highlights when they change or page changes
+  useEffect(() => {
+    if (highlights.length > 0) {
+      // Add styles if not already added
+      pdfHighlighter.addHighlightStyles();
+      
+      // Apply highlights with a small delay to ensure PDF content is rendered
+      const timeoutId = setTimeout(() => {
+        pdfHighlighter.applyHighlights(highlights, currentHighlightPage || currentPage);
+      }, 500);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [highlights, currentHighlightPage, currentPage]);
 
   const handleHighlight = async (color: 'yellow' | 'green' | 'blue' | 'pink') => {
     // Store highlight in backend
@@ -544,10 +565,35 @@ export function AdobePDFViewer({
 }
 
 // Fallback PDF viewer for when Adobe API is not available
-export function FallbackPDFViewer({ documentUrl, documentName }: { documentUrl: string; documentName: string }) {
+export function FallbackPDFViewer({ 
+  documentUrl, 
+  documentName,
+  highlights = [],
+  currentPage = 1 
+}: { 
+  documentUrl: string; 
+  documentName: string;
+  highlights?: Highlight[];
+  currentPage?: number;
+}) {
   const [selectedText, setSelectedText] = useState('');
   const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
   const { toast } = useToast();
+  
+  // Apply highlights when they change or page changes
+  useEffect(() => {
+    if (highlights.length > 0) {
+      // Add styles if not already added
+      pdfHighlighter.addHighlightStyles();
+      
+      // Apply highlights with a small delay to ensure iframe content is loaded
+      const timeoutId = setTimeout(() => {
+        pdfHighlighter.applyHighlights(highlights, currentPage);
+      }, 1000);
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [highlights, currentPage]);
   
   // Handle text selection in fallback viewer
   useEffect(() => {
