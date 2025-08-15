@@ -38,7 +38,7 @@ export function AdobePDFViewer({
 
   // Handle text selection
   useEffect(() => {
-    const handleTextSelection = () => {
+    const handleTextSelection = (e: Event) => {
       const selection = window.getSelection();
       if (selection && selection.toString().trim()) {
         const text = selection.toString();
@@ -55,15 +55,29 @@ export function AdobePDFViewer({
         if (onTextSelection) {
           onTextSelection(text, currentPage);
         }
+      } else if (e.type === 'mouseup') {
+        // Clear selection if no text is selected
+        clearSelection();
+      }
+    };
+
+    // Prevent default context menu when text is selected to show custom menu
+    const preventDefaultContextMenu = (e: MouseEvent) => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim()) {
+        e.preventDefault();
+        e.stopPropagation();
       }
     };
 
     document.addEventListener('mouseup', handleTextSelection);
     document.addEventListener('touchend', handleTextSelection);
+    document.addEventListener('contextmenu', preventDefaultContextMenu);
 
     return () => {
       document.removeEventListener('mouseup', handleTextSelection);
       document.removeEventListener('touchend', handleTextSelection);
+      document.removeEventListener('contextmenu', preventDefaultContextMenu);
     };
   }, [currentPage, onTextSelection]);
 

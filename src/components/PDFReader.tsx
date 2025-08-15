@@ -64,6 +64,8 @@ import { PodcastPanel } from './PodcastPanel';
 import { HighlightPanel } from './HighlightPanel';
 import { TextSimplifier } from './TextSimplifier';
 import { CopyDownloadPanel } from './CopyDownloadPanel';
+import { ReadingAnalyticsPanel } from './ReadingAnalyticsPanel';
+import { SmartBookmarksPanel } from './SmartBookmarksPanel';
 import { apiService, RelatedSection } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -75,7 +77,9 @@ import {
   Link,
   Brain,
   Highlighter,
-  Download
+  Download,
+  BarChart3,
+  Bookmark
 } from 'lucide-react';
 
 export interface PDFDocument {
@@ -118,7 +122,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(1.0);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
-  const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | 'highlights' | null>('insights');
+  const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | 'highlights' | 'analytics' | 'bookmarks' | null>('insights');
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentInsights, setCurrentInsights] = useState<Array<{ type: string; content: string }>>([]);
   const [relatedSections, setRelatedSections] = useState<RelatedSection[]>([]);
@@ -295,6 +299,141 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
       
     } catch (error) {
       console.error('Failed to generate insights for selected text:', error);
+    }
+  };
+
+  // Function to apply visual highlights to PDF content
+  const applyHighlightToPDF = (highlight: Highlight) => {
+    try {
+      // Find and highlight text in the PDF viewer
+      const pdfContainer = document.querySelector('.pdf-viewer, iframe, canvas, .adobe-dc-view');
+      if (!pdfContainer) {
+        console.log('PDF container not found for highlighting');
+        return;
+      }
+
+      // Create a highlight overlay for the specific text
+      const highlightId = `highlight-overlay-${highlight.id}`;
+      
+      // Remove existing highlight overlay if it exists
+      const existingHighlight = document.getElementById(highlightId);
+      if (existingHighlight) {
+        existingHighlight.remove();
+      }
+
+      // Search for the text in the visible PDF content
+      const textNodes = document.evaluate(
+        "//text()[contains(., '" + highlight.text.substring(0, 50) + "')]",
+        pdfContainer,
+        null,
+        XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE,
+        null
+      );
+
+      if (textNodes.snapshotLength > 0) {
+        const textNode = textNodes.snapshotItem(0);
+        if (textNode && textNode.parentElement) {
+          // Create highlight overlay
+          const highlightOverlay = document.createElement('div');
+          highlightOverlay.id = highlightId;
+          highlightOverlay.className = 'pdf-highlight-overlay';
+          highlightOverlay.style.cssText = `
+            position: absolute;
+            background-color: rgba(255, 255, 0, 0.4);
+            border-radius: 3px;
+            z-index: 100;
+            pointer-events: none;
+            animation: highlightPulse 2s ease-in-out;
+          `;
+
+          const parentRect = textNode.parentElement.getBoundingClientRect();
+          const containerRect = pdfContainer.getBoundingClientRect();
+          
+          highlightOverlay.style.left = `${parentRect.left - containerRect.left}px`;
+          highlightOverlay.style.top = `${parentRect.top - containerRect.top}px`;
+          highlightOverlay.style.width = `${parentRect.width}px`;
+          highlightOverlay.style.height = `${parentRect.height}px`;
+
+          pdfContainer.appendChild(highlightOverlay);
+
+          // Remove highlight after 3 seconds
+          setTimeout(() => {
+            const overlay = document.getElementById(highlightId);
+            if (overlay) {
+              overlay.style.animation = 'fadeOut 0.5s ease-out forwards';
+              setTimeout(() => overlay.remove(), 500);
+            }
+          }, 3000);
+        }
+      } else {
+        // Fallback: Create a general page highlight indicator
+        const pageHighlight = document.createElement('div');
+        pageHighlight.id = highlightId;
+        pageHighlight.className = 'pdf-page-highlight';
+        pageHighlight.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: linear-gradient(135deg, #ffeb3b, #ffc107);
+          color: #333;
+          padding: 12px 16px;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+          z-index: 1000;
+          font-size: 14px;
+          font-weight: 500;
+          animation: slideInRight 0.3s ease-out;
+        `;
+        pageHighlight.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <div style="width: 8px; height: 8px; background: #ff9800; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
+            Highlight: ${highlight.text.substring(0, 60)}${highlight.text.length > 60 ? '...' : ''}
+          </div>
+        `;
+
+        document.body.appendChild(pageHighlight);
+
+        // Remove after 4 seconds
+        setTimeout(() => {
+          pageHighlight.style.animation = 'slideOutRight 0.3s ease-in forwards';
+          setTimeout(() => pageHighlight.remove(), 300);
+        }, 4000);
+      }
+
+      // Add CSS animations if not already present
+      if (!document.getElementById('highlight-animations')) {
+        const style = document.createElement('style');
+        style.id = 'highlight-animations';
+        style.textContent = `
+          @keyframes highlightPulse {
+            0%, 100% { opacity: 0.4; transform: scale(1); }
+            50% { opacity: 0.7; transform: scale(1.02); }
+          }
+          @keyframes fadeOut {
+            to { opacity: 0; transform: scale(0.95); }
+          }
+          @keyframes slideInRight {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+          }
+          @keyframes slideOutRight {
+            to { transform: translateX(100%); opacity: 0; }
+          }
+          @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+          }
+        `;
+        document.head.appendChild(style);
+      }
+
+    } catch (error) {
+      console.error('Failed to apply highlight to PDF:', error);
+      // Show fallback notification
+      toast({
+        title: "Highlight Located",
+        description: `Found highlight on page ${highlight.page}: "${highlight.text.substring(0, 50)}..."`,
+      });
     }
   };
 
@@ -541,12 +680,12 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
         {/* Left Sidebar - Outline & Navigation */}
         {leftSidebarOpen && (
           <aside 
-            className="bg-surface-elevated/50 border-r border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm relative"
-            style={{ width: `${leftSidebarWidth}px` }}
+            className="bg-surface-elevated/50 border-r border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm relative min-w-0"
+            style={{ width: `${leftSidebarWidth}px`, maxWidth: `${leftSidebarWidth}px` }}
           >
-            <div className="flex-1 overflow-hidden flex flex-col">
+            <div className="flex-1 overflow-hidden flex flex-col min-w-0">
               {/* Document Outline */}
-              <div className="flex-1">
+              <div className="flex-1 min-w-0 overflow-hidden">
                 <DocumentOutline
                   documents={documents}
                   currentDocument={currentDocument}
@@ -602,8 +741,8 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
 
         {/* Right Panel - Interactive Utilities */}
         {rightPanelOpen && (
-          <aside className="w-96 bg-surface-elevated/50 border-l border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm">
-            <div className="p-5 border-b border-border-subtle">
+          <aside className="w-96 max-w-96 min-w-0 bg-surface-elevated/50 border-l border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm overflow-hidden">
+            <div className="p-5 border-b border-border-subtle min-w-0">
               <div className="grid grid-cols-2 gap-2">
                 {[
                   { key: 'insights', label: 'Insights', icon: BookOpen },
@@ -613,7 +752,9 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                   { key: 'accessibility', label: 'Access', icon: Palette },
                   { key: 'simplifier', label: 'Simplify', icon: Upload },
                   { key: 'export', label: 'Export', icon: Upload },
-                  { key: 'highlights', label: 'Highlights', icon: Highlighter }
+                  { key: 'highlights', label: 'Highlights', icon: Highlighter },
+                  { key: 'analytics', label: 'Analytics', icon: BarChart3 },
+                  { key: 'bookmarks', label: 'Bookmarks', icon: Bookmark }
                 ].map(({ key, label, icon: Icon }) => (
                   <Button
                     key={key}
@@ -629,119 +770,166 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               </div>
             </div>
 
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden min-w-0">
               {activeRightPanel === 'insights' && (
-                <InsightsPanel 
-                  documentIds={documents?.map(d => d.id) || []}
-                  documentId={currentDocument?.id}
-                  persona={persona}
-                  jobToBeDone={jobToBeDone}
-                  currentText={selectedText || getCurrentSectionTitle()}
-                  onPageNavigate={setCurrentPage}
-                />
+                <div className="min-w-0 overflow-hidden h-full">
+                  <InsightsPanel 
+                    documentIds={documents?.map(d => d.id) || []}
+                    documentId={currentDocument?.id}
+                    persona={persona}
+                    jobToBeDone={jobToBeDone}
+                    currentText={selectedText || getCurrentSectionTitle()}
+                    onPageNavigate={setCurrentPage}
+                  />
+                </div>
               )}
               
               {activeRightPanel === 'strategic' && (
-                <StrategicInsightsPanel 
-                  documentId={currentDocument?.id}
-                  persona={persona}
-                  jobToBeDone={jobToBeDone}
-                  currentText={selectedText || getCurrentSectionTitle()}
-                  currentPage={currentPage}
-                  onPageNavigate={setCurrentPage}
-                />
+                <div className="min-w-0 overflow-hidden h-full">
+                  <StrategicInsightsPanel 
+                    documentId={currentDocument?.id}
+                    persona={persona}
+                    jobToBeDone={jobToBeDone}
+                    currentText={selectedText || getCurrentSectionTitle()}
+                    currentPage={currentPage}
+                    onPageNavigate={setCurrentPage}
+                  />
+                </div>
               )}
               
               {activeRightPanel === 'connections' && currentDocument && (
-                <div className="p-4 overflow-y-auto h-full">
-                  <CrossConnectionsPanel 
-                    documentId={currentDocument.id}
-                    onNavigateToDocument={(docId) => {
-                      // Find the document by ID and switch to it
-                      const targetDocument = documents.find(doc => doc.id === docId);
-                      if (targetDocument) {
-                        setCurrentDocument(targetDocument);
-                        setCurrentPage(1); // Start at the first page
-                        toast({
-                          title: "Document Switched",
-                          description: `Now viewing: ${targetDocument.title}`,
-                        });
-                      } else {
-                        toast({
-                          title: "Document Not Found",
-                          description: "The referenced document is not available in the current session.",
-                          variant: "destructive"
-                        });
-                      }
+                <div className="min-w-0 overflow-hidden h-full">
+                  <div className="p-4 overflow-y-auto h-full">
+                    <CrossConnectionsPanel 
+                      documentId={currentDocument.id}
+                      onNavigateToDocument={(docId) => {
+                        // Find the document by ID and switch to it
+                        const targetDocument = documents.find(doc => doc.id === docId);
+                        if (targetDocument) {
+                          setCurrentDocument(targetDocument);
+                          setCurrentPage(1); // Start at the first page
+                          toast({
+                            title: "Document Switched",
+                            description: `Now viewing: ${targetDocument.title}`,
+                          });
+                        } else {
+                          toast({
+                            title: "Document Not Found",
+                            description: "The referenced document is not available in the current session.",
+                            variant: "destructive"
+                          });
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {activeRightPanel === 'podcast' && (
+                <div className="min-w-0 overflow-hidden h-full">
+                  <PodcastPanel 
+                    documentId={currentDocument?.id}
+                    currentPage={currentPage}
+                    currentText={selectedText || getCurrentSectionTitle()}
+                    relatedSections={relatedSections.map(r => r.section_title)}
+                    insights={currentInsights.map(i => i.content)}
+                  />
+                </div>
+              )}
+              
+              {activeRightPanel === 'accessibility' && (
+                <div className="min-w-0 overflow-hidden h-full">
+                  <AccessibilityPanel 
+                    currentText={selectedText || getCurrentSectionTitle()}
+                    onFontSizeChange={(size) => {
+                      // Handle font size changes
+                      console.log('Font size changed to:', size);
+                    }}
+                    onDyslexiaModeChange={(enabled) => {
+                      // Handle dyslexia mode changes
+                      console.log('Dyslexia mode:', enabled);
+                    }}
+                    onColorBlindModeChange={(enabled) => {
+                      // Handle color blind mode changes
+                      console.log('Color blind mode:', enabled);
+                    }}
+                    onLanguageChange={(language) => {
+                      setCurrentLanguage(language);
+                      // Here you could add logic to translate content or change UI language
+                      console.log('Language changed to:', language);
                     }}
                   />
                 </div>
               )}
               
-              {activeRightPanel === 'podcast' && (
-                <PodcastPanel 
-                  documentId={currentDocument?.id}
-                  currentPage={currentPage}
-                  currentText={selectedText || getCurrentSectionTitle()}
-                  relatedSections={relatedSections.map(r => r.section_title)}
-                  insights={currentInsights.map(i => i.content)}
-                />
-              )}
-              
-              {activeRightPanel === 'accessibility' && (
-                <AccessibilityPanel 
-                  currentText={selectedText || getCurrentSectionTitle()}
-                  onFontSizeChange={(size) => {
-                    // Handle font size changes
-                    console.log('Font size changed to:', size);
-                  }}
-                  onDyslexiaModeChange={(enabled) => {
-                    // Handle dyslexia mode changes
-                    console.log('Dyslexia mode:', enabled);
-                  }}
-                  onColorBlindModeChange={(enabled) => {
-                    // Handle color blind mode changes
-                    console.log('Color blind mode:', enabled);
-                  }}
-                  onLanguageChange={(language) => {
-                    setCurrentLanguage(language);
-                    // Here you could add logic to translate content or change UI language
-                    console.log('Language changed to:', language);
-                  }}
-                />
-              )}
-              
               {activeRightPanel === 'simplifier' && (
-                <TextSimplifier 
-                  originalText={selectedText || getCurrentSectionTitle()}
-                  onSimplifiedText={(text) => console.log('Simplified:', text)}
-                />
+                <div className="min-w-0 overflow-hidden h-full">
+                  <TextSimplifier 
+                    originalText={selectedText || getCurrentSectionTitle()}
+                    onSimplifiedText={(text) => console.log('Simplified:', text)}
+                  />
+                </div>
               )}
 
               {activeRightPanel === 'export' && (
-                <CopyDownloadPanel
-                  selectedText={selectedText}
-                  currentSection={getCurrentSectionTitle()}
-                  documentTitle={currentDocument?.name}
-                  insights={currentInsights}
-                  relatedSections={relatedSections.map(r => ({
-                    section_title: r.section_title,
-                    explanation: r.explanation
-                  }))}
-                />
+                <div className="min-w-0 overflow-hidden h-full">
+                  <CopyDownloadPanel
+                    selectedText={selectedText}
+                    currentSection={getCurrentSectionTitle()}
+                    documentTitle={currentDocument?.name}
+                    insights={currentInsights}
+                    relatedSections={relatedSections.map(r => ({
+                      section_title: r.section_title,
+                      explanation: r.explanation
+                    }))}
+                  />
+                </div>
               )}
 
               {activeRightPanel === 'highlights' && (
-                <HighlightPanel 
-                  highlights={highlights}
-                  onHighlightClick={(highlight) => {
-                    setCurrentPage(highlight.page);
-                    toast({
-                      title: "Navigated to Highlight",
-                      description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
-                    });
-                  }}
-                />
+                <div className="min-w-0 overflow-hidden h-full">
+                  <HighlightPanel 
+                    highlights={highlights}
+                    onHighlightClick={(highlight) => {
+                      setCurrentPage(highlight.page);
+                      // Apply visual highlight to PDF
+                      setTimeout(() => {
+                        applyHighlightToPDF(highlight);
+                      }, 500); // Small delay to ensure page navigation completes
+                      toast({
+                        title: "Navigated to Highlight",
+                        description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
+                      });
+                    }}
+                  />
+                </div>
+              )}
+
+              {activeRightPanel === 'analytics' && (
+                <div className="min-w-0 overflow-hidden h-full">
+                  <ReadingAnalyticsPanel
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    readingStartTime={readingStartTime}
+                    isActivelyReading={isActivelyReading}
+                    documentsRead={documents?.length || 1}
+                    persona={persona}
+                    jobToBeDone={jobToBeDone}
+                  />
+                </div>
+              )}
+
+              {activeRightPanel === 'bookmarks' && (
+                <div className="min-w-0 overflow-hidden h-full">
+                  <SmartBookmarksPanel
+                    currentPage={currentPage}
+                    selectedText={selectedText}
+                    currentSection={getCurrentSectionTitle()}
+                    documentId={currentDocument?.id}
+                    persona={persona}
+                    jobToBeDone={jobToBeDone}
+                  />
+                </div>
               )}
             </div>
           </aside>
