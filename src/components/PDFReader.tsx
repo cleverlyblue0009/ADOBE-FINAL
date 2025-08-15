@@ -6,6 +6,8 @@ import { AdobePDFViewer, FallbackPDFViewer } from './AdobePDFViewer';
 import { CrossConnectionsPanel } from './CrossConnectionsPanel';
 import { StrategicInsightsPanel } from './StrategicInsightsPanel';
 import { InsightsPanel } from './InsightsPanel';
+import { SmartAnnotations } from './SmartAnnotations';
+import { ReadingProgressTracker } from './ReadingProgressTracker';
 
 // Hybrid PDF Viewer component that tries Adobe first, then falls back to iframe
 function HybridPDFViewer({ 
@@ -75,7 +77,9 @@ import {
   Link,
   Brain,
   Highlighter,
-  Download
+  Download,
+  Sparkles,
+  TrendingUp
 } from 'lucide-react';
 
 export interface PDFDocument {
@@ -118,7 +122,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(1.0);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
-  const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | 'highlights' | null>('insights');
+  const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | 'highlights' | 'annotations' | 'progress' | null>('insights');
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentInsights, setCurrentInsights] = useState<Array<{ type: string; content: string }>>([]);
   const [relatedSections, setRelatedSections] = useState<RelatedSection[]>([]);
@@ -604,7 +608,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
         {rightPanelOpen && (
           <aside className="w-96 bg-surface-elevated/50 border-l border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm">
             <div className="p-5 border-b border-border-subtle">
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {[
                   { key: 'insights', label: 'Insights', icon: BookOpen },
                   { key: 'strategic', label: 'Strategic', icon: Brain },
@@ -613,7 +617,9 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                   { key: 'accessibility', label: 'Access', icon: Palette },
                   { key: 'simplifier', label: 'Simplify', icon: Upload },
                   { key: 'export', label: 'Export', icon: Upload },
-                  { key: 'highlights', label: 'Highlights', icon: Highlighter }
+                  { key: 'highlights', label: 'Highlights', icon: Highlighter },
+                  { key: 'annotations', label: 'AI Notes', icon: Sparkles },
+                  { key: 'progress', label: 'Progress', icon: TrendingUp }
                 ].map(({ key, label, icon: Icon }) => (
                   <Button
                     key={key}
@@ -741,6 +747,24 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                       description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
                     });
                   }}
+                />
+              )}
+              
+              {activeRightPanel === 'annotations' && currentDocument && (
+                <SmartAnnotations
+                  documentContent={currentDocument.name}
+                  currentPage={currentPage}
+                  onAnnotationClick={(annotation) => {
+                    console.log('Annotation clicked:', annotation);
+                  }}
+                />
+              )}
+              
+              {activeRightPanel === 'progress' && currentDocument && (
+                <ReadingProgressTracker
+                  currentPage={currentPage}
+                  totalPages={100} // You may want to get actual page count
+                  documentName={currentDocument.name}
                 />
               )}
             </div>

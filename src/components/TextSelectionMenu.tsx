@@ -70,7 +70,7 @@ export function TextSelectionMenu({
   return (
     <div
       ref={menuRef}
-      className="fixed z-50"
+      className="fixed z-[9999]"
       style={{
         left: `${position.x}px`,
         top: `${position.y}px`,
@@ -78,70 +78,70 @@ export function TextSelectionMenu({
         marginTop: '-10px'
       }}
     >
-      <Card className="p-2 shadow-2xl border-0 bg-white/95 backdrop-blur-md">
-        <div className="flex flex-col gap-1">
+      <Card className="p-2 shadow-2xl border-0 bg-white/95 backdrop-blur-md min-w-[320px]">
+        <div className="flex flex-col gap-2">
           {/* Main Actions Row */}
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1 flex-wrap">
             <Button
               variant="ghost"
               size="sm"
               onClick={() => setShowColorPicker(!showColorPicker)}
-              className="gap-2 hover:bg-yellow-50"
+              className="gap-1.5 hover:bg-yellow-50 px-2 py-1"
               title="Highlight"
             >
               <Highlighter className="h-4 w-4 text-yellow-600" />
-              <span className="text-xs">Highlight</span>
+              <span className="text-xs font-medium">Highlight</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
               onClick={onSimplify}
-              className="gap-2 hover:bg-blue-50"
+              className="gap-1.5 hover:bg-blue-50 px-2 py-1"
               title="Simplify"
             >
               <BookOpen className="h-4 w-4 text-blue-600" />
-              <span className="text-xs">Simplify</span>
+              <span className="text-xs font-medium">Simplify</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
               onClick={onTranslate}
-              className="gap-2 hover:bg-green-50"
+              className="gap-1.5 hover:bg-green-50 px-2 py-1"
               title="Translate"
             >
               <Languages className="h-4 w-4 text-green-600" />
-              <span className="text-xs">Translate</span>
+              <span className="text-xs font-medium">Translate</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
               onClick={onSpeak}
-              className="gap-2 hover:bg-purple-50"
+              className="gap-1.5 hover:bg-purple-50 px-2 py-1"
               title="Read Aloud"
             >
               <Volume2 className="h-4 w-4 text-purple-600" />
-              <span className="text-xs">Speak</span>
+              <span className="text-xs font-medium">Speak</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
               onClick={onCopy}
-              className="gap-2 hover:bg-gray-50"
+              className="gap-1.5 hover:bg-gray-50 px-2 py-1"
               title="Copy"
             >
               <Copy className="h-4 w-4 text-gray-600" />
-              <span className="text-xs">Copy</span>
+              <span className="text-xs font-medium">Copy</span>
             </Button>
           </div>
 
           {/* Color Picker Row */}
           {showColorPicker && (
             <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
-              <span className="text-xs text-gray-500">Color:</span>
+              <span className="text-xs text-gray-500 font-medium">Color:</span>
               {highlightColors.map((color) => (
                 <button
                   key={color.value}
@@ -149,7 +149,7 @@ export function TextSelectionMenu({
                     onHighlight(color.value as any);
                     setShowColorPicker(false);
                   }}
-                  className={`w-6 h-6 rounded-full ${color.color} hover:scale-110 transition-transform border-2 border-white shadow-sm`}
+                  className={`w-7 h-7 rounded-full ${color.color} hover:scale-110 transition-transform border-2 border-white shadow-md hover:shadow-lg`}
                   title={color.name}
                 />
               ))}
@@ -157,8 +157,8 @@ export function TextSelectionMenu({
           )}
 
           {/* Selected Text Preview */}
-          <div className="pt-2 border-t border-gray-200 max-w-xs">
-            <p className="text-xs text-gray-500 line-clamp-2">
+          <div className="pt-2 border-t border-gray-200 max-w-sm">
+            <p className="text-xs text-gray-600 line-clamp-2 italic">
               "{selectedText.substring(0, 100)}{selectedText.length > 100 ? '...' : ''}"
             </p>
           </div>

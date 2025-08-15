@@ -166,31 +166,31 @@ export function DocumentOutline({
               ${isCurrentDoc ? 'bg-blue-50 border border-blue-200' : 'bg-gray-50 hover:bg-gray-100'}
               transition-all duration-200
             `}>
-              <div className="flex items-center gap-2 flex-1">
-                <div className={`p-2 rounded-lg ${isCurrentDoc ? 'bg-blue-100' : 'bg-gray-100'}`}>
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <div className={`p-2 rounded-lg flex-shrink-0 ${isCurrentDoc ? 'bg-blue-100' : 'bg-gray-100'}`}>
                   <File className={`h-4 w-4 ${isCurrentDoc ? 'text-blue-600' : 'text-gray-600'}`} />
                 </div>
-                <div className="flex-1 min-w-0">
-                  <h4 className={`font-semibold text-sm truncate ${isCurrentDoc ? 'text-blue-900' : 'text-gray-900'}`}>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <h4 className={`font-semibold text-sm truncate ${isCurrentDoc ? 'text-blue-900' : 'text-gray-900'}`} title={document.title}>
                     {document.title}
                   </h4>
-                  <p className="text-xs text-gray-600 truncate">{document.name}</p>
+                  <p className="text-xs text-gray-600 truncate" title={document.name}>{document.name}</p>
                 </div>
               </div>
               
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {isCurrentDoc && (
                   <Badge variant="secondary" className="text-xs bg-blue-100 text-blue-800 border-blue-200">
                     Current
                   </Badge>
                 )}
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs whitespace-nowrap">
                   {document.outline.length} sections
                 </Badge>
                 {isExpanded ? (
-                  <ChevronDown className="h-4 w-4 text-gray-400" />
+                  <ChevronDown className="h-4 w-4 text-gray-400 flex-shrink-0" />
                 ) : (
-                  <ChevronRight className="h-4 w-4 text-gray-400" />
+                  <ChevronRight className="h-4 w-4 text-gray-400 flex-shrink-0" />
                 )}
               </div>
             </div>

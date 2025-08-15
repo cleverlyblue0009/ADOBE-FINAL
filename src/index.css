@@ -426,29 +426,52 @@
 
   /* PDF Highlight Styles */
   .pdf-highlight {
-    transition: all 0.2s ease-in-out;
+    position: relative;
+    display: inline;
+    transition: background-color 0.2s ease;
+  }
+  
+  .pdf-highlight-yellow {
+    background-color: rgba(255, 255, 0, 0.4) !important;
+    box-shadow: 0 0 0 1px rgba(255, 255, 0, 0.2);
+  }
+  
+  .pdf-highlight-green {
+    background-color: rgba(0, 255, 0, 0.3) !important;
+    box-shadow: 0 0 0 1px rgba(0, 255, 0, 0.2);
+  }
+  
+  .pdf-highlight-blue {
+    background-color: rgba(0, 123, 255, 0.3) !important;
+    box-shadow: 0 0 0 1px rgba(0, 123, 255, 0.2);
+  }
+  
+  .pdf-highlight-pink {
+    background-color: rgba(255, 105, 180, 0.3) !important;
+    box-shadow: 0 0 0 1px rgba(255, 105, 180, 0.2);
+  }
+  
+  .pdf-highlight:hover {
+    filter: brightness(1.1);
     cursor: pointer;
   }
-
-  .pdf-highlight:hover {
-    transform: scale(1.01);
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  
+  /* Ensure highlights are visible in Adobe PDF viewer */
+  #adobe-dc-view .pdf-highlight,
+  iframe .pdf-highlight {
+    z-index: 10;
+    pointer-events: auto;
   }
-
-  .pdf-highlight-yellow {
-    background-color: rgba(255, 255, 0, 0.5) !important;
+  
+  /* Text selection styles */
+  ::selection {
+    background-color: rgba(0, 123, 255, 0.3);
+    color: inherit;
   }
-
-  .pdf-highlight-green {
-    background-color: rgba(0, 255, 0, 0.5) !important;
-  }
-
-  .pdf-highlight-blue {
-    background-color: rgba(0, 0, 255, 0.5) !important;
-  }
-
-  .pdf-highlight-pink {
-    background-color: rgba(255, 105, 180, 0.5) !important;
+  
+  ::-moz-selection {
+    background-color: rgba(0, 123, 255, 0.3);
+    color: inherit;
   }
 
   /* Enhanced headline typography */

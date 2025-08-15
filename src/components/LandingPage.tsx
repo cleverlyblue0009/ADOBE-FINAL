@@ -20,7 +20,8 @@ import {
   Volume2,
   Loader2,
   Library,
-  ArrowRight
+  ArrowRight,
+  Headphones
 } from 'lucide-react';
 import { useEffect } from 'react';
 
@@ -182,10 +183,12 @@ export function LandingPage({ onStart }: LandingPageProps) {
               <div className="w-2 h-2 bg-brand-primary rounded-full animate-pulse"></div>
               AI-Powered Reading Assistant
             </div>
-            <h2 className="text-6xl md:text-8xl font-black text-text-primary leading-[1.02] tracking-tight headline-main">
-              <span className="typing-text-enhanced">
-                {typedText}
-                {typedText.length < fullText.length && <span className="typing-cursor-enhanced" />}
+            <h2 className="text-6xl md:text-8xl font-black text-text-primary leading-[1.02] tracking-tight">
+              <span className="headline-main">
+                <span className="typing-text-enhanced">
+                  {typedText}
+                  {typedText.length < fullText.length && <span className="typing-cursor-enhanced" />}
+                </span>
                 {showRestOfSentence && (
                   <span className="headline-gradient text-transparent bg-clip-text">
                     {restSentenceText}
@@ -322,116 +325,59 @@ export function LandingPage({ onStart }: LandingPageProps) {
                 Experience the future of document reading with our AI-powered tools
               </p>
             </div>
-            <div className="grid md:grid-cols-3 gap-8">
-                {/* AI Insights */}
-                <Card 
-                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-blue-50/80 to-indigo-50/80 backdrop-blur-md cursor-pointer hover:from-blue-50 hover:to-indigo-50 hover:-translate-y-2 relative overflow-hidden"
-                  onClick={() => handleFeatureClick('ai-insights')}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-indigo-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  <CardContent className="p-10 space-y-6 relative z-10">
-                    <div className="h-24 w-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-2xl">
-                      <Brain className="h-12 w-12 text-white" />
-                    </div>
-                    <h3 className="font-bold text-2xl text-gray-800 group-hover:text-blue-700 transition-colors">AI Insights</h3>
-                    <p className="text-gray-600 leading-relaxed text-lg">Get comprehensive insights with web research, persona analysis, and keyword extraction</p>
-                    <div className="text-sm text-blue-600 font-semibold group-hover:text-blue-700 flex items-center justify-center gap-2">
-                      Click to learn more 
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </CardContent>
-                </Card>
+            {/* Feature Cards */}
+            <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+              <Card 
+                className="group cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl bg-surface-elevated/80 backdrop-blur-md border-border-subtle hover:border-brand-primary/30"
+                onClick={() => handleFeatureClick('ai-insights')}
+              >
+                <CardHeader className="pb-3">
+                  <div className="w-14 h-14 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Brain className="h-8 w-8 text-brand-primary" />
+                  </div>
+                  <h3 className="font-bold text-2xl text-text-primary group-hover:text-brand-primary transition-colors">AI Insights</h3>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-text-secondary leading-relaxed">
+                    Get intelligent summaries, key takeaways, and contextual understanding powered by advanced AI
+                  </p>
+                </CardContent>
+              </Card>
 
-                <Card 
-                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-purple-50/80 to-pink-50/80 backdrop-blur-md cursor-pointer hover:from-purple-50 hover:to-pink-50 hover:-translate-y-2 relative overflow-hidden"
-                  onClick={() => handleFeatureClick('podcast')}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-purple-600/5 to-pink-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  <CardContent className="p-10 space-y-6 relative z-10">
-                    <div className="h-24 w-24 bg-gradient-to-br from-purple-500 to-pink-600 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-2xl">
-                      <Volume2 className="h-12 w-12 text-white" />
-                    </div>
-                    <h3 className="font-bold text-2xl text-gray-800 group-hover:text-purple-700 transition-colors">Podcast Mode</h3>
-                    <p className="text-gray-600 leading-relaxed text-lg">Listen to AI-narrated summaries of any section</p>
-                    <div className="text-sm text-purple-600 font-semibold group-hover:text-purple-700 flex items-center justify-center gap-2">
-                      Click to learn more 
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </CardContent>
-                </Card>
+              <Card 
+                className="group cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl bg-surface-elevated/80 backdrop-blur-md border-border-subtle hover:border-purple-500/30"
+                onClick={() => handleFeatureClick('podcast')}
+              >
+                <CardHeader className="pb-3">
+                  <div className="w-14 h-14 bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Headphones className="h-8 w-8 text-purple-500" />
+                  </div>
+                  <h3 className="font-bold text-2xl text-text-primary group-hover:text-purple-500 transition-colors">Podcast Mode</h3>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-text-secondary leading-relaxed">
+                    Transform your PDFs into engaging audio experiences with natural voice synthesis
+                  </p>
+                </CardContent>
+              </Card>
 
-                <Card 
-                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-green-50/80 to-emerald-50/80 backdrop-blur-md cursor-pointer hover:from-green-50 hover:to-emerald-50 hover:-translate-y-2 relative overflow-hidden"
-                  onClick={() => handleFeatureClick('accessibility')}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-green-600/5 to-emerald-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  <CardContent className="p-10 space-y-6 relative z-10">
-                    <div className="h-24 w-24 bg-gradient-to-br from-green-500 to-emerald-600 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-2xl">
-                      <Accessibility className="h-12 w-12 text-white" />
-                    </div>
-                    <h3 className="font-bold text-2xl text-gray-800 group-hover:text-green-700 transition-colors">Universal Access</h3>
-                    <p className="text-gray-600 leading-relaxed text-lg">Dyslexia-friendly fonts, voice reading, and accessibility support</p>
-                    <div className="text-sm text-green-600 font-semibold group-hover:text-green-700 flex items-center justify-center gap-2">
-                      Click to learn more 
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-yellow-50/80 to-orange-50/80 backdrop-blur-md cursor-pointer hover:from-yellow-50 hover:to-orange-50 hover:-translate-y-2 relative overflow-hidden"
-                  onClick={() => handleFeatureClick('highlights')}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-yellow-600/5 to-orange-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  <CardContent className="p-10 space-y-6 relative z-10">
-                    <div className="h-24 w-24 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-2xl">
-                      <Eye className="h-12 w-12 text-white" />
-                    </div>
-                    <h3 className="font-bold text-2xl text-gray-800 group-hover:text-yellow-700 transition-colors">Smart Highlights</h3>
-                    <p className="text-gray-600 leading-relaxed text-lg">Automatically highlight content relevant to your role</p>
-                    <div className="text-sm text-yellow-600 font-semibold group-hover:text-yellow-700 flex items-center justify-center gap-2">
-                      Click to learn more 
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-cyan-50/80 to-teal-50/80 backdrop-blur-md cursor-pointer hover:from-cyan-50 hover:to-teal-50 hover:-translate-y-2 relative overflow-hidden"
-                  onClick={() => handleFeatureClick('progress')}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-600/5 to-teal-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  <CardContent className="p-10 space-y-6 relative z-10">
-                    <div className="h-24 w-24 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-2xl">
-                      <Clock className="h-12 w-12 text-white" />
-                    </div>
-                    <h3 className="font-bold text-2xl text-gray-800 group-hover:text-cyan-700 transition-colors">Reading Progress</h3>
-                    <p className="text-gray-600 leading-relaxed text-lg">Track your progress with intelligent time estimates</p>
-                    <div className="text-sm text-cyan-600 font-semibold group-hover:text-cyan-700 flex items-center justify-center gap-2">
-                      Click to learn more 
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card 
-                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-rose-50/80 to-pink-50/80 backdrop-blur-md cursor-pointer hover:from-rose-50 hover:to-pink-50 hover:-translate-y-2 relative overflow-hidden"
-                  onClick={() => handleFeatureClick('themes')}
-                >
-                  <div className="absolute inset-0 bg-gradient-to-br from-rose-600/5 to-pink-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-                  <CardContent className="p-10 space-y-6 relative z-10">
-                    <div className="h-24 w-24 bg-gradient-to-br from-rose-500 to-pink-600 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-2xl">
-                      <Palette className="h-12 w-12 text-white" />
-                    </div>
-                    <h3 className="font-bold text-2xl text-gray-800 group-hover:text-rose-700 transition-colors">Adaptive Themes</h3>
-                    <p className="text-gray-600 leading-relaxed text-lg">Light, dark, and accessible themes for comfortable reading</p>
-                    <div className="text-sm text-rose-600 font-semibold group-hover:text-rose-700 flex items-center justify-center gap-2">
-                      Click to learn more 
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+              <Card 
+                className="group cursor-pointer transition-all duration-300 hover:scale-105 hover:shadow-2xl bg-surface-elevated/80 backdrop-blur-md border-border-subtle hover:border-green-500/30"
+                onClick={() => handleFeatureClick('accessibility')}
+              >
+                <CardHeader className="pb-3">
+                  <div className="w-14 h-14 bg-gradient-to-br from-green-500/20 to-emerald-500/20 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                    <Eye className="h-8 w-8 text-green-500" />
+                  </div>
+                  <h3 className="font-bold text-2xl text-text-primary group-hover:text-green-500 transition-colors">Universal Access</h3>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-text-secondary leading-relaxed">
+                    Built-in accessibility features including dyslexia support, text simplification, and more
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </main>

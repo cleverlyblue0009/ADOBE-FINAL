@@ -41,52 +41,62 @@ export function AdobePDFViewer({
     const handleTextSelection = () => {
       const selection = window.getSelection();
       if (selection && selection.toString().trim()) {
-        const text = selection.toString();
-        setSelectedText(text);
-        
-        // Get selection position for context menu
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        setSelectionPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.top
-        });
-        
-        if (onTextSelection) {
-          onTextSelection(text, currentPage);
+        const text = selection.toString().trim();
+        if (text.length > 0) {
+          setSelectedText(text);
+          
+          // Get selection position for menu
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          
+          // Position the menu above the selection
+          setSelectionPosition({
+            x: rect.left + rect.width / 2,
+            y: rect.top - 10
+          });
+        }
+      } else {
+        // Clear selection if no text is selected
+        if (selectedText && !window.getSelection()?.toString().trim()) {
+          clearSelection();
         }
       }
     };
-
+    
+    // Add event listeners for text selection
     document.addEventListener('mouseup', handleTextSelection);
     document.addEventListener('touchend', handleTextSelection);
-
+    
+    // Also listen for selection changes
+    document.addEventListener('selectionchange', handleTextSelection);
+    
     return () => {
       document.removeEventListener('mouseup', handleTextSelection);
       document.removeEventListener('touchend', handleTextSelection);
+      document.removeEventListener('selectionchange', handleTextSelection);
     };
-  }, [currentPage, onTextSelection]);
+  }, [selectedText]);
 
   const handleHighlight = async (color: 'yellow' | 'green' | 'blue' | 'pink') => {
     // Store highlight in backend
     try {
       await apiService.addHighlight({
+        documentId: documentName,
         text: selectedText,
-        color,
         page: currentPage,
-        documentName
+        color: color
       });
       
       toast({
-        title: "Text Highlighted",
-        description: `Added ${color} highlight to page ${currentPage}`
+        title: "Highlight Added",
+        description: `Text highlighted in ${color}`,
       });
-
-      // Apply visual highlight to PDF using Adobe PDF Embed API
-      if (adobeViewRef.current && window.AdobeDC) {
+      
+      // Apply visual highlight to the PDF
+      if (adobeViewRef.current) {
         try {
-          // Create annotation using Adobe PDF API
-          const annotationManager = adobeViewRef.current.getAnnotationManager();
+          // Try to use Adobe's annotation API
+          const annotationManager = await adobeViewRef.current.getAnnotationManager();
           if (annotationManager) {
             const selection = window.getSelection();
             if (selection && selection.rangeCount > 0) {
@@ -94,7 +104,7 @@ export function AdobePDFViewer({
               const rect = range.getBoundingClientRect();
               
               // Create highlight annotation
-              annotationManager.addAnnotation({
+              await annotationManager.addAnnotations([{
                 type: 'highlight',
                 color: color === 'yellow' ? '#FFFF00' : 
                        color === 'green' ? '#00FF00' : 
@@ -107,7 +117,7 @@ export function AdobePDFViewer({
                   height: rect.height
                 },
                 content: selectedText
-              });
+              }]);
             }
           }
         } catch (annotationError) {
@@ -119,6 +129,9 @@ export function AdobePDFViewer({
         // Fallback highlighting for when Adobe API is not available
         addHighlightOverlay(selectedText, color, currentPage);
       }
+      
+      // Also apply immediate visual feedback
+      applyVisualHighlight(color);
     } catch (error) {
       console.error('Failed to add highlight:', error);
       toast({
@@ -129,6 +142,36 @@ export function AdobePDFViewer({
     }
     
     clearSelection();
+  };
+
+  // Apply immediate visual highlight to selected text
+  const applyVisualHighlight = (color: string) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+    
+    try {
+      const range = selection.getRangeAt(0);
+      const selectedContent = range.extractContents();
+      const span = document.createElement('span');
+      
+      // Apply highlight styling
+      span.style.backgroundColor = color === 'yellow' ? 'rgba(255, 255, 0, 0.4)' : 
+                                   color === 'green' ? 'rgba(0, 255, 0, 0.3)' : 
+                                   color === 'blue' ? 'rgba(0, 0, 255, 0.3)' : 'rgba(255, 105, 180, 0.3)';
+      span.style.borderRadius = '2px';
+      span.style.padding = '0 2px';
+      span.className = `pdf-highlight pdf-highlight-${color}`;
+      span.setAttribute('data-highlight-color', color);
+      
+      span.appendChild(selectedContent);
+      range.insertNode(span);
+      
+      // Store highlight reference for later removal if needed
+      const highlightId = `highlight-${Date.now()}`;
+      span.setAttribute('data-highlight-id', highlightId);
+    } catch (error) {
+      console.log('Could not apply visual highlight:', error);
+    }
   };
 
   // Fallback highlight overlay function

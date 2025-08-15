@@ -111,16 +111,13 @@ export function PodcastPanel({
       console.error('Failed to generate podcast:', error);
       
       // Fallback: Create a mock podcast with browser text-to-speech
-      try {
+      if (currentText) {
         const fallbackScript = `Welcome to your AI-generated podcast summary. 
-        
-        Based on your current reading: ${currentText?.slice(0, 200)}...
-        
-        Here are the key insights: ${insights.slice(0, 2).join('. ')}
-        
-        Related sections include: ${relatedSections.slice(0, 2).join(', ')}
-        
-        This completes your personalized podcast summary.`;
+        Today we're exploring the content from page ${currentPage} of your document. 
+        ${currentText.substring(0, 500)}... 
+        As we continue through this material, it's important to understand the broader context and implications of what we're reading. 
+        The document presents several interesting perspectives that deserve our attention. 
+        This completes your personalized podcast summary. Thank you for listening!`;
         
         setPodcastScript(fallbackScript);
         
@@ -196,19 +193,40 @@ export function PodcastPanel({
           // Use browser speech synthesis
           if ('speechSynthesis' in window && podcastScript) {
             const utterance = new SpeechSynthesisUtterance(podcastScript);
-            utterance.rate = 0.9;
-            utterance.pitch = 1.0;
-            utterance.volume = volume[0];
             
-            utterance.onstart = () => setIsPlaying(true);
-            utterance.onend = () => setIsPlaying(false);
-            utterance.onerror = () => {
+            // Configure for more natural speech
+            utterance.rate = 1.05; // Slightly faster for more natural flow
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            
+            // Get available voices and select a natural-sounding one
+            const voices = window.speechSynthesis.getVoices();
+            const femaleVoice = voices.find(voice => 
+              voice.name.toLowerCase().includes('female') || 
+              voice.name.toLowerCase().includes('samantha') ||
+              voice.name.toLowerCase().includes('victoria') ||
+              voice.name.toLowerCase().includes('karen') ||
+              voice.name.toLowerCase().includes('moira') ||
+              voice.name === 'Google UK English Female' ||
+              voice.name === 'Microsoft Zira' ||
+              voice.lang.startsWith('en')
+            );
+            
+            if (femaleVoice) {
+              utterance.voice = femaleVoice;
+            }
+            
+            utterance.onend = () => {
               setIsPlaying(false);
+            };
+            
+            utterance.onerror = () => {
               toast({
-                title: "Playback failed",
+                title: "Audio Error",
                 description: "Unable to play audio. Please try again.",
                 variant: "destructive"
               });
+              setIsPlaying(false);
             };
             
             window.speechSynthesis.speak(utterance);
