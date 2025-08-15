@@ -112,12 +112,13 @@ interface PDFReaderProps {
 export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReaderProps) {
   const [leftSidebarOpen, setLeftSidebarOpen] = useState(true);
   const [rightPanelOpen, setRightPanelOpen] = useState(true);
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState(320); // Made resizable
   const [currentDocument, setCurrentDocument] = useState<PDFDocument | null>(null);
   const { toast } = useToast();
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(1.0);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
-  const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | null>('insights');
+  const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | 'highlights' | null>('insights');
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentInsights, setCurrentInsights] = useState<Array<{ type: string; content: string }>>([]);
   const [relatedSections, setRelatedSections] = useState<RelatedSection[]>([]);
@@ -127,7 +128,33 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [totalPages, setTotalPages] = useState(30); // Will be updated from PDF
   const [currentLanguage, setCurrentLanguage] = useState('en');
 
+  // Sidebar resize functionality
+  const [isResizing, setIsResizing] = useState(false);
 
+  const handleMouseDown = () => {
+    setIsResizing(true);
+  };
+
+  const handleMouseMove = (e: MouseEvent) => {
+    if (!isResizing) return;
+    const newWidth = Math.max(280, Math.min(600, e.clientX));
+    setLeftSidebarWidth(newWidth);
+  };
+
+  const handleMouseUp = () => {
+    setIsResizing(false);
+  };
+
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isResizing]);
 
   // Initialize with first document from props or mock document
   useEffect(() => {
@@ -513,7 +540,10 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
       <div className="flex flex-1 min-h-0">
         {/* Left Sidebar - Outline & Navigation */}
         {leftSidebarOpen && (
-          <aside className="w-80 bg-surface-elevated/50 border-r border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm">
+          <aside 
+            className="bg-surface-elevated/50 border-r border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm relative"
+            style={{ width: `${leftSidebarWidth}px` }}
+          >
             <div className="flex-1 overflow-hidden flex flex-col">
               {/* Document Outline */}
               <div className="flex-1">
@@ -525,39 +555,14 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                   onDocumentSwitch={setCurrentDocument}
                 />
               </div>
-              
-              {/* Related Sections */}
-              <div className="border-t border-border-subtle flex flex-col" style={{ maxHeight: '40vh' }}>
-                <div className="p-3 bg-blue-50/50 flex-shrink-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                      <Highlighter className="h-4 w-4 text-blue-600" />
-                      Related Highlights ({highlights.length})
-                    </h4>
-                    {isLoadingRelated && (
-                      <div className="text-xs text-blue-600">Loading...</div>
-                    )}
-                  </div>
-                  {highlights.length === 0 && !isLoadingRelated && (
-                    <p className="text-xs text-gray-500 italic">
-                      No related sections found. Try the "AI Highlights" button above.
-                    </p>
-                  )}
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  <HighlightPanel 
-                    highlights={highlights}
-                    onHighlightClick={(highlight) => {
-                      setCurrentPage(highlight.page);
-                      toast({
-                        title: "Navigated to Highlight",
-                        description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
-                      });
-                    }}
-                  />
-                </div>
-              </div>
             </div>
+            
+            {/* Resize Handle */}
+            <div 
+              className="absolute top-0 right-0 w-1 h-full cursor-col-resize bg-transparent hover:bg-border-subtle transition-colors"
+              onMouseDown={handleMouseDown}
+              title="Drag to resize sidebar"
+            />
           </aside>
         )}
 
@@ -607,7 +612,8 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                   { key: 'podcast', label: 'Podcast', icon: Settings },
                   { key: 'accessibility', label: 'Access', icon: Palette },
                   { key: 'simplifier', label: 'Simplify', icon: Upload },
-                  { key: 'export', label: 'Export', icon: Upload }
+                  { key: 'export', label: 'Export', icon: Upload },
+                  { key: 'highlights', label: 'Highlights', icon: Highlighter }
                 ].map(({ key, label, icon: Icon }) => (
                   <Button
                     key={key}
@@ -722,6 +728,19 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                     section_title: r.section_title,
                     explanation: r.explanation
                   }))}
+                />
+              )}
+
+              {activeRightPanel === 'highlights' && (
+                <HighlightPanel 
+                  highlights={highlights}
+                  onHighlightClick={(highlight) => {
+                    setCurrentPage(highlight.page);
+                    toast({
+                      title: "Navigated to Highlight",
+                      description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
+                    });
+                  }}
                 />
               )}
             </div>

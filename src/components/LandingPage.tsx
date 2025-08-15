@@ -40,7 +40,11 @@ export function LandingPage({ onStart }: LandingPageProps) {
   
   // Typing animation state
   const [typedText, setTypedText] = useState('');
+  const [showRestOfSentence, setShowRestOfSentence] = useState(false);
+  const [restSentenceText, setRestSentenceText] = useState('');
+  
   const fullText = 'Transform PDFs into';
+  const restOfSentence = ' intelligent reading experiences';
   
   // Typing animation effect
   useEffect(() => {
@@ -51,8 +55,21 @@ export function LandingPage({ onStart }: LandingPageProps) {
         currentIndex++;
       } else {
         clearInterval(typingInterval);
+        // Start showing the rest of the sentence gradually after typing ends
+        setTimeout(() => {
+          setShowRestOfSentence(true);
+          let restIndex = 0;
+          const restInterval = setInterval(() => {
+            if (restIndex <= restOfSentence.length) {
+              setRestSentenceText(restOfSentence.slice(0, restIndex));
+              restIndex++;
+            } else {
+              clearInterval(restInterval);
+            }
+          }, 80); // Slightly faster for the rest of the sentence
+        }, 300); // Small pause after typing ends
       }
-    }, 100); // Typing speed
+    }, 120); // Slightly slower typing speed for better readability
 
     return () => clearInterval(typingInterval);
   }, []);
@@ -165,13 +182,16 @@ export function LandingPage({ onStart }: LandingPageProps) {
               <div className="w-2 h-2 bg-brand-primary rounded-full animate-pulse"></div>
               AI-Powered Reading Assistant
             </div>
-            <h2 className="text-5xl md:text-7xl font-bold text-text-primary leading-[1.05] tracking-tight headline-main">
-              <span className="typing-text">
+            <h2 className="text-6xl md:text-8xl font-black text-text-primary leading-[1.02] tracking-tight headline-main">
+              <span className="typing-text-enhanced">
                 {typedText}
-                {typedText.length < fullText.length && <span className="typing-cursor" />}
+                {typedText.length < fullText.length && <span className="typing-cursor-enhanced" />}
+                {showRestOfSentence && (
+                  <span className="headline-gradient text-transparent bg-clip-text">
+                    {restSentenceText}
+                  </span>
+                )}
               </span>
-              <span className="headline-gradient text-transparent bg-clip-text block mt-2">intelligent reading</span>
-              <span className="block">experiences</span>
             </h2>
             <p className="text-xl md:text-2xl text-text-secondary max-w-4xl mx-auto leading-relaxed font-light">
               Upload your documents and unlock AI-powered insights, personalized highlights, 

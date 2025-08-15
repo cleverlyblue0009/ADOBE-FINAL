@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast';
 import { apiService, DocumentInfo } from '@/lib/api';
 import { Logo } from './Logo';
+import { ThemeToggle } from './ThemeToggle';
 import { 
   Search, 
   Filter, 
@@ -259,6 +260,7 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
                   <List className="h-4 w-4" />
                 </Button>
               </div>
+              <ThemeToggle />
             </div>
           </div>
         </div>

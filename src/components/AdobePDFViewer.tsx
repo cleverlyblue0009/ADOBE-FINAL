@@ -82,16 +82,81 @@ export function AdobePDFViewer({
         description: `Added ${color} highlight to page ${currentPage}`
       });
 
-      // Apply visual highlight to PDF
-      if (adobeViewRef.current) {
-        // This would integrate with Adobe PDF API to add annotation
-        console.log('Adding highlight annotation:', { color, text: selectedText });
+      // Apply visual highlight to PDF using Adobe PDF Embed API
+      if (adobeViewRef.current && window.AdobeDC) {
+        try {
+          // Create annotation using Adobe PDF API
+          const annotationManager = adobeViewRef.current.getAnnotationManager();
+          if (annotationManager) {
+            const selection = window.getSelection();
+            if (selection && selection.rangeCount > 0) {
+              const range = selection.getRangeAt(0);
+              const rect = range.getBoundingClientRect();
+              
+              // Create highlight annotation
+              annotationManager.addAnnotation({
+                type: 'highlight',
+                color: color === 'yellow' ? '#FFFF00' : 
+                       color === 'green' ? '#00FF00' : 
+                       color === 'blue' ? '#0000FF' : '#FF69B4',
+                page: currentPage,
+                bounds: {
+                  x: rect.left,
+                  y: rect.top,
+                  width: rect.width,
+                  height: rect.height
+                },
+                content: selectedText
+              });
+            }
+          }
+        } catch (annotationError) {
+          console.log('Adobe annotation API not available, using fallback highlighting');
+          // Fallback: Add highlight overlay using DOM manipulation
+          addHighlightOverlay(selectedText, color, currentPage);
+        }
+      } else {
+        // Fallback highlighting for when Adobe API is not available
+        addHighlightOverlay(selectedText, color, currentPage);
       }
     } catch (error) {
       console.error('Failed to add highlight:', error);
+      toast({
+        title: "Highlight Failed",
+        description: "Failed to add highlight. Please try again.",
+        variant: "destructive"
+      });
     }
     
     clearSelection();
+  };
+
+  // Fallback highlight overlay function
+  const addHighlightOverlay = (text: string, color: string, page: number) => {
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0) return;
+
+    try {
+      const range = selection.getRangeAt(0);
+      const span = document.createElement('span');
+      span.className = `pdf-highlight pdf-highlight-${color}`;
+      span.style.backgroundColor = color === 'yellow' ? '#FFFF0080' : 
+                                   color === 'green' ? '#00FF0080' : 
+                                   color === 'blue' ? '#0000FF80' : '#FF69B480';
+      span.style.borderRadius = '2px';
+      span.style.padding = '1px 2px';
+      
+      try {
+        range.surroundContents(span);
+      } catch (e) {
+        // If we can't surround contents, extract and wrap
+        const contents = range.extractContents();
+        span.appendChild(contents);
+        range.insertNode(span);
+      }
+    } catch (error) {
+      console.log('Could not apply visual highlight overlay:', error);
+    }
   };
 
   const handleSimplify = async () => {
@@ -233,6 +298,17 @@ export function AdobePDFViewer({
           showPageControls: true,
           dockPageControls: false,
           showBookmarks: false,
+          enableAnnotations: true,
+          enableTextSelection: true,
+          // Annotation tools configuration
+          annotationTools: {
+            highlight: true,
+            strikethrough: true,
+            underline: true,
+            squiggly: true,
+            note: true,
+            freeText: true
+          },
           // Disable feature flags that cause console errors
           enableFeatureFlags: {
             "enable-tools-multidoc": false,
