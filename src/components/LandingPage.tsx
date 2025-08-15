@@ -40,9 +40,12 @@ export function LandingPage({ onStart }: LandingPageProps) {
   
   // Typing animation state
   const [typedText, setTypedText] = useState('');
+  const [showRemainingText, setShowRemainingText] = useState(false);
+  const [remainingTextOpacity, setRemainingTextOpacity] = useState(0);
   const fullText = 'Transform PDFs into';
+  const remainingText = ' intelligent reading experiences';
   
-  // Typing animation effect
+  // Typing animation effect with improved font and gradual appearance
   useEffect(() => {
     let currentIndex = 0;
     const typingInterval = setInterval(() => {
@@ -51,8 +54,21 @@ export function LandingPage({ onStart }: LandingPageProps) {
         currentIndex++;
       } else {
         clearInterval(typingInterval);
+        // Start showing remaining text gradually after typing completes
+        setShowRemainingText(true);
+        
+        // Gradually increase opacity
+        let opacity = 0;
+        const fadeInterval = setInterval(() => {
+          opacity += 0.02;
+          if (opacity >= 1) {
+            opacity = 1;
+            clearInterval(fadeInterval);
+          }
+          setRemainingTextOpacity(opacity);
+        }, 30);
       }
-    }, 100); // Typing speed
+    }, 80); // Slightly faster typing speed
 
     return () => clearInterval(typingInterval);
   }, []);
@@ -165,13 +181,30 @@ export function LandingPage({ onStart }: LandingPageProps) {
               <div className="w-2 h-2 bg-brand-primary rounded-full animate-pulse"></div>
               AI-Powered Reading Assistant
             </div>
-            <h2 className="text-5xl md:text-7xl font-bold text-text-primary leading-[1.05] tracking-tight headline-main">
-              <span className="typing-text">
+            <h2 className="text-6xl md:text-8xl font-bold text-text-primary leading-[1.1] tracking-tight headline-main">
+              <span className="typing-text inline-block" style={{ 
+                fontFamily: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif",
+                fontWeight: 700,
+                letterSpacing: '-0.02em'
+              }}>
                 {typedText}
-                {typedText.length < fullText.length && <span className="typing-cursor" />}
+                {typedText.length < fullText.length && (
+                  <span className="typing-cursor inline-block w-1 h-14 md:h-20 bg-brand-primary ml-1 animate-pulse" />
+                )}
               </span>
-              <span className="headline-gradient text-transparent bg-clip-text block mt-2">intelligent reading</span>
-              <span className="block">experiences</span>
+              {showRemainingText && (
+                <span 
+                  className="headline-gradient text-transparent bg-clip-text inline-block ml-3 transition-opacity duration-1000"
+                  style={{ 
+                    opacity: remainingTextOpacity,
+                    fontFamily: "'Inter', 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif",
+                    fontWeight: 800,
+                    letterSpacing: '-0.03em'
+                  }}
+                >
+                  {remainingText}
+                </span>
+              )}
             </h2>
             <p className="text-xl md:text-2xl text-text-secondary max-w-4xl mx-auto leading-relaxed font-light">
               Upload your documents and unlock AI-powered insights, personalized highlights, 

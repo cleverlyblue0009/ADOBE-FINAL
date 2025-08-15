@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { DocumentOutline } from './DocumentOutline';
 import { FloatingTools } from './FloatingTools';
@@ -64,6 +64,7 @@ import { PodcastPanel } from './PodcastPanel';
 import { HighlightPanel } from './HighlightPanel';
 import { TextSimplifier } from './TextSimplifier';
 import { CopyDownloadPanel } from './CopyDownloadPanel';
+import { PDFTextSelectionHandler } from './PDFTextSelectionHandler';
 import { apiService, RelatedSection } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -117,7 +118,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(1.0);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
-  const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | null>('insights');
+  const [activeRightPanel, setActiveRightPanel] = useState<'highlights' | 'insights' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | null>('highlights');
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentInsights, setCurrentInsights] = useState<Array<{ type: string; content: string }>>([]);
   const [relatedSections, setRelatedSections] = useState<RelatedSection[]>([]);
@@ -126,6 +127,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [isActivelyReading, setIsActivelyReading] = useState(true);
   const [totalPages, setTotalPages] = useState(30); // Will be updated from PDF
   const [currentLanguage, setCurrentLanguage] = useState('en');
+  const pdfViewerRef = useRef<HTMLElement>(null);
 
 
 
@@ -513,7 +515,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
       <div className="flex flex-1 min-h-0">
         {/* Left Sidebar - Outline & Navigation */}
         {leftSidebarOpen && (
-          <aside className="w-80 bg-surface-elevated/50 border-r border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm">
+          <aside className="w-80 bg-surface-elevated/50 border-r border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm flex-shrink-0 resize-x overflow-auto" style={{ minWidth: '280px', maxWidth: '600px' }}>
             <div className="flex-1 overflow-hidden flex flex-col">
               {/* Document Outline */}
               <div className="flex-1">
@@ -525,52 +527,89 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                   onDocumentSwitch={setCurrentDocument}
                 />
               </div>
-              
-              {/* Related Sections */}
-              <div className="border-t border-border-subtle flex flex-col" style={{ maxHeight: '40vh' }}>
-                <div className="p-3 bg-blue-50/50 flex-shrink-0">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
-                      <Highlighter className="h-4 w-4 text-blue-600" />
-                      Related Highlights ({highlights.length})
-                    </h4>
-                    {isLoadingRelated && (
-                      <div className="text-xs text-blue-600">Loading...</div>
-                    )}
-                  </div>
-                  {highlights.length === 0 && !isLoadingRelated && (
-                    <p className="text-xs text-gray-500 italic">
-                      No related sections found. Try the "AI Highlights" button above.
-                    </p>
-                  )}
-                </div>
-                <div className="flex-1 overflow-y-auto">
-                  <HighlightPanel 
-                    highlights={highlights}
-                    onHighlightClick={(highlight) => {
-                      setCurrentPage(highlight.page);
-                      toast({
-                        title: "Navigated to Highlight",
-                        description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
-                      });
-                    }}
-                  />
-                </div>
-              </div>
             </div>
           </aside>
         )}
 
         {/* Main PDF Viewer */}
-        <main className="flex-1 relative">
+        <main className="flex-1 relative" ref={pdfViewerRef as React.RefObject<HTMLDivElement>}>
           {currentDocument ? (
-            <HybridPDFViewer
-              documentUrl={currentDocument.url}
-              documentName={currentDocument.name}
-              onPageChange={setCurrentPage}
-              onTextSelection={handleTextSelection}
-              clientId={import.meta.env.VITE_ADOBE_CLIENT_ID}
-            />
+            <>
+              <HybridPDFViewer
+                documentUrl={currentDocument.url}
+                documentName={currentDocument.name}
+                onPageChange={setCurrentPage}
+                onTextSelection={handleTextSelection}
+                clientId={import.meta.env.VITE_ADOBE_CLIENT_ID}
+              />
+              
+              {/* PDF Text Selection Handler */}
+              <PDFTextSelectionHandler
+                currentPage={currentPage}
+                pdfContainerRef={pdfViewerRef as React.RefObject<HTMLElement>}
+                onHighlight={(text, color, page) => {
+                  const colorMap = {
+                    'yellow': 'primary',
+                    'green': 'secondary',
+                    'blue': 'tertiary',
+                    'pink': 'primary'
+                  } as const;
+                  
+                  const highlight: Highlight = {
+                    id: `user-${Date.now()}`,
+                    text,
+                    page,
+                    color: colorMap[color],
+                    relevanceScore: 0.9,
+                    explanation: 'User highlighted text'
+                  };
+                  
+                  setHighlights(prev => [...prev, highlight]);
+                  toast({
+                    title: "Text Highlighted",
+                    description: `Added ${color} highlight on page ${page}`,
+                  });
+                }}
+                onSimplify={(text) => {
+                  setSelectedText(text);
+                  setActiveRightPanel('simplifier');
+                  toast({
+                    title: "Simplifying Text",
+                    description: "Check the Simplify panel for the simplified version",
+                  });
+                }}
+                onTranslate={async (text) => {
+                  try {
+                    // Add translation logic here
+                    toast({
+                      title: "Translation",
+                      description: "Translation feature coming soon",
+                    });
+                  } catch (error) {
+                    console.error('Translation failed:', error);
+                  }
+                }}
+                onCopy={async (text) => {
+                  try {
+                    await navigator.clipboard.writeText(text);
+                    toast({
+                      title: "Copied to Clipboard",
+                      description: "Selected text has been copied",
+                    });
+                  } catch (error) {
+                    console.error('Copy failed:', error);
+                  }
+                }}
+                onSpeak={(text) => {
+                  const utterance = new SpeechSynthesisUtterance(text);
+                  speechSynthesis.speak(utterance);
+                  toast({
+                    title: "Reading Aloud",
+                    description: "Text is being read aloud",
+                  });
+                }}
+              />
+            </>
           ) : (
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-4">
@@ -601,13 +640,14 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
             <div className="p-5 border-b border-border-subtle">
               <div className="grid grid-cols-2 gap-2">
                 {[
+                  { key: 'highlights', label: 'Highlights', icon: Highlighter },
                   { key: 'insights', label: 'Insights', icon: BookOpen },
                   { key: 'strategic', label: 'Strategic', icon: Brain },
                   { key: 'connections', label: 'Connections', icon: Link },
                   { key: 'podcast', label: 'Podcast', icon: Settings },
                   { key: 'accessibility', label: 'Access', icon: Palette },
                   { key: 'simplifier', label: 'Simplify', icon: Upload },
-                  { key: 'export', label: 'Export', icon: Upload }
+                  { key: 'export', label: 'Export', icon: Download }
                 ].map(({ key, label, icon: Icon }) => (
                   <Button
                     key={key}
@@ -624,6 +664,39 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
             </div>
 
             <div className="flex-1 overflow-hidden">
+              {activeRightPanel === 'highlights' && (
+                <div className="flex flex-col h-full">
+                  <div className="p-3 bg-blue-50/50 flex-shrink-0 dark:bg-blue-900/20">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                        <Highlighter className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                        Document Highlights ({highlights.length})
+                      </h4>
+                      {isLoadingRelated && (
+                        <div className="text-xs text-blue-600 dark:text-blue-400">Loading...</div>
+                      )}
+                    </div>
+                    {highlights.length === 0 && !isLoadingRelated && (
+                      <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                        No highlights found. Try the "AI Highlights" button or select text in the PDF.
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex-1 overflow-y-auto">
+                    <HighlightPanel 
+                      highlights={highlights}
+                      onHighlightClick={(highlight) => {
+                        setCurrentPage(highlight.page);
+                        toast({
+                          title: "Navigated to Highlight",
+                          description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
+                        });
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+              
               {activeRightPanel === 'insights' && (
                 <InsightsPanel 
                   documentIds={documents?.map(d => d.id) || []}
