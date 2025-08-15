@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { 
@@ -87,6 +87,165 @@ export function PDFViewer({
     setSelectedText('');
     window.getSelection()?.removeAllRanges();
   };
+
+  // Function to find text positions in the content
+  const findTextInContent = (searchText: string, contentElement: HTMLElement): DOMRect[] => {
+    const positions: DOMRect[] = [];
+    
+    if (!searchText || searchText.length < 3) return positions;
+    
+    // Normalize the search text
+    const normalizedSearch = searchText.toLowerCase().trim();
+    const searchWords = normalizedSearch.split(/\s+/).filter(word => word.length > 2);
+    
+    // Get all text nodes
+    const walker = document.createTreeWalker(
+      contentElement,
+      NodeFilter.SHOW_TEXT,
+      {
+        acceptNode: (node) => {
+          const text = node.textContent || '';
+          return text.trim().length > 0 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
+        }
+      }
+    );
+    
+    const textNodes: { node: Text; text: string; offset: number }[] = [];
+    let currentOffset = 0;
+    let node;
+    
+    // Build a map of all text nodes with their positions
+    while (node = walker.nextNode()) {
+      const textNode = node as Text;
+      const text = textNode.textContent || '';
+      textNodes.push({ node: textNode, text, offset: currentOffset });
+      currentOffset += text.length;
+    }
+    
+    // Join all text for searching
+    const fullText = textNodes.map(n => n.text).join('').toLowerCase();
+    
+    // Try to find exact match first
+    let searchIndex = fullText.indexOf(normalizedSearch);
+    
+    if (searchIndex === -1 && searchWords.length > 0) {
+      // If no exact match, try to find the first few words
+      const partialSearch = searchWords.slice(0, Math.min(3, searchWords.length)).join(' ');
+      searchIndex = fullText.indexOf(partialSearch);
+    }
+    
+    if (searchIndex !== -1) {
+      // Find which text node contains the match
+      let matchLength = normalizedSearch.length;
+      
+      for (const { node, text, offset } of textNodes) {
+        const nodeEndOffset = offset + text.length;
+        
+        // Check if this node contains part of the match
+        if (searchIndex < nodeEndOffset && searchIndex + matchLength > offset) {
+          const startInNode = Math.max(0, searchIndex - offset);
+          const endInNode = Math.min(text.length, searchIndex + matchLength - offset);
+          
+          if (startInNode < endInNode) {
+            try {
+              const range = document.createRange();
+              range.setStart(node, startInNode);
+              range.setEnd(node, endInNode);
+              
+              const rects = range.getClientRects();
+              for (let i = 0; i < rects.length; i++) {
+                const rect = rects[i];
+                if (rect.width > 0 && rect.height > 0) {
+                  positions.push(rect);
+                }
+              }
+            } catch (e) {
+              console.error('Error creating range:', e);
+            }
+          }
+        }
+      }
+    }
+    
+    return positions;
+  };
+
+  // Render highlights based on actual text positions
+  const renderHighlights = () => {
+    const contentElement = document.getElementById('pdf-content');
+    if (!contentElement) return null;
+    
+    const pageHighlights = highlights.filter(h => h.page === currentPage);
+    
+    return pageHighlights.map((highlight) => {
+      // Find the text in the content
+      let positions = findTextInContent(highlight.text, contentElement);
+      
+      if (positions.length === 0) {
+        // If exact match not found, try to find partial match
+        const partialText = highlight.text.substring(0, 30);
+        positions = findTextInContent(partialText, contentElement);
+      }
+      
+      return positions.map((rect, index) => {
+        const contentRect = contentElement.getBoundingClientRect();
+        
+        return (
+          <div
+            key={`${highlight.id}-${index}`}
+            className={`absolute pointer-events-auto cursor-pointer transition-all`}
+            style={{
+              top: `${rect.top - contentRect.top}px`,
+              left: `${rect.left - contentRect.left}px`,
+              width: `${rect.width}px`,
+              height: `${rect.height}px`,
+              backgroundColor: highlight.color === 'primary' ? 'rgba(254, 240, 138, 0.4)' : 
+                             highlight.color === 'secondary' ? 'rgba(134, 239, 172, 0.4)' : 
+                             'rgba(147, 197, 253, 0.4)',
+              zIndex: 10,
+              mixBlendMode: 'multiply'
+            }}
+            title={`${highlight.explanation} (${Math.round(highlight.relevanceScore * 100)}% relevant)`}
+            onClick={() => {
+              console.log('Highlight clicked:', highlight);
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.backgroundColor = 
+                highlight.color === 'primary' ? 'rgba(254, 240, 138, 0.6)' : 
+                highlight.color === 'secondary' ? 'rgba(134, 239, 172, 0.6)' : 
+                'rgba(147, 197, 253, 0.6)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.backgroundColor = 
+                highlight.color === 'primary' ? 'rgba(254, 240, 138, 0.4)' : 
+                highlight.color === 'secondary' ? 'rgba(134, 239, 172, 0.4)' : 
+                'rgba(147, 197, 253, 0.4)';
+            }}
+          >
+            {/* Tooltip on hover */}
+            <div className="absolute -top-8 left-0 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap">
+              {highlight.text.substring(0, 50)}...
+            </div>
+          </div>
+        );
+      });
+    }).flat();
+  };
+
+  // Force re-render when highlights change
+  const [highlightElements, setHighlightElements] = useState<JSX.Element[]>([]);
+  
+  useEffect(() => {
+    // Small delay to ensure content is rendered
+    const timer = setTimeout(() => {
+      const elements = renderHighlights();
+      if (elements) {
+        setHighlightElements(elements);
+      }
+    }, 100);
+    
+    return () => clearTimeout(timer);
+  }, [highlights, currentPage]);
 
   return (
     <div className="h-full flex flex-col bg-pdf-background">
@@ -225,63 +384,109 @@ export function PDFViewer({
           onMouseUp={handleTextSelection}
         >
           {/* Mock PDF Content */}
-          <div className="p-8 text-gray-900 space-y-6">
+          <div className="p-8 text-gray-900 space-y-6" id="pdf-content">
             <header className="text-center border-b pb-6">
               <h1 className="text-2xl font-bold mb-2">
                 Artificial Intelligence in Healthcare
               </h1>
-              <p className="text-lg text-gray-600">
-                A Comprehensive Research Study
+              <p className="text-sm text-gray-600">
+                A Comprehensive Review of Current Applications and Future Prospects
               </p>
-              <div className="mt-4 text-sm text-gray-500">
-                <p>Dr. Sarah Johnson, PhD • Medical AI Research Institute</p>
-                <p>Published: November 2024 • Page {currentPage} of {totalPages}</p>
-              </div>
+              <p className="text-xs text-gray-500 mt-2">
+                Published in Journal of Medical AI Research, 2024
+              </p>
             </header>
 
             {currentPage === 1 && (
               <section>
                 <h2 className="text-xl font-semibold mb-4">Abstract</h2>
                 <p className="text-sm leading-relaxed mb-4">
-                  This comprehensive study examines the implementation and impact of artificial intelligence 
-                  technologies in modern healthcare systems. Through extensive research and clinical trials, 
-                  we demonstrate that <span className="highlight-primary">machine learning algorithms achieve 
-                  94% accuracy in diagnostic imaging applications</span>, significantly improving patient 
-                  outcomes while reducing diagnostic time by up to 60%.
+                  This paper presents a comprehensive review of artificial intelligence applications in modern healthcare systems. 
+                  We examine the transformative potential of machine learning algorithms in clinical decision-making, 
+                  patient care optimization, and medical research advancement. Our analysis covers deep learning models 
+                  for medical imaging, natural language processing for clinical documentation, and predictive analytics 
+                  for patient outcomes.
                 </p>
-                <p className="text-sm leading-relaxed">
-                  Our findings indicate that AI integration faces several challenges, including 
-                  <span className="highlight-secondary">data privacy concerns and regulatory compliance 
-                  requirements</span> that must be addressed for widespread adoption. However, the potential 
-                  benefits far outweigh these limitations, particularly in areas of early disease detection 
-                  and personalized treatment planning.
+                <p className="text-sm leading-relaxed mb-4">
+                  The integration of AI technologies has shown remarkable success in early disease detection, 
+                  treatment personalization, and healthcare resource allocation. This is an important concept that relates to the main topic of the document. 
+                  However, challenges remain in data privacy, algorithmic bias, and regulatory compliance. This review synthesizes current 
+                  research, identifies key opportunities, and proposes frameworks for responsible AI deployment 
+                  in clinical settings.
+                </p>
+                <h3 className="text-lg font-semibold mt-6 mb-3">Keywords</h3>
+                <p className="text-sm text-gray-700">
+                  Artificial Intelligence, Machine Learning, Healthcare Technology, Medical Imaging, 
+                  Clinical Decision Support, Predictive Analytics
                 </p>
               </section>
             )}
 
             {currentPage === 2 && (
               <section>
-                <h2 className="text-xl font-semibold mb-4">Introduction</h2>
+                <h2 className="text-xl font-semibold mb-4">1. Introduction</h2>
                 <p className="text-sm leading-relaxed mb-4">
-                  The healthcare industry stands at the precipice of a technological revolution. Artificial 
-                  intelligence, once confined to the realm of science fiction, now represents one of the most 
-                  promising avenues for improving patient care and medical outcomes.
+                  The healthcare industry stands at the precipice of a technological revolution. Artificial intelligence 
+                  and machine learning technologies are reshaping how medical professionals diagnose diseases, 
+                  develop treatment plans, and manage patient care. The convergence of big data, computational power, 
+                  and sophisticated algorithms has created unprecedented opportunities for improving health outcomes 
+                  while reducing costs.
                 </p>
                 <p className="text-sm leading-relaxed mb-4">
-                  <span className="highlight-tertiary">Integration with existing EHR systems requires 
-                  standardized protocols</span> to ensure seamless data flow and maintain interoperability 
-                  across different healthcare providers. This standardization is crucial for the success 
-                  of AI implementation at scale.
+                  Recent advances in deep learning have enabled AI systems to analyze medical images with accuracy 
+                  matching or exceeding that of experienced radiologists. Supporting evidence and data that reinforces the primary arguments. 
+                  Natural language processing models can now extract meaningful insights from unstructured clinical notes, 
+                  while predictive models help identify patients at risk of developing chronic conditions before symptoms appear.
                 </p>
+                <p className="text-sm leading-relaxed mb-4">
+                  This paper provides a systematic review of AI applications across various medical specialties, 
+                  examining both the remarkable successes and the significant challenges that remain. We analyze 
+                  peer-reviewed studies from 2020-2024, focusing on real-world implementations and their measurable 
+                  impact on patient outcomes.
+                </p>
+                <h3 className="text-lg font-semibold mt-6 mb-3">1.1 Historical Context</h3>
                 <p className="text-sm leading-relaxed">
-                  Current research focuses on three primary areas: diagnostic imaging, predictive analytics, 
-                  and personalized medicine. Each of these domains presents unique opportunities and challenges 
-                  that we will explore in detail throughout this paper.
+                  The journey of AI in healthcare began in the 1970s with early expert systems like MYCIN, 
+                  designed to identify bacteria causing severe infections and recommend antibiotics. While these 
+                  early systems showed promise, they were limited by the computational resources and data 
+                  availability of their time.
                 </p>
               </section>
             )}
 
-            {currentPage > 2 && (
+            {currentPage === 3 && (
+              <section>
+                <h2 className="text-xl font-semibold mb-4">2. Methodology</h2>
+                <p className="text-sm leading-relaxed mb-4">
+                  Our research methodology employed a systematic review approach following PRISMA guidelines. 
+                  We searched multiple databases including PubMed, IEEE Xplore, and Google Scholar for papers 
+                  published between January 2020 and October 2024. Critical analysis point that requires further consideration. 
+                  The search strategy combined terms related to artificial intelligence, machine learning, 
+                  deep learning, and various medical specialties.
+                </p>
+                <p className="text-sm leading-relaxed mb-4">
+                  Inclusion criteria were: (1) peer-reviewed articles reporting original research, (2) studies 
+                  involving AI/ML applications in clinical settings, (3) papers with quantitative outcome measures, 
+                  and (4) English language publications. We excluded conference abstracts, opinion pieces, and 
+                  studies without clinical validation.
+                </p>
+                <p className="text-sm leading-relaxed mb-4">
+                  Two independent reviewers screened 3,847 initial articles, with 412 meeting our inclusion 
+                  criteria. Data extraction focused on AI methodology, clinical application area, performance 
+                  metrics, implementation challenges, and patient outcome improvements. Quality assessment 
+                  utilized the QUADAS-2 tool for diagnostic accuracy studies.
+                </p>
+                <h3 className="text-lg font-semibold mt-6 mb-3">2.1 Statistical Analysis</h3>
+                <p className="text-sm leading-relaxed">
+                  Meta-analysis was performed using random-effects models to account for heterogeneity across 
+                  studies. We calculated pooled sensitivity, specificity, and area under the curve (AUC) values 
+                  for diagnostic AI applications. Subgroup analyses examined performance variations across 
+                  different medical specialties and AI architectures.
+                </p>
+              </section>
+            )}
+
+            {currentPage > 3 && (
               <section>
                 <h2 className="text-xl font-semibold mb-4">Chapter {currentPage - 1}</h2>
                 <p className="text-sm leading-relaxed mb-4">
@@ -298,32 +503,7 @@ export function PDFViewer({
           </div>
 
           {/* Highlight Overlays */}
-          {highlights
-            .filter(h => h.page === currentPage)
-            .map((highlight, index) => (
-              <div
-                key={highlight.id}
-                className={`absolute bg-${highlight.color === 'primary' ? 'yellow-300' : highlight.color === 'secondary' ? 'green-300' : 'blue-300'} rounded-sm opacity-40 pointer-events-auto cursor-pointer transition-all hover:opacity-60 hover:shadow-lg`}
-                style={{
-                  // Distribute highlights across the page for better visibility
-                  top: `${20 + (index * 15)}%`,
-                  left: '8%',
-                  right: '8%',
-                  height: '1.2em',
-                  zIndex: 10
-                }}
-                title={`${highlight.explanation} (${Math.round(highlight.relevanceScore * 100)}% relevant)`}
-                onClick={() => {
-                  // Show highlight details in a tooltip or modal
-                  console.log('Highlight clicked:', highlight);
-                }}
-              >
-                {/* Highlight content preview */}
-                <div className="absolute -top-8 left-0 right-0 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                  {highlight.text.substring(0, 50)}...
-                                 </div>
-               </div>
-            ))}
+          {highlightElements}
 
           {/* Insight Bulbs */}
           <InsightBulbs 
