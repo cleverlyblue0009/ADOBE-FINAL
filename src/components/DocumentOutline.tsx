@@ -75,15 +75,25 @@ export function DocumentOutline({
             hover:bg-gray-50 transition-colors duration-150 rounded-md p-1
           `}
           style={{ paddingLeft: `${depth * 12 + 12}px` }}
-          onClick={() => {
-            onItemClick(item);
+          onClick={(e) => {
+            e.preventDefault();
+            console.log(`Navigating to page ${item.page} for item: ${item.title}`);
+            
             // Switch to the correct document if needed
             if (documentId && onDocumentSwitch) {
               const doc = documents?.find(d => d.id === documentId);
               if (doc && doc.id !== currentDocument?.id) {
                 onDocumentSwitch(doc);
+                // Small delay to ensure document switch completes before page navigation
+                setTimeout(() => {
+                  onItemClick(item);
+                }, 100);
+                return;
               }
             }
+            
+            // Navigate to the page
+            onItemClick(item);
           }}
           onMouseEnter={() => setHoveredItem(item.id)}
           onMouseLeave={() => setHoveredItem(null)}
