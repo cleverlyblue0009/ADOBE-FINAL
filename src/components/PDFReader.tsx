@@ -305,14 +305,41 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   // Function to apply visual highlights to PDF content
   const applyHighlightToPDF = (highlight: Highlight) => {
     try {
-      // Find and highlight text in the PDF viewer
-      const pdfContainer = document.querySelector('.pdf-viewer, iframe, canvas, .adobe-dc-view');
+      // Find the PDF viewer container
+      const pdfContainer = document.querySelector('.adobe-dc-view, iframe, .pdf-viewer-container, #adobe-pdf-viewer');
       if (!pdfContainer) {
         console.log('PDF container not found for highlighting');
         return;
       }
 
-      // Create a highlight overlay for the specific text
+      // Create a highlight overlay container if it doesn't exist
+      let overlayContainer = document.getElementById('pdf-highlight-overlay-container');
+      if (!overlayContainer) {
+        overlayContainer = document.createElement('div');
+        overlayContainer.id = 'pdf-highlight-overlay-container';
+        overlayContainer.style.cssText = `
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          pointer-events: none;
+          z-index: 100;
+        `;
+        
+        // If it's an iframe, create overlay next to it
+        if (pdfContainer.tagName === 'IFRAME') {
+          const parent = pdfContainer.parentElement;
+          if (parent) {
+            parent.style.position = 'relative';
+            parent.appendChild(overlayContainer);
+          }
+        } else {
+          pdfContainer.appendChild(overlayContainer);
+        }
+      }
+
+      // Create a highlight indicator
       const highlightId = `highlight-overlay-${highlight.id}`;
       
       // Remove existing highlight overlay if it exists
@@ -321,84 +348,96 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
         existingHighlight.remove();
       }
 
-      // Search for the text in the visible PDF content
-      const textNodes = document.evaluate(
-        "//text()[contains(., '" + highlight.text.substring(0, 50) + "')]",
-        pdfContainer,
-        null,
-        XPathResult.UNORDERED_NODE_SNAPSHOT_TYPE,
-        null
-      );
+      // Create a visual highlight indicator
+      const highlightOverlay = document.createElement('div');
+      highlightOverlay.id = highlightId;
+      highlightOverlay.className = 'pdf-highlight-overlay';
+      
+      // Calculate position based on page (approximate positioning)
+      const pageHeight = pdfContainer.clientHeight;
+      const estimatedPagePosition = (highlight.page - 1) * pageHeight;
+      
+      // Set color based on highlight type
+      const colorMap = {
+        'primary': 'rgba(255, 235, 59, 0.4)',
+        'secondary': 'rgba(76, 175, 80, 0.4)',
+        'tertiary': 'rgba(33, 150, 243, 0.4)'
+      };
+      
+      highlightOverlay.style.cssText = `
+        position: absolute;
+        left: 10%;
+        right: 10%;
+        top: ${estimatedPagePosition + 100}px;
+        height: 40px;
+        background: ${colorMap[highlight.color] || colorMap.primary};
+        border-left: 4px solid ${colorMap[highlight.color]?.replace('0.4', '1') || '#FFD700'};
+        border-radius: 4px;
+        pointer-events: auto;
+        cursor: pointer;
+        transition: all 0.3s ease;
+        animation: highlightPulse 2s ease-in-out;
+      `;
 
-      if (textNodes.snapshotLength > 0) {
-        const textNode = textNodes.snapshotItem(0);
-        if (textNode && textNode.parentElement) {
-          // Create highlight overlay
-          const highlightOverlay = document.createElement('div');
-          highlightOverlay.id = highlightId;
-          highlightOverlay.className = 'pdf-highlight-overlay';
-          highlightOverlay.style.cssText = `
-            position: absolute;
-            background-color: rgba(255, 255, 0, 0.4);
-            border-radius: 3px;
-            z-index: 100;
-            pointer-events: none;
-            animation: highlightPulse 2s ease-in-out;
-          `;
+      // Add hover effect
+      highlightOverlay.onmouseenter = () => {
+        highlightOverlay.style.transform = 'scale(1.02)';
+        highlightOverlay.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+      };
+      
+      highlightOverlay.onmouseleave = () => {
+        highlightOverlay.style.transform = 'scale(1)';
+        highlightOverlay.style.boxShadow = 'none';
+      };
 
-          const parentRect = textNode.parentElement.getBoundingClientRect();
-          const containerRect = pdfContainer.getBoundingClientRect();
-          
-          highlightOverlay.style.left = `${parentRect.left - containerRect.left}px`;
-          highlightOverlay.style.top = `${parentRect.top - containerRect.top}px`;
-          highlightOverlay.style.width = `${parentRect.width}px`;
-          highlightOverlay.style.height = `${parentRect.height}px`;
+      // Add click handler to show highlight details
+      highlightOverlay.onclick = () => {
+        toast({
+          title: "Highlight Details",
+          description: `${highlight.explanation}\n\nText: "${highlight.text.substring(0, 100)}..."`,
+        });
+      };
 
-          pdfContainer.appendChild(highlightOverlay);
+      // Add tooltip
+      highlightOverlay.title = `${highlight.explanation}\nRelevance: ${Math.round(highlight.relevanceScore * 100)}%`;
 
-          // Remove highlight after 3 seconds
-          setTimeout(() => {
-            const overlay = document.getElementById(highlightId);
-            if (overlay) {
-              overlay.style.animation = 'fadeOut 0.5s ease-out forwards';
-              setTimeout(() => overlay.remove(), 500);
-            }
-          }, 3000);
-        }
-      } else {
-        // Fallback: Create a general page highlight indicator
-        const pageHighlight = document.createElement('div');
-        pageHighlight.id = highlightId;
-        pageHighlight.className = 'pdf-page-highlight';
-        pageHighlight.style.cssText = `
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          background: linear-gradient(135deg, #ffeb3b, #ffc107);
-          color: #333;
-          padding: 12px 16px;
-          border-radius: 8px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-          z-index: 1000;
-          font-size: 14px;
-          font-weight: 500;
-          animation: slideInRight 0.3s ease-out;
-        `;
-        pageHighlight.innerHTML = `
-          <div style="display: flex; align-items: center; gap: 8px;">
-            <div style="width: 8px; height: 8px; background: #ff9800; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
-            Highlight: ${highlight.text.substring(0, 60)}${highlight.text.length > 60 ? '...' : ''}
+      overlayContainer.appendChild(highlightOverlay);
+
+      // Also create a floating indicator
+      const floatingIndicator = document.createElement('div');
+      floatingIndicator.className = 'pdf-highlight-indicator';
+      floatingIndicator.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, ${colorMap[highlight.color] || '#FFD700'}, ${colorMap[highlight.color]?.replace('0.4', '0.8') || '#FFA500'});
+        color: #333;
+        padding: 12px 16px;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        z-index: 1000;
+        font-size: 14px;
+        font-weight: 500;
+        animation: slideInRight 0.3s ease-out;
+        max-width: 300px;
+      `;
+      floatingIndicator.innerHTML = `
+        <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="width: 8px; height: 8px; background: white; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
+          <div>
+            <div style="font-weight: 600; margin-bottom: 4px;">Highlight Added</div>
+            <div style="font-size: 12px; opacity: 0.9;">Page ${highlight.page}: ${highlight.text.substring(0, 60)}${highlight.text.length > 60 ? '...' : ''}</div>
           </div>
-        `;
+        </div>
+      `;
 
-        document.body.appendChild(pageHighlight);
+      document.body.appendChild(floatingIndicator);
 
-        // Remove after 4 seconds
-        setTimeout(() => {
-          pageHighlight.style.animation = 'slideOutRight 0.3s ease-in forwards';
-          setTimeout(() => pageHighlight.remove(), 300);
-        }, 4000);
-      }
+      // Remove floating indicator after 4 seconds
+      setTimeout(() => {
+        floatingIndicator.style.animation = 'slideOutRight 0.3s ease-in forwards';
+        setTimeout(() => floatingIndicator.remove(), 300);
+      }, 4000);
 
       // Add CSS animations if not already present
       if (!document.getElementById('highlight-animations')) {
@@ -431,8 +470,8 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
       console.error('Failed to apply highlight to PDF:', error);
       // Show fallback notification
       toast({
-        title: "Highlight Located",
-        description: `Found highlight on page ${highlight.page}: "${highlight.text.substring(0, 50)}..."`,
+        title: "Highlight Added",
+        description: `Added highlight on page ${highlight.page}: "${highlight.text.substring(0, 50)}..."`,
       });
     }
   };
@@ -552,6 +591,13 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
           const existingIds = new Set(prev.map(h => h.id));
           const newHighlights = intelligenceHighlights.filter(h => !existingIds.has(h.id));
           return [...prev, ...newHighlights];
+        });
+        
+        // Apply visual highlights to the PDF for each new highlight
+        intelligenceHighlights.forEach((highlight, index) => {
+          setTimeout(() => {
+            applyHighlightToPDF(highlight);
+          }, index * 200); // Stagger the highlights for better visual effect
         });
         
         toast({
