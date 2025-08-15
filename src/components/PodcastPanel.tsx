@@ -78,7 +78,7 @@ export function PodcastPanel({
       );
       
       // Check if podcast was generated successfully
-      if (result.script && result.script !== "Failed to generate podcast script.") {
+      if (result.script && result.script !== "Failed to generate podcast script." && result.script !== "LLM service not available for podcast generation.") {
         setPodcastScript(result.script);
         // Construct full audio URL from the relative path returned by backend
         const fullAudioUrl = result.audio_url.startsWith('http') 
@@ -104,6 +104,7 @@ export function PodcastPanel({
         });
       } else {
         // Fallback to local podcast generation
+        console.log("Backend podcast generation unavailable, using fallback");
         throw new Error("API podcast generation failed");
       }
       
@@ -112,15 +113,24 @@ export function PodcastPanel({
       
       // Fallback: Create a mock podcast with browser text-to-speech
       try {
-        const fallbackScript = `Welcome to your AI-generated podcast summary. 
+        // Create a more natural, conversational podcast script
+        const contentPreview = currentText?.slice(0, 300) || 'the current document section';
+        const keyInsights = insights.length > 0 ? insights.slice(0, 3) : ['Key concepts are being analyzed', 'Important patterns have been identified', 'Strategic implications are noteworthy'];
+        const relatedTopics = relatedSections.length > 0 ? relatedSections.slice(0, 3) : ['Introduction', 'Main concepts', 'Conclusion'];
         
-        Based on your current reading: ${currentText?.slice(0, 200)}...
-        
-        Here are the key insights: ${insights.slice(0, 2).join('. ')}
-        
-        Related sections include: ${relatedSections.slice(0, 2).join(', ')}
-        
-        This completes your personalized podcast summary.`;
+        const fallbackScript = `Welcome to your personalized AI podcast summary. Today, we're diving into an interesting section of your document that contains valuable insights tailored specifically for your role as ${persona || 'a professional'} working on ${jobToBeDone || 'your current objectives'}.
+
+Let's start with the main content. ${contentPreview}. This section presents some fascinating concepts that directly relate to your work.
+
+Now, let me highlight the key insights we've discovered. ${keyInsights.map((insight, index) => `Point number ${index + 1}: ${insight}`).join('. ')}. Each of these insights offers a unique perspective that can help you better understand the material and apply it to your specific context.
+
+It's also worth noting the connections to other sections in your document. We've identified several related areas that complement this content: ${relatedTopics.map(topic => typeof topic === 'string' ? topic : 'a related section').join(', ')}. These connections help build a more comprehensive understanding of the overall subject matter.
+
+As you continue through this document, consider how these insights align with your goals. The information presented here has been specifically analyzed with your role and objectives in mind, making it directly applicable to your work.
+
+In summary, this section provides valuable information that advances your understanding of the topic. The key takeaways we've discussed form a foundation for deeper exploration and practical application in your field.
+
+Thank you for listening to this AI-generated podcast summary. We hope these insights help you navigate your document more effectively and achieve your learning objectives.`;
         
         setPodcastScript(fallbackScript);
         

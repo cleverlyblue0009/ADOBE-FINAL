@@ -77,6 +77,7 @@ import { TextSimplifier } from './TextSimplifier';
 import { CopyDownloadPanel } from './CopyDownloadPanel';
 import { ReadingAnalyticsPanel } from './ReadingAnalyticsPanel';
 import { SmartBookmarksPanel } from './SmartBookmarksPanel';
+import { StrategyPanel } from './StrategyPanel';
 import { apiService, RelatedSection } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { 
@@ -90,7 +91,8 @@ import {
   Highlighter,
   Download,
   BarChart3,
-  Bookmark
+  Bookmark,
+  Target
 } from 'lucide-react';
 
 export interface PDFDocument {
@@ -133,7 +135,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(1.0);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
-  const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | 'highlights' | 'analytics' | 'bookmarks' | null>('insights');
+  const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | 'highlights' | 'analytics' | 'bookmarks' | 'strategy' | null>('insights');
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentInsights, setCurrentInsights] = useState<Array<{ type: string; content: string }>>([]);
   const [relatedSections, setRelatedSections] = useState<RelatedSection[]>([]);
@@ -641,6 +643,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                   { key: 'insights', label: 'Insights', icon: BookOpen },
                   { key: 'strategic', label: 'Strategic', icon: Brain },
                   { key: 'connections', label: 'Connections', icon: Link },
+                  { key: 'strategy', label: 'Strategy', icon: Target },
                   { key: 'podcast', label: 'Podcast', icon: Settings },
                   { key: 'accessibility', label: 'Access', icon: Palette },
                   { key: 'simplifier', label: 'Simplify', icon: Upload },
@@ -822,6 +825,19 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                     documentId={currentDocument?.id}
                     persona={persona}
                     jobToBeDone={jobToBeDone}
+                  />
+                </div>
+              )}
+
+              {activeRightPanel === 'strategy' && (
+                <div className="min-w-0 overflow-hidden h-full">
+                  <StrategyPanel
+                    documentId={currentDocument?.id}
+                    currentPage={currentPage}
+                    totalPages={totalPages}
+                    persona={persona}
+                    jobToBeDone={jobToBeDone}
+                    currentText={selectedText || getCurrentSectionTitle()}
                   />
                 </div>
               )}

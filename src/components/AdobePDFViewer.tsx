@@ -45,27 +45,30 @@ export function AdobePDFViewer({
   // Handle text selection
   useEffect(() => {
     const handleTextSelection = (e: Event) => {
-      const selection = window.getSelection();
-      if (selection && selection.toString().trim()) {
-        const text = selection.toString();
-        console.log('Text selected:', text);
-        setSelectedText(text);
-        
-        // Get selection position for context menu
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        setSelectionPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.top
-        });
-        
-        if (onTextSelection) {
-          onTextSelection(text, currentPage);
+      // Add a small delay to ensure selection is complete
+      setTimeout(() => {
+        const selection = window.getSelection();
+        if (selection && selection.toString().trim()) {
+          const text = selection.toString();
+          console.log('Text selected:', text);
+          setSelectedText(text);
+          
+          // Get selection position for context menu
+          const range = selection.getRangeAt(0);
+          const rect = range.getBoundingClientRect();
+          setSelectionPosition({
+            x: rect.left + rect.width / 2,
+            y: rect.top
+          });
+          
+          if (onTextSelection) {
+            onTextSelection(text, currentPage);
+          }
+        } else if (e.type === 'mouseup' && !selectedText) {
+          // Only clear selection if there's no selected text and it's a mouseup
+          clearSelection();
         }
-      } else if (e.type === 'mouseup' && !selectedText) {
-        // Only clear selection if there's no selected text and it's a mouseup
-        clearSelection();
-      }
+      }, 100);
     };
 
     // Handle right-click context menu
@@ -126,6 +129,8 @@ export function AdobePDFViewer({
 
     // Add listeners with a delay to ensure the PDF is loaded
     const timeoutId = setTimeout(addListeners, 2000);
+    // Also add listeners immediately for faster response
+    addListeners();
 
     return () => {
       clearTimeout(timeoutId);
@@ -169,6 +174,18 @@ export function AdobePDFViewer({
   }, [highlights, currentHighlightPage, currentPage]);
 
   const handleHighlight = async (color: 'yellow' | 'green' | 'blue' | 'pink') => {
+    if (!selectedText) {
+      console.log('No text selected for highlighting');
+      toast({
+        title: "No Text Selected",
+        description: "Please select some text first to highlight it.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    console.log(`Highlighting text: "${selectedText}" with color: ${color} on page ${currentPage}`);
+    
     // Store highlight in backend
     try {
       await apiService.addHighlight({
@@ -177,6 +194,11 @@ export function AdobePDFViewer({
         page: currentPage,
         documentName
       });
+      
+      // Also trigger the onTextSelection callback to create a local highlight
+      if (onTextSelection) {
+        onTextSelection(selectedText, currentPage);
+      }
       
       toast({
         title: "Text Highlighted",

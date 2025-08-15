@@ -58,7 +58,12 @@ export function TextSelectionMenu({
     };
   }, [onClose]);
 
-  if (!position || !selectedText) return null;
+  if (!position || !selectedText) {
+    console.log('TextSelectionMenu not showing:', { position, selectedText });
+    return null;
+  }
+  
+  console.log('TextSelectionMenu showing at:', position, 'for text:', selectedText);
 
   const highlightColors = [
     { name: 'Yellow', value: 'yellow', color: 'bg-yellow-300' },
