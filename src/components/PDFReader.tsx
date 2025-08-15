@@ -74,7 +74,8 @@ import {
   Palette,
   Link,
   Brain,
-  Highlighter
+  Highlighter,
+  Download
 } from 'lucide-react';
 
 export interface PDFDocument {
@@ -462,15 +463,47 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
             <Button
               variant="ghost"
               size="sm"
+              onClick={async () => {
+                if (currentDocument) {
+                  try {
+                    const blob = await apiService.downloadHighlightedPDF(currentDocument.name);
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `highlighted_${currentDocument.name}`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    toast({
+                      title: "Download Started",
+                      description: "Your highlighted PDF is being downloaded"
+                    });
+                  } catch (error) {
+                    toast({
+                      title: "Download Failed", 
+                      description: "Failed to download highlighted PDF",
+                      variant: "destructive"
+                    });
+                  }
+                }
+              }}
+              disabled={!currentDocument || highlights.length === 0}
+              className="gap-2 hover:bg-surface-hover"
+              aria-label="Download highlighted PDF"
+            >
+              <Download className="h-4 w-4" />
+              Download PDF
+            </Button>
+            
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setRightPanelOpen(!rightPanelOpen)}
               className="gap-2 hover:bg-surface-hover"
-              aria-label="Toggle utilities"
+              aria-label="Toggle tools panel"
             >
               <Settings className="h-4 w-4" />
               Tools
             </Button>
-            
-            <div className="h-6 w-px bg-border-subtle mx-2" />
             
             <ThemeToggle />
           </div>
@@ -494,8 +527,8 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               </div>
               
               {/* Related Sections */}
-              <div className="border-t border-border-subtle max-h-80">
-                <div className="p-3 bg-blue-50/50">
+              <div className="border-t border-border-subtle flex flex-col" style={{ maxHeight: '40vh' }}>
+                <div className="p-3 bg-blue-50/50 flex-shrink-0">
                   <div className="flex items-center justify-between mb-2">
                     <h4 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
                       <Highlighter className="h-4 w-4 text-blue-600" />
@@ -511,16 +544,18 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                     </p>
                   )}
                 </div>
-                <HighlightPanel 
-                  highlights={highlights}
-                  onHighlightClick={(highlight) => {
-                    setCurrentPage(highlight.page);
-                    toast({
-                      title: "Navigated to Highlight",
-                      description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
-                    });
-                  }}
-                />
+                <div className="flex-1 overflow-y-auto">
+                  <HighlightPanel 
+                    highlights={highlights}
+                    onHighlightClick={(highlight) => {
+                      setCurrentPage(highlight.page);
+                      toast({
+                        title: "Navigated to Highlight",
+                        description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
+                      });
+                    }}
+                  />
+                </div>
               </div>
             </div>
           </aside>

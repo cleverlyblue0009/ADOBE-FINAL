@@ -55,6 +55,18 @@ export interface ReadingProgress {
   estimated_total_minutes: number;
 }
 
+export interface HighlightData {
+  text: string;
+  color: string;
+  page: number;
+  documentName: string;
+}
+
+export interface SimplifiedText {
+  text: string;
+  original: string;
+}
+
 class ApiService {
   private baseUrl: string;
 
@@ -233,24 +245,20 @@ class ApiService {
     return response.json();
   }
 
-  async simplifyText(text: string, difficultyLevel: string = 'simple'): Promise<string> {
-    const response = await fetch(`${this.baseUrl}/simplify-text`, {
+  async simplifyText(text: string): Promise<SimplifiedText> {
+    const response = await fetch(`${this.baseUrl}/simplify`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        text,
-        difficulty_level: difficultyLevel,
-      }),
+      body: JSON.stringify({ text }),
     });
 
     if (!response.ok) {
       throw new Error(`Failed to simplify text: ${response.statusText}`);
     }
 
-    const data = await response.json();
-    return data.simplified_text;
+    return response.json();
   }
 
   async defineTerm(term: string, context: string): Promise<string> {
@@ -430,6 +438,40 @@ class ApiService {
   async healthCheck() {
     const response = await fetch(`${this.baseUrl}/health`);
     return response.json();
+  }
+
+  async addHighlight(highlight: HighlightData): Promise<void> {
+    const response = await fetch(`${this.baseUrl}/highlights`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(highlight),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to add highlight: ${response.statusText}`);
+    }
+  }
+
+  async getHighlights(documentName: string): Promise<HighlightData[]> {
+    const response = await fetch(`${this.baseUrl}/highlights/${encodeURIComponent(documentName)}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch highlights: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async downloadHighlightedPDF(documentName: string): Promise<Blob> {
+    const response = await fetch(`${this.baseUrl}/download-highlighted/${encodeURIComponent(documentName)}`);
+    
+    if (!response.ok) {
+      throw new Error(`Failed to download highlighted PDF: ${response.statusText}`);
+    }
+
+    return response.blob();
   }
 }
 
