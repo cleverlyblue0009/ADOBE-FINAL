@@ -88,6 +88,62 @@ export function PDFViewer({
     window.getSelection()?.removeAllRanges();
   };
 
+
+
+  // Add CSS for highlight styles
+  useEffect(() => {
+    if (!document.getElementById('pdf-highlight-styles')) {
+      const style = document.createElement('style');
+      style.id = 'pdf-highlight-styles';
+      style.textContent = `
+        .highlight-primary {
+          background: linear-gradient(120deg, rgba(255, 235, 59, 0.4) 0%, rgba(255, 193, 7, 0.4) 100%);
+          border-radius: 3px;
+          padding: 2px 4px;
+          margin: -2px -4px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          animation: highlightPulse 2s ease-in-out;
+        }
+        .highlight-primary:hover {
+          background: linear-gradient(120deg, rgba(255, 235, 59, 0.6) 0%, rgba(255, 193, 7, 0.6) 100%);
+          box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+        }
+        .highlight-secondary {
+          background: linear-gradient(120deg, rgba(76, 175, 80, 0.4) 0%, rgba(139, 195, 74, 0.4) 100%);
+          border-radius: 3px;
+          padding: 2px 4px;
+          margin: -2px -4px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          animation: highlightPulse 2s ease-in-out;
+        }
+        .highlight-secondary:hover {
+          background: linear-gradient(120deg, rgba(76, 175, 80, 0.6) 0%, rgba(139, 195, 74, 0.6) 100%);
+          box-shadow: 0 2px 8px rgba(76, 175, 80, 0.3);
+        }
+        .highlight-tertiary {
+          background: linear-gradient(120deg, rgba(33, 150, 243, 0.4) 0%, rgba(103, 58, 183, 0.4) 100%);
+          border-radius: 3px;
+          padding: 2px 4px;
+          margin: -2px -4px;
+          cursor: pointer;
+          transition: all 0.3s ease;
+          animation: highlightPulse 2s ease-in-out;
+        }
+        .highlight-tertiary:hover {
+          background: linear-gradient(120deg, rgba(33, 150, 243, 0.6) 0%, rgba(103, 58, 183, 0.6) 100%);
+          box-shadow: 0 2px 8px rgba(33, 150, 243, 0.3);
+        }
+        @keyframes highlightPulse {
+          0%, 100% { opacity: 1; transform: scale(1); }
+          50% { opacity: 0.8; transform: scale(1.02); }
+        }
+      `;
+      document.head.appendChild(style);
+    }
+  }, []);
+
   return (
     <div className="h-full flex flex-col bg-pdf-background">
       {/* PDF Toolbar */}
@@ -223,6 +279,29 @@ export function PDFViewer({
             backgroundColor: 'white'
           }}
           onMouseUp={handleTextSelection}
+          onClick={(e) => {
+            // Handle clicks on highlighted text
+            const target = e.target as HTMLElement;
+            if (target.classList.contains('highlight-primary') || 
+                target.classList.contains('highlight-secondary') || 
+                target.classList.contains('highlight-tertiary')) {
+              const text = target.textContent || '';
+              const highlightColor = target.classList.contains('highlight-primary') ? 'primary' :
+                                   target.classList.contains('highlight-secondary') ? 'secondary' : 'tertiary';
+              
+              // Find the corresponding highlight
+              const matchingHighlight = highlights.find(h => 
+                h.text === text && h.page === currentPage && h.color === highlightColor
+              );
+              
+              if (matchingHighlight) {
+                // Show highlight details
+                console.log('Highlight clicked:', matchingHighlight);
+                // You could also trigger a toast or modal here
+                alert(`Highlight: ${matchingHighlight.explanation}\n\nRelevance: ${Math.round(matchingHighlight.relevanceScore * 100)}%\n\nText: "${matchingHighlight.text}"`);
+              }
+            }
+          }}
         >
           {/* Mock PDF Content */}
           <div className="p-8 text-gray-900 space-y-6">
@@ -274,8 +353,8 @@ export function PDFViewer({
                   of AI implementation at scale.
                 </p>
                 <p className="text-sm leading-relaxed">
-                  Current research focuses on three primary areas: diagnostic imaging, predictive analytics, 
-                  and personalized medicine. Each of these domains presents unique opportunities and challenges 
+                  Current research focuses on <span className="highlight-primary">three primary areas: diagnostic imaging, predictive analytics, 
+                  and personalized medicine</span>. Each of these domains presents unique opportunities and challenges 
                   that we will explore in detail throughout this paper.
                 </p>
               </section>
@@ -297,33 +376,7 @@ export function PDFViewer({
             )}
           </div>
 
-          {/* Highlight Overlays */}
-          {highlights
-            .filter(h => h.page === currentPage)
-            .map((highlight, index) => (
-              <div
-                key={highlight.id}
-                className={`absolute bg-${highlight.color === 'primary' ? 'yellow-300' : highlight.color === 'secondary' ? 'green-300' : 'blue-300'} rounded-sm opacity-40 pointer-events-auto cursor-pointer transition-all hover:opacity-60 hover:shadow-lg`}
-                style={{
-                  // Distribute highlights across the page for better visibility
-                  top: `${20 + (index * 15)}%`,
-                  left: '8%',
-                  right: '8%',
-                  height: '1.2em',
-                  zIndex: 10
-                }}
-                title={`${highlight.explanation} (${Math.round(highlight.relevanceScore * 100)}% relevant)`}
-                onClick={() => {
-                  // Show highlight details in a tooltip or modal
-                  console.log('Highlight clicked:', highlight);
-                }}
-              >
-                {/* Highlight content preview */}
-                <div className="absolute -top-8 left-0 right-0 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
-                  {highlight.text.substring(0, 50)}...
-                                 </div>
-               </div>
-            ))}
+
 
           {/* Insight Bulbs */}
           <InsightBulbs 
