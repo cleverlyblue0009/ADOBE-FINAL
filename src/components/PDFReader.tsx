@@ -60,7 +60,6 @@ function HybridPDFViewer({
 
 import { ThemeToggle } from './ThemeToggle';
 import { AccessibilityPanel } from './AccessibilityPanel';
-import { InsightsPanel } from './InsightsPanel';
 import { PodcastPanel } from './PodcastPanel';
 import { HighlightPanel } from './HighlightPanel';
 import { TextSimplifier } from './TextSimplifier';

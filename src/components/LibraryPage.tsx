@@ -259,7 +259,7 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
                   <SelectValue placeholder="Filter by persona" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All personas</SelectItem>
+                  <SelectItem value="all">All personas</SelectItem>
                   {personas.map(persona => (
                     <SelectItem key={persona} value={persona}>
                       {persona}
@@ -273,7 +273,7 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
                   <SelectValue placeholder="Filter by job" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All jobs</SelectItem>
+                  <SelectItem value="all">All jobs</SelectItem>
                   {jobs.map(job => (
                     <SelectItem key={job} value={job}>
                       {job}
