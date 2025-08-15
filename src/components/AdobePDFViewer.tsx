@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Copy } from 'lucide-react';
 import { TextSelectionMenu } from './TextSelectionMenu';
 import { useToast } from '@/hooks/use-toast';
 import { apiService } from '@/lib/api';
@@ -42,6 +42,7 @@ export function AdobePDFViewer({
       const selection = window.getSelection();
       if (selection && selection.toString().trim()) {
         const text = selection.toString();
+        console.log('Text selected:', text);
         setSelectedText(text);
         
         // Get selection position for context menu
@@ -55,31 +56,96 @@ export function AdobePDFViewer({
         if (onTextSelection) {
           onTextSelection(text, currentPage);
         }
-      } else if (e.type === 'mouseup') {
-        // Clear selection if no text is selected
+      } else if (e.type === 'mouseup' && !selectedText) {
+        // Only clear selection if there's no selected text and it's a mouseup
         clearSelection();
       }
     };
 
-    // Prevent default context menu when text is selected to show custom menu
-    const preventDefaultContextMenu = (e: MouseEvent) => {
+    // Handle right-click context menu
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault(); // Always prevent default context menu
+      
       const selection = window.getSelection();
       if (selection && selection.toString().trim()) {
-        e.preventDefault();
         e.stopPropagation();
+        
+        // Set the selected text and position
+        const text = selection.toString();
+        console.log('Context menu triggered for:', text);
+        setSelectedText(text);
+        setSelectionPosition({
+          x: e.clientX,
+          y: e.clientY
+        });
+        
+        if (onTextSelection) {
+          onTextSelection(text, currentPage);
+        }
+      } else {
+        // If no text is selected, show a message
+        console.log('No text selected for context menu');
+        clearSelection();
       }
     };
 
-    document.addEventListener('mouseup', handleTextSelection);
-    document.addEventListener('touchend', handleTextSelection);
-    document.addEventListener('contextmenu', preventDefaultContextMenu);
+    // Add event listeners to document and the viewer container
+    const addListeners = () => {
+      console.log('Adding text selection listeners');
+      document.addEventListener('mouseup', handleTextSelection);
+      document.addEventListener('touchend', handleTextSelection);
+      document.addEventListener('contextmenu', handleContextMenu);
+      
+      // Also add to the Adobe DC view container
+      const adobeContainer = document.getElementById('adobe-dc-view');
+      if (adobeContainer) {
+        adobeContainer.addEventListener('contextmenu', handleContextMenu);
+      }
+      
+      // Try to add to iframe content if available
+      const iframe = document.querySelector('iframe');
+      if (iframe) {
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (iframeDoc) {
+            iframeDoc.addEventListener('mouseup', handleTextSelection);
+            iframeDoc.addEventListener('contextmenu', handleContextMenu);
+            console.log('Added listeners to iframe document');
+          }
+        } catch (e) {
+          console.log('Could not access iframe content (cross-origin)');
+        }
+      }
+    };
+
+    // Add listeners with a delay to ensure the PDF is loaded
+    const timeoutId = setTimeout(addListeners, 2000);
 
     return () => {
+      clearTimeout(timeoutId);
       document.removeEventListener('mouseup', handleTextSelection);
       document.removeEventListener('touchend', handleTextSelection);
-      document.removeEventListener('contextmenu', preventDefaultContextMenu);
+      document.removeEventListener('contextmenu', handleContextMenu);
+      
+      const adobeContainer = document.getElementById('adobe-dc-view');
+      if (adobeContainer) {
+        adobeContainer.removeEventListener('contextmenu', handleContextMenu);
+      }
+      
+      const iframe = document.querySelector('iframe');
+      if (iframe) {
+        try {
+          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (iframeDoc) {
+            iframeDoc.removeEventListener('mouseup', handleTextSelection);
+            iframeDoc.removeEventListener('contextmenu', handleContextMenu);
+          }
+        } catch (e) {
+          // Ignore cross-origin errors
+        }
+      }
     };
-  }, [currentPage, onTextSelection]);
+  }, [currentPage, onTextSelection, selectedText]);
 
   const handleHighlight = async (color: 'yellow' | 'green' | 'blue' | 'pink') => {
     // Store highlight in backend
@@ -479,19 +545,77 @@ export function AdobePDFViewer({
 
 // Fallback PDF viewer for when Adobe API is not available
 export function FallbackPDFViewer({ documentUrl, documentName }: { documentUrl: string; documentName: string }) {
+  const [selectedText, setSelectedText] = useState('');
+  const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
+  const { toast } = useToast();
+  
+  // Handle text selection in fallback viewer
+  useEffect(() => {
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault();
+      
+      // For fallback viewer, show a simple copy option
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim()) {
+        const text = selection.toString();
+        setSelectedText(text);
+        setSelectionPosition({
+          x: e.clientX,
+          y: e.clientY
+        });
+      }
+    };
+    
+    document.addEventListener('contextmenu', handleContextMenu);
+    
+    return () => {
+      document.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, []);
+  
+  const handleCopy = () => {
+    navigator.clipboard.writeText(selectedText);
+    toast({
+      title: "Copied",
+      description: "Text copied to clipboard"
+    });
+    setSelectedText('');
+    setSelectionPosition(null);
+  };
+  
   return (
     <div className="h-full flex flex-col bg-surface-elevated rounded-lg border border-border-subtle">
       <div className="p-4 border-b border-border-subtle">
         <h3 className="font-medium text-text-primary">{documentName}</h3>
-        <p className="text-sm text-text-secondary">Fallback PDF viewer</p>
+        <p className="text-sm text-text-secondary">Fallback PDF viewer - Limited features available</p>
       </div>
       
-      <div className="flex-1 p-4">
+      <div className="flex-1 p-4 relative">
         <iframe
           src={`${documentUrl}#toolbar=1&navpanes=1&scrollbar=1`}
           className="w-full h-full border-0 rounded"
           title={documentName}
+          sandbox="allow-same-origin allow-scripts allow-forms"
         />
+        
+        {/* Simple context menu for fallback viewer */}
+        {selectionPosition && selectedText && (
+          <div
+            className="fixed z-50 bg-white shadow-lg rounded-md p-2 border border-gray-200"
+            style={{
+              left: `${selectionPosition.x}px`,
+              top: `${selectionPosition.y}px`
+            }}
+          >
+            <button
+              onClick={handleCopy}
+              className="flex items-center gap-2 px-3 py-2 text-sm hover:bg-gray-100 rounded"
+            >
+              <Copy className="h-4 w-4" />
+              Copy text
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
