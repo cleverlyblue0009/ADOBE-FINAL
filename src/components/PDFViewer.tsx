@@ -12,6 +12,7 @@ import {
   Search
 } from 'lucide-react';
 import { PDFDocument, Highlight } from './PDFReader';
+import { InsightBulbs, sampleInsights } from './InsightBulbs';
 
 interface PDFViewerProps {
   document: PDFDocument;
@@ -299,20 +300,37 @@ export function PDFViewer({
           {/* Highlight Overlays */}
           {highlights
             .filter(h => h.page === currentPage)
-            .map(highlight => (
+            .map((highlight, index) => (
               <div
                 key={highlight.id}
-                className={`absolute highlight-${highlight.color} rounded-sm opacity-30 pointer-events-none`}
+                className={`absolute bg-${highlight.color === 'primary' ? 'yellow-300' : highlight.color === 'secondary' ? 'green-300' : 'blue-300'} rounded-sm opacity-40 pointer-events-auto cursor-pointer transition-all hover:opacity-60 hover:shadow-lg`}
                 style={{
-                  // Position would be calculated based on text selection
-                  top: '20%',
-                  left: '10%',
-                  right: '10%',
-                  height: '1.5em'
+                  // Distribute highlights across the page for better visibility
+                  top: `${20 + (index * 15)}%`,
+                  left: '8%',
+                  right: '8%',
+                  height: '1.2em',
+                  zIndex: 10
                 }}
                 title={`${highlight.explanation} (${Math.round(highlight.relevanceScore * 100)}% relevant)`}
-              />
+                onClick={() => {
+                  // Show highlight details in a tooltip or modal
+                  console.log('Highlight clicked:', highlight);
+                }}
+              >
+                {/* Highlight content preview */}
+                <div className="absolute -top-8 left-0 right-0 bg-gray-900 text-white text-xs px-2 py-1 rounded opacity-0 hover:opacity-100 transition-opacity pointer-events-none">
+                  {highlight.text.substring(0, 50)}...
+                                 </div>
+               </div>
             ))}
+
+          {/* Insight Bulbs */}
+          <InsightBulbs 
+            insights={sampleInsights} 
+            currentPage={currentPage} 
+            zoom={zoom}
+          />
         </div>
       </div>
 

@@ -75,23 +75,23 @@
   }
 
   :root {
-    /* Core Brand Colors - Refined & Professional */
-    --brand-primary: 224 76% 48%;        /* Professional blue */
-    --brand-secondary: 142 69% 42%;      /* Balanced green */
-    --brand-accent: 250 95% 88%;         /* Subtle lavender */
+    /* Core Brand Colors - Modern & Cohesive */
+    --brand-primary: 220 85% 55%;        /* Modern vibrant blue */
+    --brand-secondary: 260 75% 65%;      /* Complementary purple */
+    --brand-accent: 200 100% 92%;        /* Light blue accent */
     
     /* Surface Colors */
     --background: 0 0% 100%;             /* Pure white */
-    --background-secondary: 220 18% 97%; /* Warmer light gray */
-    --background-tertiary: 220 22% 95%;  /* Subtle blue tint */
-    --foreground: 224 12% 12%;           /* Rich dark text */
-    --foreground-secondary: 220 10% 48%; /* Balanced medium gray */
+    --background-secondary: 220 15% 97%; /* Clean light gray */
+    --background-tertiary: 220 20% 95%;  /* Subtle blue tint */
+    --foreground: 220 15% 10%;           /* Modern dark text */
+    --foreground-secondary: 220 10% 45%; /* Balanced medium gray */
     
     /* Interactive States */
     --surface-elevated: 0 0% 100%;       /* Cards/modals */
-    --surface-hover: 220 22% 95%;        /* Subtle hover */
-    --surface-active: 224 76% 92%;       /* Branded active state */
-    --surface-selected: 224 76% 88%;     /* Clear selection */
+    --surface-hover: 220 20% 96%;        /* Subtle hover */
+    --surface-active: 220 85% 92%;       /* Branded active state */
+    --surface-selected: 220 85% 88%;     /* Clear selection */
     
     /* PDF Viewer Specific */
     --pdf-background: 0 0% 98%;          /* PDF canvas background */
@@ -236,6 +236,54 @@
     --brand-secondary: 160 70% 30%;      /* Deep forest */
     --brand-accent: 120 100% 85%;        /* Light green */
   }
+
+  /* Beige Theme */
+  .beige {
+    --background: 45 25% 94%;            /* Warm beige background */
+    --background-secondary: 40 20% 90%;  /* Slightly deeper beige */
+    --background-tertiary: 35 15% 88%;   /* Cards/elevated surfaces */
+    --foreground: 25 15% 15%;            /* Dark brown text */
+    --foreground-secondary: 30 12% 35%;  /* Secondary brown text */
+    
+    --surface-elevated: 45 30% 96%;      /* Light beige cards */
+    --surface-hover: 40 25% 92%;         /* Hover states */
+    --surface-active: 35 40% 75%;        /* Active states */
+    --surface-selected: 35 35% 80%;      /* Selected items */
+    
+    --pdf-background: 45 30% 96%;        /* Beige PDF background */
+    --pdf-shadow: 25 15% 65%;            /* Warm shadows */
+    --outline-background: 45 25% 92%;    /* Beige sidebar */
+    
+    --text-primary: 25 15% 15%;          /* Main text */
+    --text-secondary: 30 12% 35%;        /* Secondary text */
+    --text-tertiary: 30 10% 50%;         /* Tertiary text */
+    --text-on-brand: 0 0% 100%;          /* Text on colored backgrounds */
+    
+    --border-subtle: 35 15% 75%;         /* Light borders */
+    --border-moderate: 30 12% 65%;       /* Medium borders */
+    --border-strong: 25 15% 55%;         /* Strong borders */
+  }
+
+  /* Sunset Theme */
+  .theme-sunset {
+    --brand-primary: 25 95% 53%;         /* Sunset orange */
+    --brand-secondary: 15 85% 45%;       /* Deep orange */
+    --brand-accent: 35 100% 85%;         /* Light peach */
+  }
+
+  /* Lavender Theme */
+  .theme-lavender {
+    --brand-primary: 270 50% 70%;        /* Lavender purple */
+    --brand-secondary: 260 45% 60%;      /* Deep lavender */
+    --brand-accent: 280 60% 90%;         /* Light purple */
+  }
+
+  /* Warm Theme */
+  .theme-warm {
+    --brand-primary: 15 80% 55%;         /* Warm red-orange */
+    --brand-secondary: 10 75% 45%;       /* Deep warm */
+    --brand-accent: 25 90% 85%;          /* Light warm */
+  }
 }
 
 @layer base {
@@ -378,5 +426,68 @@
       opacity: 1;
       transform: scale(1);
     }
+  }
+
+  /* Gradient utilities */
+  .gradient-subtle {
+    background: linear-gradient(135deg, 
+      hsl(var(--background)) 0%, 
+      hsl(var(--background-secondary)) 100%);
+  }
+
+  .gradient-primary {
+    background: linear-gradient(135deg, 
+      hsl(var(--brand-primary)) 0%, 
+      hsl(var(--brand-secondary)) 100%);
+  }
+
+  .bg-gradient-primary {
+    background: linear-gradient(135deg, 
+      hsl(var(--brand-primary)) 0%, 
+      hsl(var(--brand-secondary)) 100%) !important;
+    color: white !important;
+  }
+
+  .text-gradient-primary {
+    background: linear-gradient(135deg, 
+      hsl(var(--brand-primary)) 0%, 
+      hsl(var(--brand-secondary)) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* Ensure important buttons are always visible */
+  .btn-primary {
+    background: hsl(var(--brand-primary)) !important;
+    color: white !important;
+    opacity: 1 !important;
+  }
+
+  /* Modern glass effect */
+  .glass-effect {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  /* Modern card hover effects */
+  .modern-card {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .modern-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+  }
+
+  /* Smooth focus transitions */
+  .smooth-focus {
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .smooth-focus:focus-visible {
+    outline: 2px solid hsl(var(--brand-primary));
+    outline-offset: 2px;
   }
 }

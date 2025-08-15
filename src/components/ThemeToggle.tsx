@@ -10,8 +10,8 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Sun, Moon, Monitor, Palette } from 'lucide-react';
 
-type Theme = 'light' | 'dark' | 'system';
-type ColorScheme = 'default' | 'ocean' | 'forest';
+type Theme = 'light' | 'dark' | 'beige' | 'system';
+type ColorScheme = 'default' | 'ocean' | 'forest' | 'sunset' | 'lavender' | 'warm';
 
 export function ThemeToggle() {
   const [theme, setTheme] = useState<Theme>('system');
@@ -20,15 +20,17 @@ export function ThemeToggle() {
   useEffect(() => {
     const root = window.document.documentElement;
     
+    // Remove all theme classes first
+    root.classList.remove('dark', 'beige', 'theme-ocean', 'theme-forest', 'theme-sunset', 'theme-lavender', 'theme-warm');
+    
     // Apply theme
     if (theme === 'dark' || (theme === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
       root.classList.add('dark');
-    } else {
-      root.classList.remove('dark');
+    } else if (theme === 'beige') {
+      root.classList.add('beige');
     }
 
     // Apply color scheme
-    root.classList.remove('theme-ocean', 'theme-forest');
     if (colorScheme !== 'default') {
       root.classList.add(`theme-${colorScheme}`);
     }
@@ -37,13 +39,17 @@ export function ThemeToggle() {
   const themeOptions = [
     { value: 'light' as Theme, label: 'Light', icon: Sun },
     { value: 'dark' as Theme, label: 'Dark', icon: Moon },
+    { value: 'beige' as Theme, label: 'Beige', icon: Palette },
     { value: 'system' as Theme, label: 'System', icon: Monitor }
   ];
 
   const colorSchemeOptions = [
     { value: 'default' as ColorScheme, label: 'Default', color: 'hsl(217, 91%, 60%)' },
     { value: 'ocean' as ColorScheme, label: 'Ocean', color: 'hsl(200, 85%, 50%)' },
-    { value: 'forest' as ColorScheme, label: 'Forest', color: 'hsl(142, 76%, 36%)' }
+    { value: 'forest' as ColorScheme, label: 'Forest', color: 'hsl(142, 76%, 36%)' },
+    { value: 'sunset' as ColorScheme, label: 'Sunset', color: 'hsl(25, 95%, 53%)' },
+    { value: 'lavender' as ColorScheme, label: 'Lavender', color: 'hsl(270, 50%, 70%)' },
+    { value: 'warm' as ColorScheme, label: 'Warm', color: 'hsl(15, 80%, 55%)' }
   ];
 
   const currentThemeIcon = themeOptions.find(option => option.value === theme)?.icon || Monitor;

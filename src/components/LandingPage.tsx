@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { apiService, DocumentInfo } from '@/lib/api';
+import { ThemeToggle } from './ThemeToggle';
 import { 
   Upload, 
   Brain, 
@@ -17,7 +18,8 @@ import {
   Palette,
   Volume2,
   Loader2,
-  Library
+  Library,
+  ArrowRight
 } from 'lucide-react';
 
 interface LandingPageProps {
@@ -97,28 +99,49 @@ export function LandingPage({ onStart }: LandingPageProps) {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-subtle flex flex-col">
+    <div className="min-h-screen bg-gradient-subtle flex flex-col relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 25% 25%, hsl(var(--brand-primary)) 0%, transparent 50%), 
+                           radial-gradient(circle at 75% 75%, hsl(var(--brand-secondary)) 0%, transparent 50%),
+                           radial-gradient(circle at 50% 50%, hsl(var(--brand-accent)) 0%, transparent 50%)`,
+          backgroundSize: '400px 400px, 300px 300px, 500px 500px',
+          backgroundPosition: '0 0, 100px 100px, 200px 50px'
+        }} />
+      </div>
+      
+      {/* Floating Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-blue-400/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-40 right-20 w-96 h-96 bg-purple-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute bottom-32 left-1/3 w-80 h-80 bg-green-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }} />
+        <div className="absolute bottom-20 right-10 w-64 h-64 bg-orange-400/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      </div>
       {/* Header */}
-      <header className="p-6 border-b border-border-subtle bg-surface-elevated/80 backdrop-blur-sm">
+      <header className="relative z-10 p-6 border-b border-border-subtle bg-surface-elevated/80 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
             <BookOpen className="h-8 w-8 text-brand-primary" />
             <h1 className="text-2xl font-bold text-text-primary">DocuSense</h1>
             <span className="text-sm text-text-secondary">Intelligent PDF Reading</span>
           </div>
-          <Button
-            onClick={() => navigate('/library')}
-            variant="outline"
-            className="flex items-center gap-2 hover:bg-brand-primary/10 hover:text-brand-primary hover:border-brand-primary/30"
-          >
-            <Library className="h-4 w-4" />
-            My Library
-          </Button>
+          <div className="flex items-center gap-3">
+            <ThemeToggle />
+            <Button
+              onClick={() => navigate('/library')}
+              variant="outline"
+              className="flex items-center gap-2 hover:bg-brand-primary/10 hover:text-brand-primary hover:border-brand-primary/30"
+            >
+              <Library className="h-4 w-4" />
+              My Library
+            </Button>
+          </div>
         </div>
       </header>
 
           {/* Hero Section */}
-      <main className="flex-1 flex flex-col items-center justify-center p-6">
+      <main className="relative z-10 flex-1 flex flex-col items-center justify-center p-6">
         <div className="max-w-5xl mx-auto text-center space-y-12 animate-fade-in">
           <div className="space-y-8">
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-brand-primary/10 text-brand-primary text-sm font-medium border border-brand-primary/20">
@@ -234,7 +257,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
                 onClick={handleStart}
                 disabled={selectedFiles.length === 0 || isUploading}
                 size="lg"
-                className="w-full gap-3 h-16 text-xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-primary hover:bg-gradient-primary/90"
+                className="w-full gap-3 h-16 text-xl font-bold shadow-xl hover:shadow-2xl transition-all duration-300 bg-gradient-primary hover:opacity-90 text-white disabled:opacity-50"
               >
                 {isUploading ? (
                   <>
@@ -262,86 +285,110 @@ export function LandingPage({ onStart }: LandingPageProps) {
             <div className="grid md:grid-cols-3 gap-8">
                 {/* AI Insights */}
                 <Card 
-                  className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-surface-elevated/60 backdrop-blur-md cursor-pointer hover:bg-surface-elevated/80"
+                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-blue-50/80 to-indigo-50/80 backdrop-blur-md cursor-pointer hover:from-blue-50 hover:to-indigo-50 hover:-translate-y-2 relative overflow-hidden"
                   onClick={() => handleFeatureClick('ai-insights')}
                 >
-                  <CardContent className="p-10 space-y-6">
-                    <div className="h-20 w-20 bg-gradient-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <Brain className="h-10 w-10 text-brand-primary" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-blue-600/5 to-indigo-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <CardContent className="p-10 space-y-6 relative z-10">
+                    <div className="h-24 w-24 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-2xl">
+                      <Brain className="h-12 w-12 text-white" />
                     </div>
-                    <h3 className="font-bold text-xl text-text-primary">AI Insights</h3>
-                    <p className="text-text-secondary leading-relaxed">Get comprehensive insights with web research, persona analysis, and keyword extraction</p>
-                    <div className="text-xs text-brand-primary font-medium">Click to learn more →</div>
+                    <h3 className="font-bold text-2xl text-gray-800 group-hover:text-blue-700 transition-colors">AI Insights</h3>
+                    <p className="text-gray-600 leading-relaxed text-lg">Get comprehensive insights with web research, persona analysis, and keyword extraction</p>
+                    <div className="text-sm text-blue-600 font-semibold group-hover:text-blue-700 flex items-center justify-center gap-2">
+                      Click to learn more 
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card 
-                  className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-surface-elevated/60 backdrop-blur-md cursor-pointer hover:bg-surface-elevated/80"
+                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-purple-50/80 to-pink-50/80 backdrop-blur-md cursor-pointer hover:from-purple-50 hover:to-pink-50 hover:-translate-y-2 relative overflow-hidden"
                   onClick={() => handleFeatureClick('podcast')}
                 >
-                  <CardContent className="p-10 space-y-6">
-                    <div className="h-20 w-20 bg-gradient-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <Volume2 className="h-10 w-10 text-brand-primary" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-purple-600/5 to-pink-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <CardContent className="p-10 space-y-6 relative z-10">
+                    <div className="h-24 w-24 bg-gradient-to-br from-purple-500 to-pink-600 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-2xl">
+                      <Volume2 className="h-12 w-12 text-white" />
                     </div>
-                    <h3 className="font-bold text-xl text-text-primary">Podcast Mode</h3>
-                    <p className="text-text-secondary leading-relaxed">Listen to AI-narrated summaries of any section</p>
-                    <div className="text-xs text-brand-primary font-medium">Click to learn more →</div>
+                    <h3 className="font-bold text-2xl text-gray-800 group-hover:text-purple-700 transition-colors">Podcast Mode</h3>
+                    <p className="text-gray-600 leading-relaxed text-lg">Listen to AI-narrated summaries of any section</p>
+                    <div className="text-sm text-purple-600 font-semibold group-hover:text-purple-700 flex items-center justify-center gap-2">
+                      Click to learn more 
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card 
-                  className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-surface-elevated/60 backdrop-blur-md cursor-pointer hover:bg-surface-elevated/80"
+                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-green-50/80 to-emerald-50/80 backdrop-blur-md cursor-pointer hover:from-green-50 hover:to-emerald-50 hover:-translate-y-2 relative overflow-hidden"
                   onClick={() => handleFeatureClick('accessibility')}
                 >
-                  <CardContent className="p-10 space-y-6">
-                    <div className="h-20 w-20 bg-gradient-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <Accessibility className="h-10 w-10 text-brand-primary" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-green-600/5 to-emerald-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <CardContent className="p-10 space-y-6 relative z-10">
+                    <div className="h-24 w-24 bg-gradient-to-br from-green-500 to-emerald-600 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-2xl">
+                      <Accessibility className="h-12 w-12 text-white" />
                     </div>
-                    <h3 className="font-bold text-xl text-text-primary">Universal Access</h3>
-                    <p className="text-text-secondary leading-relaxed">Dyslexia-friendly fonts, voice reading, and accessibility support</p>
-                    <div className="text-xs text-brand-primary font-medium">Click to learn more →</div>
+                    <h3 className="font-bold text-2xl text-gray-800 group-hover:text-green-700 transition-colors">Universal Access</h3>
+                    <p className="text-gray-600 leading-relaxed text-lg">Dyslexia-friendly fonts, voice reading, and accessibility support</p>
+                    <div className="text-sm text-green-600 font-semibold group-hover:text-green-700 flex items-center justify-center gap-2">
+                      Click to learn more 
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card 
-                  className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-surface-elevated/60 backdrop-blur-md cursor-pointer hover:bg-surface-elevated/80"
+                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-yellow-50/80 to-orange-50/80 backdrop-blur-md cursor-pointer hover:from-yellow-50 hover:to-orange-50 hover:-translate-y-2 relative overflow-hidden"
                   onClick={() => handleFeatureClick('highlights')}
                 >
-                  <CardContent className="p-10 space-y-6">
-                    <div className="h-20 w-20 bg-gradient-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <Eye className="h-10 w-10 text-brand-primary" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-yellow-600/5 to-orange-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <CardContent className="p-10 space-y-6 relative z-10">
+                    <div className="h-24 w-24 bg-gradient-to-br from-yellow-500 to-orange-600 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-2xl">
+                      <Eye className="h-12 w-12 text-white" />
                     </div>
-                    <h3 className="font-bold text-xl text-text-primary">Smart Highlights</h3>
-                    <p className="text-text-secondary leading-relaxed">Automatically highlight content relevant to your role</p>
-                    <div className="text-xs text-brand-primary font-medium">Click to learn more →</div>
+                    <h3 className="font-bold text-2xl text-gray-800 group-hover:text-yellow-700 transition-colors">Smart Highlights</h3>
+                    <p className="text-gray-600 leading-relaxed text-lg">Automatically highlight content relevant to your role</p>
+                    <div className="text-sm text-yellow-600 font-semibold group-hover:text-yellow-700 flex items-center justify-center gap-2">
+                      Click to learn more 
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card 
-                  className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-surface-elevated/60 backdrop-blur-md cursor-pointer hover:bg-surface-elevated/80"
+                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-cyan-50/80 to-teal-50/80 backdrop-blur-md cursor-pointer hover:from-cyan-50 hover:to-teal-50 hover:-translate-y-2 relative overflow-hidden"
                   onClick={() => handleFeatureClick('progress')}
                 >
-                  <CardContent className="p-10 space-y-6">
-                    <div className="h-20 w-20 bg-gradient-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <Clock className="h-10 w-10 text-brand-primary" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-cyan-600/5 to-teal-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <CardContent className="p-10 space-y-6 relative z-10">
+                    <div className="h-24 w-24 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-2xl">
+                      <Clock className="h-12 w-12 text-white" />
                     </div>
-                    <h3 className="font-bold text-xl text-text-primary">Reading Progress</h3>
-                    <p className="text-text-secondary leading-relaxed">Track your progress with intelligent time estimates</p>
-                    <div className="text-xs text-brand-primary font-medium">Click to learn more →</div>
+                    <h3 className="font-bold text-2xl text-gray-800 group-hover:text-cyan-700 transition-colors">Reading Progress</h3>
+                    <p className="text-gray-600 leading-relaxed text-lg">Track your progress with intelligent time estimates</p>
+                    <div className="text-sm text-cyan-600 font-semibold group-hover:text-cyan-700 flex items-center justify-center gap-2">
+                      Click to learn more 
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </CardContent>
                 </Card>
 
                 <Card 
-                  className="group text-center transition-all duration-300 border-0 shadow-lg hover:shadow-2xl bg-surface-elevated/60 backdrop-blur-md cursor-pointer hover:bg-surface-elevated/80"
+                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-rose-50/80 to-pink-50/80 backdrop-blur-md cursor-pointer hover:from-rose-50 hover:to-pink-50 hover:-translate-y-2 relative overflow-hidden"
                   onClick={() => handleFeatureClick('themes')}
                 >
-                  <CardContent className="p-10 space-y-6">
-                    <div className="h-20 w-20 bg-gradient-primary/10 rounded-2xl flex items-center justify-center mx-auto group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                      <Palette className="h-10 w-10 text-brand-primary" />
+                  <div className="absolute inset-0 bg-gradient-to-br from-rose-600/5 to-pink-600/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <CardContent className="p-10 space-y-6 relative z-10">
+                    <div className="h-24 w-24 bg-gradient-to-br from-rose-500 to-pink-600 rounded-3xl flex items-center justify-center mx-auto group-hover:scale-110 group-hover:rotate-3 transition-all duration-500 shadow-2xl">
+                      <Palette className="h-12 w-12 text-white" />
                     </div>
-                    <h3 className="font-bold text-xl text-text-primary">Adaptive Themes</h3>
-                    <p className="text-text-secondary leading-relaxed">Light, dark, and accessible themes for comfortable reading</p>
-                    <div className="text-xs text-brand-primary font-medium">Click to learn more →</div>
+                    <h3 className="font-bold text-2xl text-gray-800 group-hover:text-rose-700 transition-colors">Adaptive Themes</h3>
+                    <p className="text-gray-600 leading-relaxed text-lg">Light, dark, and accessible themes for comfortable reading</p>
+                    <div className="text-sm text-rose-600 font-semibold group-hover:text-rose-700 flex items-center justify-center gap-2">
+                      Click to learn more 
+                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </div>
                   </CardContent>
                 </Card>
               </div>
@@ -352,7 +399,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
       {/* Feature Demo Modal */}
       {showFeatureDemo && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 animate-fade-in">
-          <div className="bg-surface-elevated border border-border-subtle rounded-2xl p-8 max-w-2xl mx-4 max-h-[80vh] overflow-y-auto">
+          <div className="bg-surface-elevated/95 backdrop-blur-lg border border-border-subtle rounded-3xl p-8 max-w-2xl mx-4 max-h-[80vh] overflow-y-auto shadow-2xl modern-card">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-2xl font-bold text-text-primary">
                 {showFeatureDemo === 'ai-insights' && 'AI Insights'}
@@ -486,7 +533,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
       )}
 
       {/* Footer */}
-      <footer className="p-6 border-t border-border-subtle bg-surface-elevated/50">
+      <footer className="relative z-10 p-6 border-t border-border-subtle bg-surface-elevated/50">
         <div className="max-w-6xl mx-auto text-center text-sm text-text-secondary">
           <p>Built for intelligent reading • Powered by AI • Accessible by design</p>
         </div>
