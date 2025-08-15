@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
 import { apiService, DocumentInfo } from '@/lib/api';
 import { ThemeToggle } from './ThemeToggle';
+import { Logo } from './Logo';
 import { 
   Upload, 
   Brain, 
@@ -21,6 +22,7 @@ import {
   Library,
   ArrowRight
 } from 'lucide-react';
+import { useEffect } from 'react';
 
 interface LandingPageProps {
   onStart: (documents: DocumentInfo[], persona: string, jobToBeDone: string) => void;
@@ -35,6 +37,25 @@ export function LandingPage({ onStart }: LandingPageProps) {
   const [showFeatureDemo, setShowFeatureDemo] = useState<string | null>(null);
   const { toast } = useToast();
   const navigate = useNavigate();
+  
+  // Typing animation state
+  const [typedText, setTypedText] = useState('');
+  const fullText = 'Transform PDFs into';
+  
+  // Typing animation effect
+  useEffect(() => {
+    let currentIndex = 0;
+    const typingInterval = setInterval(() => {
+      if (currentIndex <= fullText.length) {
+        setTypedText(fullText.slice(0, currentIndex));
+        currentIndex++;
+      } else {
+        clearInterval(typingInterval);
+      }
+    }, 100); // Typing speed
+
+    return () => clearInterval(typingInterval);
+  }, []);
 
   const handleFileUpload = (files: FileList) => {
     const pdfFiles = Array.from(files).filter(file => file.type === 'application/pdf');
@@ -121,11 +142,7 @@ export function LandingPage({ onStart }: LandingPageProps) {
       {/* Header */}
       <header className="relative z-10 p-6 border-b border-border-subtle bg-surface-elevated/80 backdrop-blur-sm">
         <div className="max-w-6xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BookOpen className="h-8 w-8 text-brand-primary" />
-            <h1 className="text-2xl font-bold text-text-primary">DocuSense</h1>
-            <span className="text-sm text-text-secondary">Intelligent PDF Reading</span>
-          </div>
+          <Logo size="md" />
           <div className="flex items-center gap-3">
             <ThemeToggle />
             <Button
@@ -148,10 +165,13 @@ export function LandingPage({ onStart }: LandingPageProps) {
               <div className="w-2 h-2 bg-brand-primary rounded-full animate-pulse"></div>
               AI-Powered Reading Assistant
             </div>
-            <h2 className="text-5xl md:text-7xl font-bold text-text-primary leading-[1.05] tracking-tight">
-              Transform PDFs into
-              <span className="text-transparent bg-gradient-primary bg-clip-text block mt-2">intelligent reading</span>
-              experiences
+            <h2 className="text-5xl md:text-7xl font-bold text-text-primary leading-[1.05] tracking-tight headline-main">
+              <span className="typing-text">
+                {typedText}
+                {typedText.length < fullText.length && <span className="typing-cursor" />}
+              </span>
+              <span className="headline-gradient text-transparent bg-clip-text block mt-2">intelligent reading</span>
+              <span className="block">experiences</span>
             </h2>
             <p className="text-xl md:text-2xl text-text-secondary max-w-4xl mx-auto leading-relaxed font-light">
               Upload your documents and unlock AI-powered insights, personalized highlights, 

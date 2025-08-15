@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { 
   Highlighter, 
@@ -12,7 +11,9 @@ import {
   ExternalLink,
   Trash2,
   SortAsc,
-  MoreVertical
+  MoreVertical,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { 
   DropdownMenu,
@@ -32,6 +33,19 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
   const [searchTerm, setSearchTerm] = useState('');
   const [filterColor, setFilterColor] = useState<'all' | 'primary' | 'secondary' | 'tertiary'>('all');
   const [sortBy, setSortBy] = useState<'relevance' | 'page' | 'recent'>('relevance');
+  const [expandedHighlights, setExpandedHighlights] = useState<Set<string>>(new Set());
+
+  const toggleExpanded = (highlightId: string) => {
+    setExpandedHighlights(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(highlightId)) {
+        newSet.delete(highlightId);
+      } else {
+        newSet.add(highlightId);
+      }
+      return newSet;
+    });
+  };
 
   const filteredHighlights = highlights
     .filter(highlight => {
@@ -104,7 +118,7 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-border-subtle">
+      <div className="p-4 border-b border-border-subtle flex-shrink-0">
         <div className="flex items-center gap-2 mb-3">
           <Highlighter className="h-5 w-5 text-brand-primary" />
           <h3 className="font-semibold text-text-primary">Highlights</h3>
@@ -199,91 +213,118 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
         )}
       </div>
 
-      {/* Highlights List */}
-      <ScrollArea className="flex-1 h-0">
-        <div className="p-4 space-y-3">
+      {/* Highlights List - using native scrolling */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="space-y-3">
           {filteredHighlights.length > 0 ? (
-            filteredHighlights.map((highlight) => (
-              <div
-                key={highlight.id}
-                className={`
-                  p-3 rounded-lg border-l-4 cursor-pointer transition-all
-                  ${getColorClasses(highlight.color)}
-                  hover:shadow-md hover:scale-[1.01]
-                `}
-                onClick={() => onHighlightClick(highlight)}
-              >
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="text-xs">
-                      Page {highlight.page}
-                    </Badge>
-                    <div className="flex items-center gap-1">
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          highlight.relevanceScore >= 0.9 ? 'bg-green-500' :
-                          highlight.relevanceScore >= 0.8 ? 'bg-yellow-500' : 'bg-orange-500'
-                        }`}
-                      />
-                      <span className="text-xs text-text-tertiary">
-                        {Math.round(highlight.relevanceScore * 100)}%
-                      </span>
+            filteredHighlights.map((highlight) => {
+              const isExpanded = expandedHighlights.has(highlight.id);
+              const isLongText = highlight.text.length > 150;
+              
+              return (
+                <div
+                  key={highlight.id}
+                  className={`
+                    p-3 rounded-lg border-l-4 cursor-pointer transition-all
+                    ${getColorClasses(highlight.color)}
+                    hover:shadow-md hover:scale-[1.01]
+                  `}
+                  onClick={() => onHighlightClick(highlight)}
+                >
+                  <div className="flex items-start justify-between gap-2 mb-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">
+                        Page {highlight.page}
+                      </Badge>
+                      <div className="flex items-center gap-1">
+                        <div
+                          className={`w-2 h-2 rounded-full ${
+                            highlight.relevanceScore >= 0.9 ? 'bg-green-500' :
+                            highlight.relevanceScore >= 0.8 ? 'bg-yellow-500' : 'bg-orange-500'
+                          }`}
+                        />
+                        <span className="text-xs text-text-tertiary">
+                          {Math.round(highlight.relevanceScore * 100)}%
+                        </span>
+                      </div>
                     </div>
+
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MoreVertical className="h-3 w-3" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard?.writeText(highlight.text);
+                          }}
+                        >
+                          <Copy className="h-4 w-4 mr-2" />
+                          Copy Text
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onHighlightClick(highlight);
+                          }}
+                        >
+                          <ExternalLink className="h-4 w-4 mr-2" />
+                          Go to Page
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            // Would remove highlight
+                          }}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Remove
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </div>
 
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                  <div className="mb-2">
+                    <p className="text-sm text-text-primary leading-relaxed">
+                      "{isExpanded || !isLongText 
+                        ? highlight.text 
+                        : `${highlight.text.substring(0, 150)}...`}"
+                    </p>
+                    {isLongText && (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleExpanded(highlight.id);
+                        }}
+                        className="mt-1 h-6 px-2 text-xs text-blue-600 hover:text-blue-700"
                       >
-                        <MoreVertical className="h-3 w-3" />
+                        {isExpanded ? (
+                          <>Show less <ChevronUp className="h-3 w-3 ml-1" /></>
+                        ) : (
+                          <>Show more <ChevronDown className="h-3 w-3 ml-1" /></>
+                        )}
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigator.clipboard?.writeText(highlight.text);
-                        }}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy Text
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onHighlightClick(highlight);
-                        }}
-                      >
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Go to Page
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Would remove highlight
-                        }}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Remove
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-text-secondary">
+                    {highlight.explanation}
+                  </p>
                 </div>
-
-                <p className="text-sm text-text-primary mb-2 leading-relaxed">
-                  "{highlight.text}"
-                </p>
-
-                <p className="text-xs text-text-secondary">
-                  {highlight.explanation}
-                </p>
-              </div>
-            ))
+              );
+            })
           ) : (
             <div className="text-center py-8">
               {highlights.length === 0 ? (
@@ -321,11 +362,11 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
             </div>
           )}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Summary Stats */}
       {highlights.length > 0 && (
-        <div className="p-4 border-t border-border-subtle">
+        <div className="p-4 border-t border-border-subtle flex-shrink-0">
           <div className="text-xs text-text-secondary space-y-1">
             <div className="flex justify-between">
               <span>Total Highlights</span>

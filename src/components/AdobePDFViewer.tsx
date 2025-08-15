@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
+import { TextSelectionMenu } from './TextSelectionMenu';
+import { useToast } from '@/hooks/use-toast';
+import { apiService } from '@/lib/api';
 
 declare global {
   interface Window {
@@ -28,6 +31,117 @@ export function AdobePDFViewer({
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const adobeViewRef = useRef<any>(null);
+  const [selectedText, setSelectedText] = useState('');
+  const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const { toast } = useToast();
+
+  // Handle text selection
+  useEffect(() => {
+    const handleTextSelection = () => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim()) {
+        const text = selection.toString();
+        setSelectedText(text);
+        
+        // Get selection position for context menu
+        const range = selection.getRangeAt(0);
+        const rect = range.getBoundingClientRect();
+        setSelectionPosition({
+          x: rect.left + rect.width / 2,
+          y: rect.top
+        });
+        
+        if (onTextSelection) {
+          onTextSelection(text, currentPage);
+        }
+      }
+    };
+
+    document.addEventListener('mouseup', handleTextSelection);
+    document.addEventListener('touchend', handleTextSelection);
+
+    return () => {
+      document.removeEventListener('mouseup', handleTextSelection);
+      document.removeEventListener('touchend', handleTextSelection);
+    };
+  }, [currentPage, onTextSelection]);
+
+  const handleHighlight = async (color: 'yellow' | 'green' | 'blue' | 'pink') => {
+    // Store highlight in backend
+    try {
+      await apiService.addHighlight({
+        text: selectedText,
+        color,
+        page: currentPage,
+        documentName
+      });
+      
+      toast({
+        title: "Text Highlighted",
+        description: `Added ${color} highlight to page ${currentPage}`
+      });
+
+      // Apply visual highlight to PDF
+      if (adobeViewRef.current) {
+        // This would integrate with Adobe PDF API to add annotation
+        console.log('Adding highlight annotation:', { color, text: selectedText });
+      }
+    } catch (error) {
+      console.error('Failed to add highlight:', error);
+    }
+    
+    clearSelection();
+  };
+
+  const handleSimplify = async () => {
+    try {
+      const simplified = await apiService.simplifyText(selectedText);
+      toast({
+        title: "Simplified Text",
+        description: simplified.text
+      });
+    } catch (error) {
+      console.error('Failed to simplify text:', error);
+    }
+    clearSelection();
+  };
+
+  const handleTranslate = async () => {
+    // Implement translation
+    toast({
+      title: "Translation",
+      description: "Translation feature coming soon!"
+    });
+    clearSelection();
+  };
+
+  const handleCopy = () => {
+    navigator.clipboard.writeText(selectedText);
+    toast({
+      title: "Copied",
+      description: "Text copied to clipboard"
+    });
+    clearSelection();
+  };
+
+  const handleSpeak = () => {
+    if ('speechSynthesis' in window) {
+      const utterance = new SpeechSynthesisUtterance(selectedText);
+      window.speechSynthesis.speak(utterance);
+      toast({
+        title: "Reading Aloud",
+        description: "Text is being read aloud"
+      });
+    }
+    clearSelection();
+  };
+
+  const clearSelection = () => {
+    setSelectedText('');
+    setSelectionPosition(null);
+    window.getSelection()?.removeAllRanges();
+  };
 
   // Suppress Adobe PDF feature flag errors globally
   useEffect(() => {
@@ -145,16 +259,21 @@ export function AdobePDFViewer({
             console.log('Adobe PDF Event:', event.type, event.data);
             switch (event.type) {
               case "PAGE_VIEW":
+                setCurrentPage(event.data.pageNumber);
                 if (onPageChange) {
                   onPageChange(event.data.pageNumber);
                 }
                 break;
               case "TEXT_SELECTION":
-                if (onTextSelection && event.data.selection) {
-                  onTextSelection(
-                    event.data.selection.text,
-                    event.data.selection.pageNumber
-                  );
+                if (event.data.selection) {
+                  setSelectedText(event.data.selection.text);
+                  setCurrentPage(event.data.selection.pageNumber);
+                  if (onTextSelection) {
+                    onTextSelection(
+                      event.data.selection.text,
+                      event.data.selection.pageNumber
+                    );
+                  }
                 }
                 break;
               case "DOCUMENT_OPEN":
@@ -226,24 +345,43 @@ export function AdobePDFViewer({
   }
 
   return (
-    <div className="h-full relative bg-surface-elevated rounded-lg border border-border-subtle overflow-hidden">
+    <div className="relative h-full w-full flex flex-col">
       {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/90 backdrop-blur-md z-50">
-          <div className="flex flex-col items-center gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
-            <div className="text-center">
-              <div className="text-lg font-medium text-text-primary">Loading PDF...</div>
-              <div className="text-sm text-text-secondary mt-1">Please wait while the document loads</div>
-            </div>
+        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-brand-primary" />
+            <p className="text-sm text-text-secondary">Loading PDF...</p>
+          </div>
+        </div>
+      )}
+      
+      {error && (
+        <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
+          <div className="text-center max-w-md">
+            <p className="text-destructive mb-4">{error}</p>
+            <Button onClick={() => window.location.reload()}>
+              Reload Page
+            </Button>
           </div>
         </div>
       )}
       
       <div 
-        id={viewerId}
+        id="adobe-dc-view" 
         ref={viewerRef}
-        className="w-full h-full"
-        style={{ minHeight: '600px' }}
+        className="flex-1 w-full h-full"
+      />
+
+      {/* Text Selection Context Menu */}
+      <TextSelectionMenu
+        selectedText={selectedText}
+        position={selectionPosition}
+        onHighlight={handleHighlight}
+        onSimplify={handleSimplify}
+        onTranslate={handleTranslate}
+        onCopy={handleCopy}
+        onSpeak={handleSpeak}
+        onClose={clearSelection}
       />
     </div>
   );
