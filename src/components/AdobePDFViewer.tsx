@@ -67,17 +67,47 @@ export function AdobePDFViewer({
       if (selection && selection.toString().trim()) {
         e.preventDefault();
         e.stopPropagation();
+        return false;
       }
+    };
+
+    // Enhanced selection handling for Adobe PDF viewer
+    const handleSelectionChange = () => {
+      setTimeout(() => {
+        const selection = window.getSelection();
+        if (selection && selection.toString().trim()) {
+          const text = selection.toString();
+          setSelectedText(text);
+          
+          // Get selection position for context menu
+          try {
+            const range = selection.getRangeAt(0);
+            const rect = range.getBoundingClientRect();
+            setSelectionPosition({
+              x: rect.left + rect.width / 2,
+              y: rect.top - 10 // Position above selection
+            });
+            
+            if (onTextSelection) {
+              onTextSelection(text, currentPage);
+            }
+          } catch (error) {
+            console.log('Could not get selection position:', error);
+          }
+        }
+      }, 100); // Small delay to ensure selection is complete
     };
 
     document.addEventListener('mouseup', handleTextSelection);
     document.addEventListener('touchend', handleTextSelection);
     document.addEventListener('contextmenu', preventDefaultContextMenu);
+    document.addEventListener('selectionchange', handleSelectionChange);
 
     return () => {
       document.removeEventListener('mouseup', handleTextSelection);
       document.removeEventListener('touchend', handleTextSelection);
       document.removeEventListener('contextmenu', preventDefaultContextMenu);
+      document.removeEventListener('selectionchange', handleSelectionChange);
     };
   }, [currentPage, onTextSelection]);
 
@@ -299,6 +329,8 @@ export function AdobePDFViewer({
         });
 
         adobeViewRef.current = adobeDCView;
+        // Store globally for highlight functionality
+        (window as any).adobeViewInstance = adobeDCView;
 
         // PDF viewing configuration
         const viewerConfig = {
