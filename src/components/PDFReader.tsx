@@ -13,13 +13,17 @@ function HybridPDFViewer({
   documentName, 
   onPageChange, 
   onTextSelection, 
-  clientId 
+  clientId,
+  highlights,
+  currentPage
 }: {
   documentUrl: string;
   documentName: string;
   onPageChange?: (page: number) => void;
   onTextSelection?: (text: string, page: number) => void;
   clientId?: string;
+  highlights?: Highlight[];
+  currentPage?: number;
 }) {
   const [useAdobeViewer, setUseAdobeViewer] = useState(true);
   const [adobeFailed, setAdobeFailed] = useState(false);
@@ -31,7 +35,12 @@ function HybridPDFViewer({
   };
 
   if (!useAdobeViewer || adobeFailed) {
-    return <FallbackPDFViewer documentUrl={documentUrl} documentName={documentName} />;
+    return <FallbackPDFViewer 
+      documentUrl={documentUrl} 
+      documentName={documentName}
+      highlights={highlights}
+      currentPage={currentPage}
+    />;
   }
 
   return (
@@ -42,6 +51,8 @@ function HybridPDFViewer({
         onPageChange={onPageChange}
         onTextSelection={onTextSelection}
         clientId={clientId}
+        highlights={highlights}
+        currentHighlightPage={currentPage}
       />
       {/* Fallback button */}
       <div className="absolute top-4 right-4 z-10">
@@ -304,176 +315,15 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
 
   // Function to apply visual highlights to PDF content
   const applyHighlightToPDF = (highlight: Highlight) => {
-    try {
-      // Find the PDF viewer container
-      const pdfContainer = document.querySelector('.adobe-dc-view, iframe, .pdf-viewer-container, #adobe-pdf-viewer');
-      if (!pdfContainer) {
-        console.log('PDF container not found for highlighting');
-        return;
-      }
-
-      // Create a highlight overlay container if it doesn't exist
-      let overlayContainer = document.getElementById('pdf-highlight-overlay-container');
-      if (!overlayContainer) {
-        overlayContainer = document.createElement('div');
-        overlayContainer.id = 'pdf-highlight-overlay-container';
-        overlayContainer.style.cssText = `
-          position: absolute;
-          top: 0;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          pointer-events: none;
-          z-index: 100;
-        `;
-        
-        // If it's an iframe, create overlay next to it
-        if (pdfContainer.tagName === 'IFRAME') {
-          const parent = pdfContainer.parentElement;
-          if (parent) {
-            parent.style.position = 'relative';
-            parent.appendChild(overlayContainer);
-          }
-        } else {
-          pdfContainer.appendChild(overlayContainer);
-        }
-      }
-
-      // Create a highlight indicator
-      const highlightId = `highlight-overlay-${highlight.id}`;
-      
-      // Remove existing highlight overlay if it exists
-      const existingHighlight = document.getElementById(highlightId);
-      if (existingHighlight) {
-        existingHighlight.remove();
-      }
-
-      // Create a visual highlight indicator
-      const highlightOverlay = document.createElement('div');
-      highlightOverlay.id = highlightId;
-      highlightOverlay.className = 'pdf-highlight-overlay';
-      
-      // Calculate position based on page (approximate positioning)
-      const pageHeight = pdfContainer.clientHeight;
-      const estimatedPagePosition = (highlight.page - 1) * pageHeight;
-      
-      // Set color based on highlight type
-      const colorMap = {
-        'primary': 'rgba(255, 235, 59, 0.4)',
-        'secondary': 'rgba(76, 175, 80, 0.4)',
-        'tertiary': 'rgba(33, 150, 243, 0.4)'
-      };
-      
-      highlightOverlay.style.cssText = `
-        position: absolute;
-        left: 10%;
-        right: 10%;
-        top: ${estimatedPagePosition + 100}px;
-        height: 40px;
-        background: ${colorMap[highlight.color] || colorMap.primary};
-        border-left: 4px solid ${colorMap[highlight.color]?.replace('0.4', '1') || '#FFD700'};
-        border-radius: 4px;
-        pointer-events: auto;
-        cursor: pointer;
-        transition: all 0.3s ease;
-        animation: highlightPulse 2s ease-in-out;
-      `;
-
-      // Add hover effect
-      highlightOverlay.onmouseenter = () => {
-        highlightOverlay.style.transform = 'scale(1.02)';
-        highlightOverlay.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
-      };
-      
-      highlightOverlay.onmouseleave = () => {
-        highlightOverlay.style.transform = 'scale(1)';
-        highlightOverlay.style.boxShadow = 'none';
-      };
-
-      // Add click handler to show highlight details
-      highlightOverlay.onclick = () => {
-        toast({
-          title: "Highlight Details",
-          description: `${highlight.explanation}\n\nText: "${highlight.text.substring(0, 100)}..."`,
-        });
-      };
-
-      // Add tooltip
-      highlightOverlay.title = `${highlight.explanation}\nRelevance: ${Math.round(highlight.relevanceScore * 100)}%`;
-
-      overlayContainer.appendChild(highlightOverlay);
-
-      // Also create a floating indicator
-      const floatingIndicator = document.createElement('div');
-      floatingIndicator.className = 'pdf-highlight-indicator';
-      floatingIndicator.style.cssText = `
-        position: fixed;
-        top: 20px;
-        right: 20px;
-        background: linear-gradient(135deg, ${colorMap[highlight.color] || '#FFD700'}, ${colorMap[highlight.color]?.replace('0.4', '0.8') || '#FFA500'});
-        color: #333;
-        padding: 12px 16px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-        z-index: 1000;
-        font-size: 14px;
-        font-weight: 500;
-        animation: slideInRight 0.3s ease-out;
-        max-width: 300px;
-      `;
-      floatingIndicator.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <div style="width: 8px; height: 8px; background: white; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
-          <div>
-            <div style="font-weight: 600; margin-bottom: 4px;">Highlight Added</div>
-            <div style="font-size: 12px; opacity: 0.9;">Page ${highlight.page}: ${highlight.text.substring(0, 60)}${highlight.text.length > 60 ? '...' : ''}</div>
-          </div>
-        </div>
-      `;
-
-      document.body.appendChild(floatingIndicator);
-
-      // Remove floating indicator after 4 seconds
-      setTimeout(() => {
-        floatingIndicator.style.animation = 'slideOutRight 0.3s ease-in forwards';
-        setTimeout(() => floatingIndicator.remove(), 300);
-      }, 4000);
-
-      // Add CSS animations if not already present
-      if (!document.getElementById('highlight-animations')) {
-        const style = document.createElement('style');
-        style.id = 'highlight-animations';
-        style.textContent = `
-          @keyframes highlightPulse {
-            0%, 100% { opacity: 0.4; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.02); }
-          }
-          @keyframes fadeOut {
-            to { opacity: 0; transform: scale(0.95); }
-          }
-          @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
-          }
-          @keyframes slideOutRight {
-            to { transform: translateX(100%); opacity: 0; }
-          }
-          @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
-          }
-        `;
-        document.head.appendChild(style);
-      }
-
-    } catch (error) {
-      console.error('Failed to apply highlight to PDF:', error);
-      // Show fallback notification
-      toast({
-        title: "Highlight Added",
-        description: `Added highlight on page ${highlight.page}: "${highlight.text.substring(0, 50)}..."`,
-      });
-    }
+    // Highlights are now automatically applied through the HybridPDFViewer component
+    // which uses the pdfHighlighter utility for better text matching and positioning
+    console.log('Highlight navigation:', highlight);
+    
+    // Show a notification about the highlight
+    toast({
+      title: "Highlight Active",
+      description: `Viewing highlight on page ${highlight.page}: "${highlight.text.substring(0, 50)}..."`,
+    });
   };
 
   const handleOutlineClick = (item: OutlineItem) => {
@@ -593,12 +443,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
           return [...prev, ...newHighlights];
         });
         
-        // Apply visual highlights to the PDF for each new highlight
-        intelligenceHighlights.forEach((highlight, index) => {
-          setTimeout(() => {
-            applyHighlightToPDF(highlight);
-          }, index * 200); // Stagger the highlights for better visual effect
-        });
+        // Highlights will be automatically applied through the HybridPDFViewer component
         
         toast({
           title: "AI Analysis Complete",
@@ -760,6 +605,8 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               onPageChange={setCurrentPage}
               onTextSelection={handleTextSelection}
               clientId={import.meta.env.VITE_ADOBE_CLIENT_ID}
+              highlights={highlights}
+              currentPage={currentPage}
             />
           ) : (
             <div className="flex items-center justify-center h-full">
@@ -937,11 +784,12 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                   <HighlightPanel 
                     highlights={highlights}
                     onHighlightClick={(highlight) => {
+                      // Navigate to the highlight page
                       setCurrentPage(highlight.page);
-                      // Apply visual highlight to PDF
-                      setTimeout(() => {
-                        applyHighlightToPDF(highlight);
-                      }, 500); // Small delay to ensure page navigation completes
+                      
+                      // The highlight will be automatically shown through the HybridPDFViewer
+                      // which receives the highlights prop and applies them on page change
+                      
                       toast({
                         title: "Navigated to Highlight",
                         description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
