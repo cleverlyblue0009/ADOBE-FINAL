@@ -23,13 +23,15 @@ import {
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 import { Highlight } from './PDFReader';
+import { HighlightFlashcards } from './HighlightFlashcards';
 
 interface HighlightPanelProps {
   highlights: Highlight[];
   onHighlightClick: (highlight: Highlight) => void;
+  onRemoveHighlight?: (highlightId: string) => void;
 }
 
-export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelProps) {
+export function HighlightPanel({ highlights, onHighlightClick, onRemoveHighlight }: HighlightPanelProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterColor, setFilterColor] = useState<'all' | 'primary' | 'secondary' | 'tertiary'>('all');
   const [sortBy, setSortBy] = useState<'relevance' | 'page' | 'recent'>('relevance');
@@ -69,17 +71,17 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
 
   const getColorName = (color: Highlight['color']) => {
     switch (color) {
-      case 'primary': return 'Yellow';
-      case 'secondary': return 'Green';
-      case 'tertiary': return 'Blue';
+      case 'primary': return 'Important';
+      case 'secondary': return 'Key Concept';
+      case 'tertiary': return 'Reference';
     }
   };
 
   const getColorClasses = (color: Highlight['color']) => {
     switch (color) {
-      case 'primary': return 'bg-highlight-primary border-yellow-400';
-      case 'secondary': return 'bg-highlight-secondary border-green-400';
-      case 'tertiary': return 'bg-highlight-tertiary border-blue-400';
+      case 'primary': return 'bg-red-50 border-red-300 dark:bg-red-950 dark:border-red-700';
+      case 'secondary': return 'bg-blue-50 border-blue-300 dark:bg-blue-950 dark:border-blue-700';
+      case 'tertiary': return 'bg-green-50 border-green-300 dark:bg-green-950 dark:border-green-700';
     }
   };
 
@@ -99,77 +101,79 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
     const a = document.createElement('a');
     a.href = url;
     a.download = 'highlights.json';
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
   };
 
-  const handleCopyAll = async () => {
-    const text = filteredHighlights
-      .map(h => `"${h.text}" (Page ${h.page}) - ${h.explanation}`)
+  const handleCopyAllHighlights = () => {
+    const allText = filteredHighlights
+      .map(h => `Page ${h.page}: "${h.text}" - ${h.explanation}`)
       .join('\n\n');
-    
-    try {
-      await navigator.clipboard.writeText(text);
-      // Would show success toast
-    } catch (err) {
-      console.error('Failed to copy highlights:', err);
-    }
+    navigator.clipboard?.writeText(allText);
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-border-subtle flex-shrink-0">
-        <div className="flex items-center gap-2 mb-3">
-          <Highlighter className="h-5 w-5 text-brand-primary" />
-          <h3 className="font-semibold text-text-primary">Highlights</h3>
-          <Badge variant="secondary" className="text-xs">
-            {highlights.length}
-          </Badge>
+    <div className="flex flex-col h-full bg-background border-l border-border-subtle">
+      {/* Header */}
+      <div className="flex-shrink-0 p-4 border-b border-border-subtle">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Highlighter className="h-5 w-5 text-primary" />
+            <h3 className="font-semibold text-text-primary">Highlights</h3>
+            <Badge variant="secondary" className="text-xs">
+              {highlights.length}
+            </Badge>
+          </div>
+          
+          {/* Flashcards Button */}
+          <HighlightFlashcards 
+            highlights={highlights}
+            onHighlightClick={onHighlightClick}
+            onRemoveHighlight={onRemoveHighlight}
+          />
         </div>
 
         {/* Search */}
         <div className="relative mb-3">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-tertiary h-4 w-4" />
           <Input
             placeholder="Search highlights..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 text-sm"
           />
         </div>
 
-        {/* Filters and Sort */}
-        <div className="flex gap-2">
+        {/* Filters */}
+        <div className="flex gap-2 mb-3">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="flex-1 gap-2">
                 <Filter className="h-4 w-4" />
-                {filterColor === 'all' ? 'All Colors' : getColorName(filterColor)}
+                {filterColor === 'all' ? 'All Types' : getColorName(filterColor as any)}
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent>
               <DropdownMenuItem onClick={() => setFilterColor('all')}>
-                All Colors
+                All Types
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setFilterColor('primary')}>
-                <div className="w-3 h-3 bg-highlight-primary rounded mr-2" />
-                Yellow
+                Important
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setFilterColor('secondary')}>
-                <div className="w-3 h-3 bg-highlight-secondary rounded mr-2" />
-                Green
+                Key Concept
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setFilterColor('tertiary')}>
-                <div className="w-3 h-3 bg-highlight-tertiary rounded mr-2" />
-                Blue
+                Reference
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
 
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
+              <Button variant="outline" size="sm" className="flex-1 gap-2">
                 <SortAsc className="h-4 w-4" />
                 Sort
               </Button>
@@ -189,12 +193,12 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
         </div>
 
         {/* Action Buttons */}
-        {highlights.length > 0 && (
-          <div className="flex gap-2 mt-3">
+        {filteredHighlights.length > 0 && (
+          <div className="flex gap-2">
             <Button
               variant="outline"
               size="sm"
-              onClick={handleCopyAll}
+              onClick={handleCopyAllHighlights}
               className="flex-1 gap-2"
             >
               <Copy className="h-4 w-4" />
@@ -236,11 +240,21 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
                       <Badge variant="outline" className="text-xs">
                         Page {highlight.page}
                       </Badge>
+                      <Badge 
+                        variant="secondary" 
+                        className={`text-xs ${
+                          highlight.color === 'primary' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' :
+                          highlight.color === 'secondary' ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' :
+                          'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                        }`}
+                      >
+                        {getColorName(highlight.color)}
+                      </Badge>
                       <div className="flex items-center gap-1">
                         <div
                           className={`w-2 h-2 rounded-full ${
                             highlight.relevanceScore >= 0.9 ? 'bg-green-500' :
-                            highlight.relevanceScore >= 0.8 ? 'bg-yellow-500' : 'bg-orange-500'
+                            highlight.relevanceScore >= 0.8 ? 'bg-orange-500' : 'bg-red-500'
                           }`}
                         />
                         <span className="text-xs text-text-tertiary">
@@ -280,16 +294,18 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
                           Go to Page
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            // Would remove highlight
-                          }}
-                          className="text-destructive"
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Remove
-                        </DropdownMenuItem>
+                        {onRemoveHighlight && (
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onRemoveHighlight(highlight.id);
+                            }}
+                            className="text-destructive"
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Remove
+                          </DropdownMenuItem>
+                        )}
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>

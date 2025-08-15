@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { DocumentOutline } from './DocumentOutline';
+import { EnhancedLeftPanel } from './EnhancedLeftPanel';
 import { FloatingTools } from './FloatingTools';
 import { AdobePDFViewer, FallbackPDFViewer } from './AdobePDFViewer';
 import { CrossConnectionsPanel } from './CrossConnectionsPanel';
 import { StrategicInsightsPanel } from './StrategicInsightsPanel';
+import { EnhancedStrategicPanel } from './EnhancedStrategicPanel';
 import { InsightsPanel } from './InsightsPanel';
 
 // Hybrid PDF Viewer component that tries Adobe first, then falls back to iframe
@@ -15,7 +17,8 @@ function HybridPDFViewer({
   onTextSelection, 
   clientId,
   highlights,
-  currentPage
+  currentPage,
+  goToSection
 }: {
   documentUrl: string;
   documentName: string;
@@ -24,6 +27,7 @@ function HybridPDFViewer({
   clientId?: string;
   highlights?: Highlight[];
   currentPage?: number;
+  goToSection?: { page: number; section?: string } | null;
 }) {
   const [useAdobeViewer, setUseAdobeViewer] = useState(true);
   const [adobeFailed, setAdobeFailed] = useState(false);
@@ -40,6 +44,7 @@ function HybridPDFViewer({
       documentName={documentName}
       highlights={highlights}
       currentPage={currentPage}
+      goToSection={goToSection}
     />;
   }
 
@@ -53,6 +58,7 @@ function HybridPDFViewer({
         clientId={clientId}
         highlights={highlights}
         currentHighlightPage={currentPage}
+        goToSection={goToSection}
       />
       {/* Fallback button */}
       <div className="absolute top-4 right-4 z-10">
@@ -619,23 +625,46 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
       </header>
 
       <div className="flex flex-1 min-h-0">
-        {/* Left Sidebar - Outline & Navigation */}
+        {/* Left Sidebar - Enhanced Navigation */}
         {leftSidebarOpen && (
           <aside 
             className="bg-surface-elevated/50 border-r border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm relative min-w-0"
             style={{ width: `${leftSidebarWidth}px`, maxWidth: `${leftSidebarWidth}px` }}
           >
             <div className="flex-1 overflow-hidden flex flex-col min-w-0">
-              {/* Document Outline */}
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <DocumentOutline
-                  documents={documents}
-                  currentDocument={currentDocument}
-                  currentPage={currentPage}
-                  onItemClick={handleOutlineClick}
-                  onDocumentSwitch={setCurrentDocument}
-                />
-              </div>
+              <EnhancedLeftPanel
+                documents={documents}
+                currentDocument={currentDocument}
+                currentPage={currentPage}
+                totalPages={totalPages}
+                persona={persona}
+                jobToBeDone={jobToBeDone}
+                onDocumentChange={setCurrentDocument}
+                onPageNavigate={setCurrentPage}
+                onSectionNavigate={(page, section) => {
+                  setCurrentPage(page);
+                  // TODO: Implement section navigation with goToLocation
+                  toast({
+                    title: "Navigating to Section",
+                    description: `${section} - Page ${page}`,
+                  });
+                }}
+                onQuickAction={(actionId) => {
+                  switch (actionId) {
+                    case 'strategic':
+                      setActiveRightPanel('strategic');
+                      break;
+                    case 'highlights':
+                      setActiveRightPanel('highlights');
+                      break;
+                    case 'insights':
+                      setActiveRightPanel('insights');
+                      break;
+                    default:
+                      break;
+                  }
+                }}
+              />
             </div>
             
             {/* Resize Handle */}
@@ -658,6 +687,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               clientId={import.meta.env.VITE_ADOBE_CLIENT_ID}
               highlights={highlights}
               currentPage={currentPage}
+              goToSection={null} // Will be updated when section navigation is triggered
             />
           ) : (
             <div className="flex items-center justify-center h-full">
@@ -730,13 +760,21 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               
               {activeRightPanel === 'strategic' && (
                 <div className="min-w-0 overflow-hidden h-full">
-                  <StrategicInsightsPanel 
+                  <EnhancedStrategicPanel 
                     documentId={currentDocument?.id}
                     persona={persona}
                     jobToBeDone={jobToBeDone}
                     currentText={selectedText || getCurrentSectionTitle()}
                     currentPage={currentPage}
                     onPageNavigate={setCurrentPage}
+                    onSectionNavigate={(page, section) => {
+                      setCurrentPage(page);
+                      // TODO: Implement section navigation with goToLocation
+                      toast({
+                        title: "Navigating to Section",
+                        description: `Going to page ${page} - ${section}`,
+                      });
+                    }}
                   />
                 </div>
               )}
@@ -844,6 +882,14 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                       toast({
                         title: "Navigated to Highlight",
                         description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
+                      });
+                    }}
+                    onRemoveHighlight={(highlightId) => {
+                      // Remove highlight from the list
+                      setHighlights(prev => prev.filter(h => h.id !== highlightId));
+                      toast({
+                        title: "Highlight Removed",
+                        description: "The highlight has been successfully removed.",
                       });
                     }}
                   />

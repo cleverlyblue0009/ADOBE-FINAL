@@ -21,6 +21,7 @@ interface AdobePDFViewerProps {
   clientId?: string;
   highlights?: Highlight[];
   currentHighlightPage?: number;
+  goToSection?: { page: number; section?: string } | null;
 }
 
 export function AdobePDFViewer({ 
@@ -30,7 +31,8 @@ export function AdobePDFViewer({
   onTextSelection,
   clientId,
   highlights = [],
-  currentHighlightPage = 1
+  currentHighlightPage = 1,
+  goToSection
 }: AdobePDFViewerProps) {
   const viewerRef = useRef<HTMLDivElement>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -41,6 +43,145 @@ export function AdobePDFViewer({
   const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
+
+  // Enhanced text selection with Adobe API
+  const handleAdobeTextSelection = async () => {
+    if (!adobeViewRef.current || !window.AdobeDC) return;
+
+    try {
+      // Use Adobe's text selection API
+      const annotationManager = adobeViewRef.current.getAnnotationManager();
+      const previewFilePromise = adobeViewRef.current.getFilePromise();
+      
+      if (annotationManager && previewFilePromise) {
+        // Listen for text selection events
+        adobeViewRef.current.registerCallback(
+          window.AdobeDC.View.Enum.CallbackType.GET_USER_PROFILE_API,
+          (profile: any) => {
+            console.log('User profile:', profile);
+          }
+        );
+
+        // Enhanced text selection event
+        adobeViewRef.current.registerCallback(
+          window.AdobeDC.View.Enum.CallbackType.TEXT_SEARCH_API,
+          (searchResult: any) => {
+            console.log('Text search result:', searchResult);
+          }
+        );
+
+        // Listen for annotation events
+        annotationManager.registerEventListener(
+          (event: any) => {
+            if (event.type === 'ANNOTATION_SELECTED') {
+              const annotation = event.data;
+              if (annotation.type === 'textSelection') {
+                setSelectedText(annotation.content || '');
+                if (onTextSelection) {
+                  onTextSelection(annotation.content || '', annotation.page || currentPage);
+                }
+              }
+            }
+          },
+          { listenOn: window.AdobeDC.View.Enum.EventType.ANNOTATION_SELECTED }
+        );
+      }
+    } catch (error) {
+      console.log('Adobe text selection API not fully available, using fallback');
+    }
+  };
+
+  // Enhanced navigation to specific sections using goToLocation
+  const goToLocation = async (page: number, section?: string, coordinates?: { x: number; y: number }) => {
+    if (!adobeViewRef.current || !window.AdobeDC) return;
+
+    try {
+      // Use Adobe's goToLocation API
+      const viewerConfig = {
+        page: page,
+        zoom: 'FitV', // Fit vertically
+        ...(coordinates && {
+          left: coordinates.x,
+          top: coordinates.y
+        })
+      };
+
+      await adobeViewRef.current.goToLocation(viewerConfig);
+      
+      // If section is provided, try to find and highlight it
+      if (section) {
+        await highlightSection(section, page);
+      }
+
+      setCurrentPage(page);
+      if (onPageChange) {
+        onPageChange(page);
+      }
+
+      toast({
+        title: "Navigation Complete",
+        description: `Navigated to page ${page}${section ? ` - ${section}` : ''}`
+      });
+    } catch (error) {
+      console.error('Failed to navigate to location:', error);
+      toast({
+        title: "Navigation Failed",
+        description: "Could not navigate to the specified location",
+        variant: "destructive"
+      });
+    }
+  };
+
+  // Helper function to highlight a specific section
+  const highlightSection = async (sectionText: string, page: number) => {
+    try {
+      const annotationManager = adobeViewRef.current.getAnnotationManager();
+      if (annotationManager) {
+        // Search for the section text and highlight it temporarily
+        const searchResults = await adobeViewRef.current.search(sectionText, {
+          caseSensitive: false,
+          wholeWords: false
+        });
+
+        if (searchResults && searchResults.length > 0) {
+          // Create a temporary highlight for the found section
+          const result = searchResults.find((r: any) => r.page === page) || searchResults[0];
+          
+          await annotationManager.addAnnotation({
+            type: 'highlight',
+            page: result.page,
+            bounds: result.bounds,
+            color: '#FFE066', // Light yellow for section highlighting
+            opacity: 0.3,
+            content: `Section: ${sectionText}`,
+            isTemporary: true // Custom flag for temporary highlights
+          });
+
+          // Remove temporary highlight after 3 seconds
+          setTimeout(async () => {
+            try {
+              const annotations = await annotationManager.getAnnotations();
+              const tempAnnotation = annotations.find((a: any) => a.isTemporary && a.content.includes(sectionText));
+              if (tempAnnotation) {
+                await annotationManager.removeAnnotation(tempAnnotation.id);
+              }
+            } catch (error) {
+              console.log('Could not remove temporary highlight');
+            }
+          }, 3000);
+        }
+      }
+    } catch (error) {
+      console.log('Section highlighting not available:', error);
+    }
+  };
+
+  // Effect to handle goToSection prop changes
+  useEffect(() => {
+    if (goToSection && isReady) {
+      goToLocation(goToSection.page, goToSection.section);
+    }
+  }, [goToSection, isReady]);
 
   // Handle text selection
   useEffect(() => {
@@ -569,12 +710,14 @@ export function FallbackPDFViewer({
   documentUrl, 
   documentName,
   highlights = [],
-  currentPage = 1 
+  currentPage = 1,
+  goToSection
 }: { 
   documentUrl: string; 
   documentName: string;
   highlights?: Highlight[];
   currentPage?: number;
+  goToSection?: { page: number; section?: string } | null;
 }) {
   const [selectedText, setSelectedText] = useState('');
   const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
