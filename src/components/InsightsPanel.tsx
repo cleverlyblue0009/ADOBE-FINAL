@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { apiService, Insight as ApiInsight, MultiDocumentInsights } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
+import { ExpandablePanelModal } from '@/components/ui/ExpandablePanelModal';
 import { 
   Lightbulb, 
   Brain, 
@@ -281,23 +282,23 @@ export function InsightsPanel({ documentIds = [], documentId, persona: propPerso
   const getInsightIcon = (type: Insight['type']) => {
     switch (type) {
       case 'takeaway':
-        return <Lightbulb className="h-4 w-4 text-yellow-500" />;
+        return <Lightbulb className="h-4 w-4 text-primary" />;
       case 'fact':
-        return <Brain className="h-4 w-4 text-blue-500" />;
+        return <Brain className="h-4 w-4 text-primary" />;
       case 'contradiction':
-        return <AlertTriangle className="h-4 w-4 text-orange-500" />;
+        return <AlertTriangle className="h-4 w-4 text-destructive" />;
       case 'connection':
-        return <Link2 className="h-4 w-4 text-purple-500" />;
+        return <Link2 className="h-4 w-4 text-secondary" />;
       case 'info':
-        return <Sparkles className="h-4 w-4 text-green-500" />;
+        return <Sparkles className="h-4 w-4 text-accent-foreground" />;
       case 'error':
-        return <AlertTriangle className="h-4 w-4 text-red-500" />;
+        return <AlertTriangle className="h-4 w-4 text-destructive" />;
       case 'key-insight':
-        return <Lightbulb className="h-4 w-4 text-yellow-500" />;
+        return <Lightbulb className="h-4 w-4 text-primary" />;
       case 'inspiration':
-        return <Sparkles className="h-4 w-4 text-green-500" />;
+        return <Sparkles className="h-4 w-4 text-accent-foreground" />;
       default:
-        return <Lightbulb className="h-4 w-4 text-blue-500" />;
+        return <Lightbulb className="h-4 w-4 text-primary" />;
     }
   };
 
@@ -325,52 +326,120 @@ export function InsightsPanel({ documentIds = [], documentId, persona: propPerso
   };
 
   const getRelevanceColor = (relevance: number) => {
-    if (relevance >= 0.9) return 'bg-green-500';
-    if (relevance >= 0.8) return 'bg-yellow-500';
-    return 'bg-orange-500';
+    if (relevance >= 0.9) return 'bg-accent-foreground';
+    if (relevance >= 0.8) return 'bg-primary';
+    return 'bg-secondary';
   };
 
   const getPriorityIcon = (priority: string) => {
     switch (priority) {
-      case 'high': return <AlertCircle className="h-4 w-4 text-red-500" />;
-      case 'medium': return <Clock className="h-4 w-4 text-yellow-500" />;
-      case 'low': return <CheckCircle2 className="h-4 w-4 text-green-500" />;
-      default: return <Star className="h-4 w-4 text-blue-500" />;
+      case 'high': return <AlertCircle className="h-4 w-4 text-destructive" />;
+      case 'medium': return <Clock className="h-4 w-4 text-primary" />;
+      case 'low': return <CheckCircle2 className="h-4 w-4 text-accent-foreground" />;
+      default: return <Star className="h-4 w-4 text-primary" />;
     }
   };
 
   return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-blue-50/30 to-purple-50/20">
-      <div className="p-6 border-b border-gray-200 bg-white/80 backdrop-blur-sm">
-        <div className="flex items-center gap-4 mb-4">
-          <div className="p-3 bg-gradient-to-br from-blue-500 via-purple-600 to-indigo-700 rounded-xl shadow-lg">
-            <Brain className="h-6 w-6 text-white" />
+    <div className="h-full flex flex-col bg-gradient-to-br from-background via-accent/20 to-secondary/10">
+      <div className="p-6 border-b border-border bg-background/80 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-gradient-to-br from-primary via-primary/90 to-secondary rounded-xl shadow-lg">
+              <Brain className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <div>
+              <h3 className="font-bold text-foreground text-xl">AI Document Intelligence</h3>
+              <p className="text-sm text-muted-foreground">
+                Advanced analysis with pattern detection, contradictions, and strategic insights
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-bold text-gray-900 text-xl">AI Document Intelligence</h3>
-            <p className="text-sm text-gray-600">
-              Advanced analysis with pattern detection, contradictions, and strategic insights
-            </p>
-          </div>
+          <ExpandablePanelModal
+            title="AI Document Intelligence"
+            icon={<Brain className="h-5 w-5 text-primary" />}
+          >
+            <div className="space-y-6">
+              <Card className="border-primary/20 bg-primary/5">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg text-primary">Document Analysis Features</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="flex items-start gap-3">
+                      <Lightbulb className="h-5 w-5 text-primary mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-foreground">Key Insights</h4>
+                        <p className="text-sm text-muted-foreground">Extract important takeaways from content</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="h-5 w-5 text-destructive mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-foreground">Contradictions</h4>
+                        <p className="text-sm text-muted-foreground">Identify conflicting information</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Link2 className="h-5 w-5 text-secondary mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-foreground">Connections</h4>
+                        <p className="text-sm text-muted-foreground">Find relationships between concepts</p>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <TrendingUp className="h-5 w-5 text-accent-foreground mt-0.5" />
+                      <div>
+                        <h4 className="font-medium text-foreground">Patterns</h4>
+                        <p className="text-sm text-muted-foreground">Discover recurring themes and trends</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+              
+              {/* Show current insights if available */}
+              {insights.length > 0 && (
+                <div className="space-y-4">
+                  <h4 className="text-lg font-semibold text-foreground">Current Insights</h4>
+                  <div className="grid gap-3">
+                    {insights.slice(0, 6).map((insight) => (
+                      <Card key={insight.id} className="border-border/50">
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            {getInsightIcon(insight.type)}
+                            <div className="flex-1">
+                              <h5 className="font-medium text-foreground mb-1">{insight.title}</h5>
+                              <p className="text-sm text-muted-foreground">{insight.content}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </ExpandablePanelModal>
         </div>
       </div>
 
       <ScrollArea className="flex-1">
         <div className="p-6 space-y-8">
           {/* Persona and Job Setup */}
-          <Card className="border-2 border-dashed border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50">
+          <Card className="border-2 border-dashed border-primary/30 bg-gradient-to-r from-primary/5 to-secondary/5">
             <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2 text-lg text-blue-900">
-                <User className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-lg text-foreground">
+                <User className="h-5 w-5 text-primary" />
                 Analysis Configuration
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="p-1.5 bg-blue-100 rounded-lg">
-                      <User className="h-4 w-4 text-blue-600" />
+                  <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <div className="p-1.5 bg-primary/10 rounded-lg">
+                      <User className="h-4 w-4 text-primary" />
                     </div>
                     Your Role
                   </label>
@@ -384,9 +453,9 @@ export function InsightsPanel({ documentIds = [], documentId, persona: propPerso
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                    <div className="p-1.5 bg-green-100 rounded-lg">
-                      <Target className="h-4 w-4 text-green-600" />
+                  <label className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <div className="p-1.5 bg-secondary/10 rounded-lg">
+                      <Target className="h-4 w-4 text-secondary" />
                     </div>
                     Your Objective
                   </label>
@@ -404,7 +473,7 @@ export function InsightsPanel({ documentIds = [], documentId, persona: propPerso
 
           {/* Analysis Tabs */}
           <Tabs defaultValue="insights" className="w-full">
-            <TabsList className="grid w-full grid-cols-3 bg-white/60 backdrop-blur-sm border border-gray-200">
+            <TabsList className="grid w-full grid-cols-3 bg-background/60 backdrop-blur-sm border border-border">
               <TabsTrigger value="insights" className="flex items-center gap-2">
                 <Lightbulb className="h-4 w-4" />
                 Quick Insights
