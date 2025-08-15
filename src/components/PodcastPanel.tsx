@@ -193,11 +193,51 @@ export function PodcastPanel({
       } else {
         // Check if this is browser TTS or real audio
         if (audioUrl.startsWith('browser-tts://')) {
-          // Use browser speech synthesis
+          // Use browser speech synthesis with optimized settings
           if ('speechSynthesis' in window && podcastScript) {
-            const utterance = new SpeechSynthesisUtterance(podcastScript);
-            utterance.rate = 0.9;
-            utterance.pitch = 1.0;
+            // Get available voices and prefer female voices for more natural sound
+            const voices = window.speechSynthesis.getVoices();
+            let preferredVoice = null;
+            
+            // Look for high-quality female voices first
+            const femaleVoices = voices.filter(voice => 
+              voice.name.toLowerCase().includes('female') || 
+              voice.name.toLowerCase().includes('woman') ||
+              voice.name.toLowerCase().includes('samantha') ||
+              voice.name.toLowerCase().includes('alex') ||
+              voice.name.toLowerCase().includes('karen') ||
+              voice.name.toLowerCase().includes('victoria')
+            );
+            
+            // Look for natural-sounding voices
+            const naturalVoices = voices.filter(voice => 
+              voice.name.toLowerCase().includes('natural') ||
+              voice.name.toLowerCase().includes('enhanced') ||
+              voice.name.toLowerCase().includes('premium')
+            );
+            
+            // Prefer English voices
+            const englishVoices = voices.filter(voice => voice.lang.startsWith('en'));
+            
+            // Select the best voice available
+            preferredVoice = femaleVoices[0] || naturalVoices[0] || englishVoices[0] || voices[0];
+            
+            // Process script to make it more natural (remove excessive pauses and improve flow)
+            const naturalScript = podcastScript
+              .replace(/\.\s+/g, '. ')  // Normalize sentence spacing
+              .replace(/,\s+/g, ', ')   // Normalize comma spacing
+              .replace(/\s+/g, ' ')     // Remove extra whitespace
+              .replace(/\n\s*\n/g, '. ') // Replace double line breaks with periods
+              .trim();
+            
+            const utterance = new SpeechSynthesisUtterance(naturalScript);
+            
+            // Optimize speech parameters for more natural delivery
+            if (preferredVoice) {
+              utterance.voice = preferredVoice;
+            }
+            utterance.rate = 1.1;        // Slightly faster, more conversational
+            utterance.pitch = 1.0;       // Natural pitch
             utterance.volume = volume[0];
             
             utterance.onstart = () => setIsPlaying(true);
@@ -211,6 +251,8 @@ export function PodcastPanel({
               });
             };
             
+            // Cancel any existing speech before starting new one
+            window.speechSynthesis.cancel();
             window.speechSynthesis.speak(utterance);
           }
         } else {
