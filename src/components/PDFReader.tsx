@@ -353,41 +353,78 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
       highlightOverlay.id = highlightId;
       highlightOverlay.className = 'pdf-highlight-overlay';
       
-      // Calculate position based on page (approximate positioning)
-      const pageHeight = pdfContainer.clientHeight;
-      const estimatedPagePosition = (highlight.page - 1) * pageHeight;
+      // Improved positioning calculation
+      const containerRect = pdfContainer.getBoundingClientRect();
+      const pageHeight = containerRect.height;
+      const pageWidth = containerRect.width;
       
-      // Set color based on highlight type
+      // Better page positioning - account for PDF margins and actual content area
+      const pagesPerView = Math.max(1, Math.floor(pageHeight / 800)); // Assume ~800px per page
+      const effectivePageHeight = pageHeight / pagesPerView;
+      const pageIndex = Math.max(0, highlight.page - 1);
+      const estimatedTop = (pageIndex * effectivePageHeight) + (effectivePageHeight * 0.2); // Start 20% down the page
+      
+      // Improved color system with better contrast and visibility
       const colorMap = {
-        'primary': 'rgba(255, 235, 59, 0.4)',
-        'secondary': 'rgba(76, 175, 80, 0.4)',
-        'tertiary': 'rgba(33, 150, 243, 0.4)'
+        'primary': {
+          bg: 'rgba(255, 235, 59, 0.3)',
+          border: '#FFC107',
+          shadow: 'rgba(255, 193, 7, 0.4)'
+        },
+        'secondary': {
+          bg: 'rgba(76, 175, 80, 0.3)',
+          border: '#4CAF50',
+          shadow: 'rgba(76, 175, 80, 0.4)'
+        },
+        'tertiary': {
+          bg: 'rgba(33, 150, 243, 0.3)',
+          border: '#2196F3',
+          shadow: 'rgba(33, 150, 243, 0.4)'
+        }
       };
+      
+      const colors = colorMap[highlight.color] || colorMap.primary;
+      
+      // Dynamic sizing based on text length and relevance
+      const textLength = highlight.text.length;
+      const minHeight = 24;
+      const maxHeight = 60;
+      const baseHeight = Math.min(maxHeight, Math.max(minHeight, textLength * 0.3));
+      const finalHeight = baseHeight * (0.8 + highlight.relevanceScore * 0.4); // Scale by relevance
+      
+      // Better width calculation - responsive to content
+      const minWidth = Math.min(pageWidth * 0.3, 200);
+      const maxWidth = Math.min(pageWidth * 0.8, 600);
+      const textBasedWidth = Math.min(maxWidth, Math.max(minWidth, textLength * 8));
       
       highlightOverlay.style.cssText = `
         position: absolute;
-        left: 10%;
-        right: 10%;
-        top: ${estimatedPagePosition + 100}px;
-        height: 40px;
-        background: ${colorMap[highlight.color] || colorMap.primary};
-        border-left: 4px solid ${colorMap[highlight.color]?.replace('0.4', '1') || '#FFD700'};
-        border-radius: 4px;
+        left: ${pageWidth * 0.1}px;
+        width: ${textBasedWidth}px;
+        top: ${estimatedTop}px;
+        height: ${finalHeight}px;
+        background: linear-gradient(135deg, ${colors.bg}, ${colors.bg.replace('0.3', '0.2')});
+        border: 2px solid ${colors.border};
+        border-radius: 6px;
         pointer-events: auto;
         cursor: pointer;
-        transition: all 0.3s ease;
-        animation: highlightPulse 2s ease-in-out;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        animation: highlightAppear 0.8s ease-out;
+        backdrop-filter: blur(1px);
+        box-shadow: 0 2px 8px ${colors.shadow}, inset 0 1px 0 rgba(255,255,255,0.2);
       `;
 
-      // Add hover effect
+      // Enhanced hover effects
       highlightOverlay.onmouseenter = () => {
-        highlightOverlay.style.transform = 'scale(1.02)';
-        highlightOverlay.style.boxShadow = '0 4px 12px rgba(0,0,0,0.15)';
+        highlightOverlay.style.transform = 'translateY(-2px) scale(1.02)';
+        highlightOverlay.style.boxShadow = `0 6px 20px ${colors.shadow}, inset 0 1px 0 rgba(255,255,255,0.3)`;
+        highlightOverlay.style.borderWidth = '3px';
       };
       
       highlightOverlay.onmouseleave = () => {
-        highlightOverlay.style.transform = 'scale(1)';
-        highlightOverlay.style.boxShadow = 'none';
+        highlightOverlay.style.transform = 'translateY(0) scale(1)';
+        highlightOverlay.style.boxShadow = `0 2px 8px ${colors.shadow}, inset 0 1px 0 rgba(255,255,255,0.2)`;
+        highlightOverlay.style.borderWidth = '2px';
       };
 
       // Add click handler to show highlight details
@@ -398,69 +435,74 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
         });
       };
 
-      // Add tooltip
-      highlightOverlay.title = `${highlight.explanation}\nRelevance: ${Math.round(highlight.relevanceScore * 100)}%`;
+      // Add tooltip with better formatting
+      highlightOverlay.title = `${highlight.explanation}\nRelevance: ${Math.round(highlight.relevanceScore * 100)}%\nPage: ${highlight.page}`;
 
       overlayContainer.appendChild(highlightOverlay);
 
-      // Also create a floating indicator
+      // Improved floating notification
       const floatingIndicator = document.createElement('div');
       floatingIndicator.className = 'pdf-highlight-indicator';
       floatingIndicator.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: linear-gradient(135deg, ${colorMap[highlight.color] || '#FFD700'}, ${colorMap[highlight.color]?.replace('0.4', '0.8') || '#FFA500'});
-        color: #333;
-        padding: 12px 16px;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        background: linear-gradient(135deg, ${colors.border}, ${colors.border}dd);
+        color: white;
+        padding: 16px 20px;
+        border-radius: 12px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.12), 0 2px 8px rgba(0,0,0,0.08);
         z-index: 1000;
         font-size: 14px;
         font-weight: 500;
-        animation: slideInRight 0.3s ease-out;
-        max-width: 300px;
+        animation: slideInRight 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        max-width: 350px;
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255,255,255,0.1);
       `;
       floatingIndicator.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 8px;">
-          <div style="width: 8px; height: 8px; background: white; border-radius: 50%; animation: pulse 1.5s infinite;"></div>
+        <div style="display: flex; align-items: center; gap: 12px;">
+          <div style="width: 10px; height: 10px; background: rgba(255,255,255,0.9); border-radius: 50%; animation: pulse 2s infinite;"></div>
           <div>
-            <div style="font-weight: 600; margin-bottom: 4px;">Highlight Added</div>
-            <div style="font-size: 12px; opacity: 0.9;">Page ${highlight.page}: ${highlight.text.substring(0, 60)}${highlight.text.length > 60 ? '...' : ''}</div>
+            <div style="font-weight: 600; margin-bottom: 4px; font-size: 15px;">Highlight Added</div>
+            <div style="font-size: 13px; opacity: 0.95; line-height: 1.4;">
+              Page ${highlight.page} • ${Math.round(highlight.relevanceScore * 100)}% relevance<br>
+              "${highlight.text.substring(0, 80)}${highlight.text.length > 80 ? '...' : ''}"
+            </div>
           </div>
         </div>
       `;
 
       document.body.appendChild(floatingIndicator);
 
-      // Remove floating indicator after 4 seconds
+      // Remove floating indicator after 5 seconds
       setTimeout(() => {
-        floatingIndicator.style.animation = 'slideOutRight 0.3s ease-in forwards';
-        setTimeout(() => floatingIndicator.remove(), 300);
-      }, 4000);
+        floatingIndicator.style.animation = 'slideOutRight 0.4s cubic-bezier(0.4, 0, 1, 1) forwards';
+        setTimeout(() => floatingIndicator.remove(), 400);
+      }, 5000);
 
-      // Add CSS animations if not already present
+      // Add improved CSS animations if not already present
       if (!document.getElementById('highlight-animations')) {
         const style = document.createElement('style');
         style.id = 'highlight-animations';
         style.textContent = `
-          @keyframes highlightPulse {
-            0%, 100% { opacity: 0.4; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(1.02); }
+          @keyframes highlightAppear {
+            0% { opacity: 0; transform: scale(0.8) translateY(10px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
           }
           @keyframes fadeOut {
             to { opacity: 0; transform: scale(0.95); }
           }
           @keyframes slideInRight {
-            from { transform: translateX(100%); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from { transform: translateX(120%) scale(0.9); opacity: 0; }
+            to { transform: translateX(0) scale(1); opacity: 1; }
           }
           @keyframes slideOutRight {
-            to { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(120%) scale(0.9); opacity: 0; }
           }
           @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0.5; }
+            0%, 100% { opacity: 0.9; transform: scale(1); }
+            50% { opacity: 0.6; transform: scale(1.1); }
           }
         `;
         document.head.appendChild(style);
