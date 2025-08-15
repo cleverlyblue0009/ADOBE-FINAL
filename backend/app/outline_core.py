@@ -6,10 +6,10 @@ from typing import List, Tuple, Optional
 from collections import defaultdict
 
 # --- thresholds (match your tuned Round 1A) ---
-MAX_WORDS_HEADING = 8
-UPPERCASE_RATIO_MIN = 0.6
-MIN_HEADING_SCORE = 2.5
-GAP_THRESH = 8
+MAX_WORDS_HEADING = 12  # Increased from 8 to catch longer headings
+UPPERCASE_RATIO_MIN = 0.4  # Lowered from 0.6 to catch mixed case headings
+MIN_HEADING_SCORE = 2.0  # Lowered from 2.5 to be more inclusive
+GAP_THRESH = 6  # Lowered from 8 to detect headings with smaller gaps
 
 BULLET_START_TOKENS = ("•", "-", "–", "*", "·", "o", "●", "◦")
 PUNCT = set(",.;:!?()[]{}'\"")
@@ -85,28 +85,76 @@ def _score_line(text, caps, font_rank, is_bold, gap_above):
         s -= 2.0
     if text.lower().startswith(("in ", "on ", "at ", "for ", "of ", "to ", "by ")): 
         s -= 1.5
+    
+    # Font rank scoring (improved)
     if font_rank == 0: 
-        s += 1.0
+        s += 1.5  # Increased bonus for largest font
     elif font_rank == 1: 
-        s += 0.75
+        s += 1.0  # Increased bonus
     elif font_rank == 2: 
-        s += 0.5
+        s += 0.75  # Increased bonus
+    elif font_rank == 3:
+        s += 0.5  # Added scoring for 4th largest font
+    
     if is_bold: 
-        s += 0.25
+        s += 0.5  # Increased bold bonus
+    
     w = len(text.split())
     if w <= MAX_WORDS_HEADING: 
         s += 1.5
     if w <= 3: 
         s += 0.5
+    if w <= 6:  # Additional bonus for short headings
+        s += 0.25
+        
+    # Improved capitalization scoring
     if caps >= UPPERCASE_RATIO_MIN: 
         s += 1.0
+    elif caps >= 0.3:  # Partial caps bonus
+        s += 0.5
     elif caps < 0.2: 
         s -= 0.5
+    
+    # Pattern-based bonuses
+    import re
+    # Numbered sections
+    if re.match(r'^\d+\.', text):
+        s += 1.0
+    elif re.match(r'^[A-Z]\.', text):
+        s += 0.8
+    elif re.match(r'^[IVX]+\.', text):
+        s += 0.8
+    
+    # Common heading words
+    heading_words = ['chapter', 'section', 'introduction', 'conclusion', 'summary', 
+                     'overview', 'background', 'methodology', 'results', 'discussion',
+                     'abstract', 'appendix', 'references', 'bibliography']
+    if any(word in text.lower() for word in heading_words):
+        s += 0.75
+    
+    # Question headings
+    if text.endswith('?') and w <= 10:
+        s += 0.5
+    
     punct = sum(ch in PUNCT for ch in text)
     if punct >= 3: 
         s -= 0.5
+    elif punct == 0 and w > 1:  # Bonus for no punctuation in multi-word text
+        s += 0.25
+        
     if gap_above > GAP_THRESH: 
         s += 0.5
+    elif gap_above > GAP_THRESH / 2:  # Smaller gap bonus
+        s += 0.25
+    
+    # Length-based adjustments
+    if len(text) < 5:  # Very short text penalty
+        s -= 1.0
+    elif 5 <= len(text) <= 60:  # Good heading length bonus
+        s += 0.25
+    elif len(text) > 100:  # Too long penalty
+        s -= 1.0
+        
     return s
 
 def extract_outline_blocks(pdf_path: str):
@@ -118,7 +166,7 @@ def extract_outline_blocks(pdf_path: str):
         for text, bbox, is_bold, max_sz in _extract_page_lines(page):
             raw.append({
                 "text": text,
-                "page": pidx + 1,
+                "page": pidx + 1,  # Convert to 1-based page numbering
                 "bbox": bbox,
                 "is_bold": is_bold,
                 "font_size": max_sz
@@ -139,7 +187,7 @@ def extract_outline_blocks(pdf_path: str):
         caps = _caps_ratio(text)
         blocks.append(LineBlock(
             text=text,
-            page=r["page"],
+            page=r["page"],  # Already 1-based from _extract_page_lines
             bbox=r["bbox"],
             font_size=r["font_size"],
             is_bold=r["is_bold"],

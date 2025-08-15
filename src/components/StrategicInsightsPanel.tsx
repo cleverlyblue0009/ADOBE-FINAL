@@ -56,6 +56,17 @@ export function StrategicInsightsPanel({
     }
   }, [currentText, persona, jobToBeDone]);
 
+  // Debug logging to help identify issues
+  useEffect(() => {
+    console.log('StrategicInsightsPanel mounted/updated:', {
+      documentId,
+      persona,
+      jobToBeDone,
+      currentText: currentText?.substring(0, 100) + '...',
+      currentPage
+    });
+  }, [documentId, persona, jobToBeDone, currentText, currentPage]);
+
   useEffect(() => {
     if (documentId && currentPage && currentText) {
       analyzeContext();
@@ -63,22 +74,43 @@ export function StrategicInsightsPanel({
   }, [documentId, currentPage, currentText]);
 
   const generateStrategicInsights = async () => {
-    if (!currentText || !persona || !jobToBeDone) return;
+    if (!currentText || !persona || !jobToBeDone) {
+      console.log('Missing required data for strategic insights:', {
+        hasCurrentText: !!currentText,
+        hasPersona: !!persona,
+        hasJobToBeDone: !!jobToBeDone
+      });
+      return;
+    }
     
     setIsLoadingStrategic(true);
     try {
+      console.log('Generating strategic insights with:', {
+        textLength: currentText.length,
+        persona,
+        jobToBeDone,
+        documentId
+      });
+      
       const insights = await apiService.generateStrategicInsights(
         currentText,
         persona,
         jobToBeDone,
         documentId
       );
+      
+      console.log('Strategic insights received:', insights);
       setStrategicInsights(insights);
+      
+      toast({
+        title: "Strategic Insights Generated",
+        description: "AI analysis complete. Check the insights below.",
+      });
     } catch (error) {
       console.error('Failed to generate strategic insights:', error);
       toast({
         title: "Error",
-        description: "Failed to generate strategic insights. Please try again.",
+        description: `Failed to generate strategic insights: ${error.message}`,
         variant: "destructive"
       });
     } finally {
@@ -87,21 +119,36 @@ export function StrategicInsightsPanel({
   };
 
   const analyzeContext = async () => {
-    if (!documentId || !currentPage || !currentText) return;
+    if (!documentId || !currentPage || !currentText) {
+      console.log('Missing required data for contextual analysis:', {
+        hasDocumentId: !!documentId,
+        hasCurrentPage: !!currentPage,
+        hasCurrentText: !!currentText
+      });
+      return;
+    }
     
     setIsLoadingContextual(true);
     try {
+      console.log('Analyzing context with:', {
+        documentId,
+        currentPage,
+        textLength: currentText.length
+      });
+      
       const analysis = await apiService.analyzeDocumentContext(
         documentId,
         currentPage,
         currentText
       );
+      
+      console.log('Contextual analysis received:', analysis);
       setContextualAnalysis(analysis);
     } catch (error) {
       console.error('Failed to analyze context:', error);
       toast({
         title: "Error",
-        description: "Failed to analyze document context. Please try again.",
+        description: `Failed to analyze document context: ${error.message}`,
         variant: "destructive"
       });
     } finally {
@@ -138,7 +185,7 @@ export function StrategicInsightsPanel({
   };
 
   return (
-    <div className="p-4 space-y-6 overflow-y-auto h-full">
+    <div className="p-4 space-y-6 overflow-y-auto h-full min-h-0">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-lg font-semibold flex items-center gap-2">

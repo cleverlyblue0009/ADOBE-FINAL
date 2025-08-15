@@ -508,24 +508,29 @@ async def generate_strategic_insights(request: InsightsRequest):
         print(f"Error generating strategic insights: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate strategic insights")
 
+class ContextualAnalysisRequest(BaseModel):
+    doc_id: str
+    page_number: int
+    section_text: str
+
 @app.post("/contextual-analysis")
-async def analyze_document_context(doc_id: str, page_number: int, section_text: str):
+async def analyze_document_context(request: ContextualAnalysisRequest):
     """Analyze specific document context for deeper insights."""
-    if doc_id not in documents_store:
+    if request.doc_id not in documents_store:
         raise HTTPException(status_code=404, detail="Document not found")
     
     if not llm_service.is_available():
         raise HTTPException(status_code=503, detail="LLM service unavailable")
     
     try:
-        doc_info = documents_store[doc_id]["info"]
-        full_text = extract_full_text(documents_store[doc_id]["file_path"])
+        doc_info = documents_store[request.doc_id]["info"]
+        full_text = extract_full_text(documents_store[request.doc_id]["file_path"])
         
         contextual_analysis = await llm_service.analyze_document_context(
-            section_text,
+            request.section_text,
             full_text[:5000],  # Context from full document
             doc_info.get("title", ""),
-            page_number,
+            request.page_number,
             doc_info.get("persona", ""),
             doc_info.get("job_to_be_done", "")
         )

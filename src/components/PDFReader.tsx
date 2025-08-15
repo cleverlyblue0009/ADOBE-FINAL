@@ -327,7 +327,14 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   };
 
   const handleOutlineClick = (item: OutlineItem) => {
+    console.log(`PDFReader: Navigating to page ${item.page} for item: ${item.title}`);
     setCurrentPage(item.page);
+    
+    // Show a toast to confirm navigation
+    toast({
+      title: "Navigated to Section",
+      description: `${item.title} (Page ${item.page})`,
+    });
   };
 
   const handleHighlight = (highlight: Highlight) => {
