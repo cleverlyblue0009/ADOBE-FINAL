@@ -12,7 +12,8 @@ import {
   ExternalLink,
   Trash2,
   SortAsc,
-  MoreVertical
+  MoreVertical,
+  ChevronRight
 } from 'lucide-react';
 import { 
   DropdownMenu,
@@ -63,9 +64,17 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
 
   const getColorClasses = (color: Highlight['color']) => {
     switch (color) {
-      case 'primary': return 'bg-highlight-primary border-yellow-400';
-      case 'secondary': return 'bg-highlight-secondary border-green-400';
-      case 'tertiary': return 'bg-highlight-tertiary border-blue-400';
+      case 'primary': return 'bg-yellow-100 border-yellow-400 hover:bg-yellow-200';
+      case 'secondary': return 'bg-green-100 border-green-400 hover:bg-green-200';
+      case 'tertiary': return 'bg-blue-100 border-blue-400 hover:bg-blue-200';
+    }
+  };
+
+  const getColorDot = (color: Highlight['color']) => {
+    switch (color) {
+      case 'primary': return 'bg-yellow-400';
+      case 'secondary': return 'bg-green-400';
+      case 'tertiary': return 'bg-blue-400';
     }
   };
 
@@ -98,256 +107,218 @@ export function HighlightPanel({ highlights, onHighlightClick }: HighlightPanelP
       await navigator.clipboard.writeText(text);
       // Would show success toast
     } catch (err) {
-      console.error('Failed to copy highlights:', err);
+      console.error('Failed to copy:', err);
     }
   };
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 border-b border-border-subtle">
-        <div className="flex items-center gap-2 mb-3">
-          <Highlighter className="h-5 w-5 text-brand-primary" />
-          <h3 className="font-semibold text-text-primary">Highlights</h3>
-          <Badge variant="secondary" className="text-xs">
-            {highlights.length}
-          </Badge>
+    <div className="h-full flex flex-col bg-gradient-to-br from-surface-elevated to-background">
+      {/* Header */}
+      <div className="p-4 border-b border-border-subtle bg-surface-elevated/50 backdrop-blur-sm">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-gradient-to-br from-brand-primary/10 to-brand-secondary/10 rounded-lg">
+              <Highlighter className="h-5 w-5 text-brand-primary" />
+            </div>
+            <div>
+              <h2 className="font-semibold text-text-primary">Highlights</h2>
+              <p className="text-xs text-text-secondary">{filteredHighlights.length} highlights</p>
+            </div>
+          </div>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="hover:bg-surface-hover">
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={handleCopyAll}>
+                <Copy className="h-4 w-4 mr-2" />
+                Copy All
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportHighlights}>
+                <Download className="h-4 w-4 mr-2" />
+                Export JSON
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="text-destructive">
+                <Trash2 className="h-4 w-4 mr-2" />
+                Clear All
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        {/* Search */}
+        {/* Search Bar */}
         <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-text-tertiary" />
           <Input
+            type="text"
             placeholder="Search highlights..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-9 bg-background/50 border-border-subtle focus:border-brand-primary transition-colors"
           />
         </div>
 
-        {/* Filters and Sort */}
-        <div className="flex gap-2">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <Filter className="h-4 w-4" />
-                {filterColor === 'all' ? 'All Colors' : getColorName(filterColor)}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setFilterColor('all')}>
-                All Colors
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setFilterColor('primary')}>
-                <div className="w-3 h-3 bg-highlight-primary rounded mr-2" />
-                Yellow
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilterColor('secondary')}>
-                <div className="w-3 h-3 bg-highlight-secondary rounded mr-2" />
-                Green
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setFilterColor('tertiary')}>
-                <div className="w-3 h-3 bg-highlight-tertiary rounded mr-2" />
-                Blue
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        {/* Filter Controls */}
+        <div className="flex items-center gap-2">
+          {/* Color Filter */}
+          <div className="flex items-center gap-1 flex-1">
+            <Button
+              variant={filterColor === 'all' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterColor('all')}
+              className="h-7 text-xs"
+            >
+              All
+            </Button>
+            <Button
+              variant={filterColor === 'primary' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterColor('primary')}
+              className="h-7 text-xs"
+            >
+              <div className="w-3 h-3 bg-yellow-400 rounded-full mr-1" />
+              Yellow
+            </Button>
+            <Button
+              variant={filterColor === 'secondary' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterColor('secondary')}
+              className="h-7 text-xs"
+            >
+              <div className="w-3 h-3 bg-green-400 rounded-full mr-1" />
+              Green
+            </Button>
+            <Button
+              variant={filterColor === 'tertiary' ? 'default' : 'outline'}
+              size="sm"
+              onClick={() => setFilterColor('tertiary')}
+              className="h-7 text-xs"
+            >
+              <div className="w-3 h-3 bg-blue-400 rounded-full mr-1" />
+              Blue
+            </Button>
+          </div>
 
+          {/* Sort Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-2">
-                <SortAsc className="h-4 w-4" />
+              <Button variant="outline" size="sm" className="h-7 text-xs">
+                <SortAsc className="h-3 w-3 mr-1" />
                 Sort
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent>
+            <DropdownMenuContent align="end">
               <DropdownMenuItem onClick={() => setSortBy('relevance')}>
                 By Relevance
+                {sortBy === 'relevance' && <div className="ml-auto h-2 w-2 bg-brand-primary rounded-full" />}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSortBy('page')}>
                 By Page
+                {sortBy === 'page' && <div className="ml-auto h-2 w-2 bg-brand-primary rounded-full" />}
               </DropdownMenuItem>
               <DropdownMenuItem onClick={() => setSortBy('recent')}>
                 Most Recent
+                {sortBy === 'recent' && <div className="ml-auto h-2 w-2 bg-brand-primary rounded-full" />}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
-
-        {/* Action Buttons */}
-        {highlights.length > 0 && (
-          <div className="flex gap-2 mt-3">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleCopyAll}
-              className="flex-1 gap-2"
-            >
-              <Copy className="h-4 w-4" />
-              Copy All
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleExportHighlights}
-              className="flex-1 gap-2"
-            >
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
-          </div>
-        )}
       </div>
 
-      {/* Highlights List */}
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-3">
-          {filteredHighlights.length > 0 ? (
+      {/* Highlights List - Properly Scrollable */}
+      <ScrollArea className="flex-1 px-4">
+        <div className="space-y-3 py-4">
+          {filteredHighlights.length === 0 ? (
+            <div className="text-center py-12">
+              <div className="h-16 w-16 bg-gradient-to-br from-brand-primary/10 to-brand-secondary/10 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                <Highlighter className="h-8 w-8 text-brand-primary/50" />
+              </div>
+              <p className="text-text-secondary text-sm">No highlights found</p>
+              <p className="text-text-tertiary text-xs mt-1">
+                {searchTerm ? 'Try adjusting your search' : 'Select text in the PDF to create highlights'}
+              </p>
+            </div>
+          ) : (
             filteredHighlights.map((highlight) => (
               <div
                 key={highlight.id}
-                className={`
-                  p-3 rounded-lg border-l-4 cursor-pointer transition-all
-                  ${getColorClasses(highlight.color)}
-                  hover:shadow-md hover:scale-[1.01]
-                `}
+                className={`group p-4 rounded-xl border-2 cursor-pointer transition-all ${getColorClasses(highlight.color)}`}
                 onClick={() => onHighlightClick(highlight)}
               >
-                <div className="flex items-start justify-between gap-2 mb-2">
+                {/* Header */}
+                <div className="flex items-start justify-between mb-2">
                   <div className="flex items-center gap-2">
+                    <div className={`w-3 h-3 rounded-full ${getColorDot(highlight.color)}`} />
                     <Badge variant="outline" className="text-xs">
                       Page {highlight.page}
                     </Badge>
-                    <div className="flex items-center gap-1">
-                      <div
-                        className={`w-2 h-2 rounded-full ${
-                          highlight.relevanceScore >= 0.9 ? 'bg-green-500' :
-                          highlight.relevanceScore >= 0.8 ? 'bg-yellow-500' : 'bg-orange-500'
-                        }`}
-                      />
-                      <span className="text-xs text-text-tertiary">
-                        {Math.round(highlight.relevanceScore * 100)}%
-                      </span>
-                    </div>
+                    <Badge 
+                      variant="outline" 
+                      className="text-xs bg-gradient-to-r from-brand-primary/10 to-brand-secondary/10"
+                    >
+                      {Math.round(highlight.relevanceScore * 100)}% relevant
+                    </Badge>
                   </div>
-
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <MoreVertical className="h-3 w-3" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigator.clipboard?.writeText(highlight.text);
-                        }}
-                      >
-                        <Copy className="h-4 w-4 mr-2" />
-                        Copy Text
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onHighlightClick(highlight);
-                        }}
-                      >
-                        <ExternalLink className="h-4 w-4 mr-2" />
-                        Go to Page
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          // Would remove highlight
-                        }}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Remove
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  <ChevronRight className="h-4 w-4 text-text-tertiary group-hover:translate-x-1 transition-transform" />
                 </div>
 
-                <p className="text-sm text-text-primary mb-2 leading-relaxed">
+                {/* Highlighted Text */}
+                <p className="text-sm font-medium text-text-primary mb-2 line-clamp-2">
                   "{highlight.text}"
                 </p>
 
-                <p className="text-xs text-text-secondary">
+                {/* Explanation */}
+                <p className="text-xs text-text-secondary italic">
                   {highlight.explanation}
                 </p>
+
+                {/* Actions on Hover */}
+                <div className="flex items-center gap-2 mt-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="h-6 text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      navigator.clipboard.writeText(highlight.text);
+                    }}
+                  >
+                    <Copy className="h-3 w-3 mr-1" />
+                    Copy
+                  </Button>
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    className="h-6 text-xs"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      // Jump to page
+                      onHighlightClick(highlight);
+                    }}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" />
+                    Go to Page
+                  </Button>
+                </div>
               </div>
             ))
-          ) : (
-            <div className="text-center py-8">
-              {highlights.length === 0 ? (
-                <>
-                  <Highlighter className="h-12 w-12 text-text-tertiary mx-auto mb-3" />
-                  <p className="text-sm text-text-secondary mb-1">
-                    No highlights yet
-                  </p>
-                  <p className="text-xs text-text-tertiary">
-                    Select text in the PDF to create highlights
-                  </p>
-                </>
-              ) : (
-                <>
-                  <Search className="h-12 w-12 text-text-tertiary mx-auto mb-3" />
-                  <p className="text-sm text-text-secondary mb-1">
-                    No highlights match your search
-                  </p>
-                  <p className="text-xs text-text-tertiary">
-                    Try adjusting your search terms or filters
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => {
-                      setSearchTerm('');
-                      setFilterColor('all');
-                    }}
-                    className="mt-2"
-                  >
-                    Clear Filters
-                  </Button>
-                </>
-              )}
-            </div>
           )}
         </div>
       </ScrollArea>
 
-      {/* Summary Stats */}
-      {highlights.length > 0 && (
-        <div className="p-4 border-t border-border-subtle">
-          <div className="text-xs text-text-secondary space-y-1">
-            <div className="flex justify-between">
-              <span>Total Highlights</span>
-              <span>{highlights.length}</span>
-            </div>
-            <div className="flex justify-between">
-              <span>Avg. Relevance</span>
-              <span>
-                {Math.round(
-                  highlights.reduce((acc, h) => acc + h.relevanceScore, 0) / highlights.length * 100
-                )}%
-              </span>
-            </div>
-            <div className="flex justify-between">
-              <span>Pages Covered</span>
-              <span>
-                {new Set(highlights.map(h => h.page)).size}
-              </span>
-            </div>
-          </div>
+      {/* Summary Footer */}
+      <div className="p-4 border-t border-border-subtle bg-surface-elevated/50 backdrop-blur-sm">
+        <div className="flex items-center justify-between text-xs text-text-secondary">
+          <span>Total: {highlights.length} highlights</span>
+          <span>Avg. Relevance: {Math.round(
+            (highlights.reduce((sum, h) => sum + h.relevanceScore, 0) / highlights.length) * 100
+          )}%</span>
         </div>
-      )}
+      </div>
     </div>
   );
 }

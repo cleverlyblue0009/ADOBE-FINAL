@@ -17,6 +17,22 @@
     word-spacing: var(--accessibility-word-spacing);
     color: var(--accessibility-text-color);
     background-color: var(--accessibility-bg-color);
+    position: relative;
+  }
+
+  /* Modern background pattern */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: 
+      linear-gradient(135deg, rgba(99, 102, 241, 0.03) 0%, rgba(139, 92, 246, 0.03) 100%),
+      radial-gradient(circle at 20% 80%, rgba(99, 102, 241, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 80% 20%, rgba(139, 92, 246, 0.05) 0%, transparent 50%),
+      radial-gradient(circle at 40% 40%, rgba(59, 130, 246, 0.03) 0%, transparent 50%);
+    background-size: 100% 100%, 800px 800px, 800px 800px, 600px 600px;
+    z-index: -1;
+    pointer-events: none;
   }
 
   /* Apply accessibility to text elements */
@@ -75,30 +91,30 @@
   }
 
   :root {
-    /* Core Brand Colors - Refined & Professional */
-    --brand-primary: 224 76% 48%;        /* Professional blue */
-    --brand-secondary: 142 69% 42%;      /* Balanced green */
+    /* Core Brand Colors - Modern Purple/Blue Theme */
+    --brand-primary: 243 75% 59%;        /* Modern purple */
+    --brand-secondary: 259 94% 67%;      /* Vibrant violet */
     --brand-accent: 250 95% 88%;         /* Subtle lavender */
     
     /* Surface Colors */
     --background: 0 0% 100%;             /* Pure white */
-    --background-secondary: 220 18% 97%; /* Warmer light gray */
-    --background-tertiary: 220 22% 95%;  /* Subtle blue tint */
+    --background-secondary: 249 50% 98%; /* Soft purple tint */
+    --background-tertiary: 249 45% 96%;  /* Deeper purple tint */
     --foreground: 224 12% 12%;           /* Rich dark text */
     --foreground-secondary: 220 10% 48%; /* Balanced medium gray */
     
     /* Interactive States */
     --surface-elevated: 0 0% 100%;       /* Cards/modals */
-    --surface-hover: 220 22% 95%;        /* Subtle hover */
-    --surface-active: 224 76% 92%;       /* Branded active state */
-    --surface-selected: 224 76% 88%;     /* Clear selection */
+    --surface-hover: 249 50% 97%;        /* Subtle hover */
+    --surface-active: 243 75% 92%;       /* Branded active state */
+    --surface-selected: 243 75% 88%;     /* Clear selection */
     
     /* PDF Viewer Specific */
     --pdf-background: 0 0% 98%;          /* PDF canvas background */
     --pdf-shadow: 220 13% 0%;            /* PDF page shadows */
-    --outline-background: 220 13% 99%;   /* Sidebar background */
+    --outline-background: 249 40% 99%;   /* Sidebar background */
     --highlight-primary: 45 100% 85%;    /* Yellow highlight */
-    --highlight-secondary: 142 76% 85%;  /* Green highlight */
+    --highlight-secondary: 142 69% 85%;  /* Green highlight */
     --highlight-tertiary: 217 91% 85%;   /* Blue highlight */
     
     /* Accessibility Colors */
@@ -178,63 +194,91 @@
     --pdf-shadow-color: inherit;
   }
 
+  /* Dark Theme */
   .dark {
-    /* Core Brand Colors - Dark Mode */
-    --brand-primary: 217 91% 70%;        /* Brighter blue for dark */
-    --brand-secondary: 142 76% 56%;      /* Brighter green for dark */
-    --brand-accent: 250 100% 90%;        /* Lighter lavender */
+    --brand-primary: 243 75% 69%;
+    --brand-secondary: 259 94% 77%;
+    --brand-accent: 250 95% 25%;
     
-    /* Surface Colors - Dark Mode */
-    --background: 220 13% 9%;            /* Very dark blue-gray */
-    --background-secondary: 220 13% 12%; /* Slightly lighter */
-    --background-tertiary: 220 13% 15%;  /* Cards/elevated surfaces */
-    --foreground: 220 13% 92%;           /* Light text */
-    --foreground-secondary: 220 9% 70%;  /* Secondary text */
+    --background: 222 47% 11%;
+    --background-secondary: 222 47% 15%;
+    --background-tertiary: 222 47% 20%;
+    --foreground: 210 40% 98%;
+    --foreground-secondary: 215 20% 65%;
     
-    /* Interactive States - Dark Mode */
-    --surface-elevated: 220 13% 15%;     /* Cards/modals */
-    --surface-hover: 220 13% 18%;        /* Hover states */
-    --surface-active: 217 91% 20%;       /* Active states */
-    --surface-selected: 217 91% 25%;     /* Selected items */
+    --surface-elevated: 222 47% 15%;
+    --surface-hover: 222 47% 20%;
+    --surface-active: 243 75% 25%;
+    --surface-selected: 243 75% 30%;
     
-    /* PDF Viewer Specific - Dark Mode */
-    --pdf-background: 220 13% 11%;       /* PDF canvas background */
-    --pdf-shadow: 0 0% 0%;               /* Deeper shadows */
-    --outline-background: 220 13% 10%;   /* Sidebar background */
-    --highlight-primary: 45 100% 75%;    /* Dimmer yellow highlight */
-    --highlight-secondary: 142 76% 75%;  /* Dimmer green highlight */
-    --highlight-tertiary: 217 91% 75%;   /* Dimmer blue highlight */
+    --pdf-background: 222 47% 13%;
+    --outline-background: 222 47% 12%;
+  }
+
+  /* Beige/Sepia Theme */
+  .theme-beige {
+    --brand-primary: 30 80% 50%;
+    --brand-secondary: 25 75% 45%;
+    --brand-accent: 35 70% 85%;
     
-    /* Text Hierarchy - Dark Mode */
-    --text-primary: 220 13% 92%;         /* Main text */
-    --text-secondary: 220 9% 70%;        /* Secondary text */
-    --text-tertiary: 220 8% 50%;         /* Tertiary text */
-    --text-on-brand: 0 0% 100%;          /* Text on colored backgrounds */
+    --background: 39 31% 95%;
+    --background-secondary: 39 31% 92%;
+    --background-tertiary: 39 31% 88%;
+    --foreground: 25 25% 15%;
+    --foreground-secondary: 25 15% 35%;
     
-    /* Borders & Dividers - Dark Mode */
-    --border-subtle: 220 13% 20%;        /* Light borders */
-    --border-moderate: 220 9% 30%;       /* Medium borders */
-    --border-strong: 220 9% 40%;         /* Strong borders */
+    --surface-elevated: 39 31% 97%;
+    --surface-hover: 39 31% 90%;
+    --surface-active: 30 80% 90%;
+    --surface-selected: 30 80% 85%;
     
-    /* Shadows & Elevation - Dark Mode */
-    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.2);
-    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.3), 0 2px 4px -2px hsl(0 0% 0% / 0.3);
-    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.4), 0 4px 6px -4px hsl(0 0% 0% / 0.4);
-    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.5), 0 8px 10px -6px hsl(0 0% 0% / 0.5);
+    --pdf-background: 39 31% 96%;
+    --outline-background: 39 31% 94%;
+    --highlight-primary: 45 100% 75%;
+    --highlight-secondary: 120 40% 75%;
+    --highlight-tertiary: 200 60% 75%;
+  }
+
+  /* Warm Theme */
+  .theme-warm {
+    --brand-primary: 15 90% 60%;
+    --brand-secondary: 350 80% 65%;
+    --brand-accent: 20 85% 88%;
+    
+    --background: 20 30% 98%;
+    --background-secondary: 20 30% 95%;
+    --background-tertiary: 20 30% 92%;
+    --foreground: 15 25% 15%;
+    --foreground-secondary: 15 15% 40%;
+    
+    --surface-elevated: 20 30% 99%;
+    --surface-hover: 20 30% 93%;
+    --surface-active: 15 90% 92%;
+    --surface-selected: 15 90% 88%;
+    
+    --pdf-background: 20 30% 97%;
+    --outline-background: 20 30% 96%;
   }
 
   /* Ocean Theme */
   .theme-ocean {
-    --brand-primary: 200 85% 50%;        /* Ocean blue */
-    --brand-secondary: 190 75% 40%;      /* Deep teal */
-    --brand-accent: 210 100% 85%;        /* Light blue */
-  }
-
-  /* Forest Theme */
-  .theme-forest {
-    --brand-primary: 142 76% 36%;        /* Forest green */
-    --brand-secondary: 160 70% 30%;      /* Deep forest */
-    --brand-accent: 120 100% 85%;        /* Light green */
+    --brand-primary: 200 85% 50%;
+    --brand-secondary: 180 75% 45%;
+    --brand-accent: 195 80% 88%;
+    
+    --background: 200 30% 98%;
+    --background-secondary: 200 30% 95%;
+    --background-tertiary: 200 30% 92%;
+    --foreground: 200 25% 15%;
+    --foreground-secondary: 200 15% 40%;
+    
+    --surface-elevated: 200 30% 99%;
+    --surface-hover: 200 30% 93%;
+    --surface-active: 200 85% 92%;
+    --surface-selected: 200 85% 88%;
+    
+    --pdf-background: 200 30% 97%;
+    --outline-background: 200 30% 96%;
   }
 }
 
