@@ -160,37 +160,111 @@ export function EnhancedStrategicPanel({
     
     setIsAnalyzing(true);
     try {
-      // Simulate document analysis
+      // Generate real strategic insights using Gemini API
+      const strategicInsights = await apiService.generateStrategicInsights(
+        currentText,
+        persona,
+        jobToBeDone,
+        documentId
+      );
+
+      // Convert strategic insights to recommendations format
+      const aiRecs: StrategicRecommendation[] = [];
+      
+      // Add opportunities as high priority recommendations
+      strategicInsights.opportunities?.forEach((opp, index) => {
+        aiRecs.push({
+          id: `opportunity-${index}`,
+          type: 'action',
+          priority: opp.priority,
+          title: `Opportunity: ${opp.insight.substring(0, 50)}...`,
+          description: opp.insight,
+          reasoning: `Strategic opportunity with ${opp.timeframe} timeframe`,
+          estimatedTime: opp.timeframe === 'immediate' ? '5-10 minutes' : '15-30 minutes'
+        });
+      });
+
+      // Add action items as medium priority recommendations
+      strategicInsights.action_items?.forEach((action, index) => {
+        aiRecs.push({
+          id: `action-${index}`,
+          type: 'focus',
+          priority: action.priority,
+          title: `Action: ${action.action.substring(0, 50)}...`,
+          description: action.action,
+          reasoning: `${action.effort} effort required`,
+          estimatedTime: action.effort === 'low' ? '5-10 minutes' : action.effort === 'medium' ? '15-25 minutes' : '30+ minutes'
+        });
+      });
+
+      // Add knowledge gaps as connection recommendations
+      strategicInsights.knowledge_gaps?.forEach((gap, index) => {
+        aiRecs.push({
+          id: `gap-${index}`,
+          type: 'connect',
+          priority: gap.importance,
+          title: `Knowledge Gap: ${gap.gap.substring(0, 50)}...`,
+          description: gap.gap,
+          reasoning: `Important knowledge gap to address`,
+          estimatedTime: '10-20 minutes',
+          relatedConcepts: gap.source_suggestions
+        });
+      });
+
+      // Create document analysis based on content
       const analysis: DocumentAnalysis = {
+        complexity: currentText.length > 5000 ? 'advanced' : currentText.length > 2000 ? 'intermediate' : 'beginner',
+        estimatedReadTime: `${Math.ceil(currentText.length / 250)}-${Math.ceil(currentText.length / 200)} minutes`,
+        keyTopics: strategicInsights.opportunities?.map(o => o.insight.split(' ').slice(0, 3).join(' ')) || [],
+        difficulty: currentText.length > 5000 ? 8 : currentText.length > 2000 ? 6 : 4,
+        structure: {
+          hasIntroduction: currentText.toLowerCase().includes('introduction') || currentText.toLowerCase().includes('overview'),
+          hasConclusion: currentText.toLowerCase().includes('conclusion') || currentText.toLowerCase().includes('summary'),
+          hasSummary: currentText.toLowerCase().includes('summary') || currentText.toLowerCase().includes('abstract'),
+          sectionCount: (currentText.match(/\n\n/g) || []).length + 1,
+          figureCount: (currentText.match(/figure|chart|graph|table/gi) || []).length
+        },
+        contentTypes: ['Text']
+      };
+      
+      setDocumentAnalysis(analysis);
+
+      // Combine AI recommendations with persona-specific ones
+      const personaRecs = generatePersonaRecommendations(persona, jobToBeDone, analysis);
+      const allRecs = [...aiRecs, ...personaRecs];
+      
+      setRecommendations(allRecs);
+
+      toast({
+        title: "AI Analysis Complete",
+        description: `Generated ${allRecs.length} personalized recommendations using Gemini AI`
+      });
+    } catch (error) {
+      console.error('Failed to analyze document:', error);
+      
+      // Fallback to persona-based recommendations if API fails
+      const fallbackAnalysis: DocumentAnalysis = {
         complexity: 'intermediate',
         estimatedReadTime: '15-20 minutes',
-        keyTopics: ['Data Analysis', 'Machine Learning', 'Statistics', 'Visualization'],
+        keyTopics: ['General Content', 'Key Concepts'],
         difficulty: 6,
         structure: {
           hasIntroduction: true,
           hasConclusion: true,
           hasSummary: false,
-          sectionCount: 8,
-          figureCount: 12
+          sectionCount: 5,
+          figureCount: 0
         },
-        contentTypes: ['Text', 'Figures', 'Tables', 'Code Examples']
+        contentTypes: ['Text']
       };
       
-      setDocumentAnalysis(analysis);
-
-      // Generate persona-specific recommendations
-      const recs = generatePersonaRecommendations(persona, jobToBeDone, analysis);
-      setRecommendations(recs);
-
+      setDocumentAnalysis(fallbackAnalysis);
+      const fallbackRecs = generatePersonaRecommendations(persona, jobToBeDone, fallbackAnalysis);
+      setRecommendations(fallbackRecs);
+      
       toast({
-        title: "Analysis Complete",
-        description: `Generated ${recs.length} personalized recommendations`
-      });
-    } catch (error) {
-      console.error('Failed to analyze document:', error);
-      toast({
-        title: "Analysis Failed",
-        description: "Could not analyze document. Please try again.",
+        title: "Using Offline Analysis",
+        description: "AI analysis unavailable, using persona-based recommendations",
         variant: "destructive"
       });
     } finally {

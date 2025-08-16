@@ -827,6 +827,49 @@ async def generate_multi_document_insights(request: AnalysisRequest):
         print(f"Error generating multi-document insights: {e}")
         raise HTTPException(status_code=500, detail="Failed to generate multi-document insights")
 
+class DefineTermsRequest(BaseModel):
+    text: str
+    context: str
+
+class FindConnectionsRequest(BaseModel):
+    text: str
+    document_id: str
+
+@app.post("/define-terms")
+async def define_terms(request: DefineTermsRequest):
+    """Define terms found in the selected text."""
+    if not llm_service.is_available():
+        raise HTTPException(status_code=503, detail="LLM service unavailable")
+    
+    try:
+        definitions = await llm_service.define_terms(request.text, request.context)
+        return {"definitions": definitions}
+    except Exception as e:
+        print(f"Error defining terms: {e}")
+        raise HTTPException(status_code=500, detail="Failed to define terms")
+
+@app.post("/find-connections")
+async def find_connections(request: FindConnectionsRequest):
+    """Find connections between selected text and other parts of the document or other documents."""
+    if not llm_service.is_available():
+        raise HTTPException(status_code=503, detail="LLM service unavailable")
+    
+    try:
+        # Extract document content for context
+        doc_context = ""
+        if request.document_id in documents_store:
+            doc_context = extract_full_text(documents_store[request.document_id]["file_path"])[:5000]
+        
+        connections = await llm_service.find_text_connections(
+            request.text, 
+            doc_context,
+            list(documents_store.keys())
+        )
+        return {"connections": connections}
+    except Exception as e:
+        print(f"Error finding connections: {e}")
+        raise HTTPException(status_code=500, detail="Failed to find connections")
+
 @app.get("/health")
 async def health_check():
     """Health check endpoint."""

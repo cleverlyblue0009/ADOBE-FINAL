@@ -281,6 +281,46 @@ class ApiService {
     return data.definition;
   }
 
+  async defineTerms(text: string, context: string): Promise<string> {
+    const response = await fetch(`${this.baseUrl}/define-terms`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        context,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to define terms: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.definitions;
+  }
+
+  async findConnections(text: string, documentId: string): Promise<string> {
+    const response = await fetch(`${this.baseUrl}/find-connections`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        document_id: documentId,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to find connections: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.connections;
+  }
+
   async trackReadingProgress(
     docId: string,
     currentPage: number,

@@ -786,8 +786,22 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                     <CrossConnectionsPanel 
                       documentId={currentDocument.id}
                       onNavigateToDocument={(docId) => {
-                        // Find the document by ID and switch to it
-                        const targetDocument = documents.find(doc => doc.id === docId);
+                        console.log('Attempting to navigate to document:', docId);
+                        console.log('Available documents:', documents.map(d => ({ id: d.id, title: d.title })));
+                        
+                        // Find the document by ID (try exact match first, then partial match)
+                        let targetDocument = documents.find(doc => doc.id === docId);
+                        
+                        // If exact match fails, try to find by title or name
+                        if (!targetDocument) {
+                          targetDocument = documents.find(doc => 
+                            doc.title.toLowerCase().includes(docId.toLowerCase()) ||
+                            doc.name.toLowerCase().includes(docId.toLowerCase()) ||
+                            docId.toLowerCase().includes(doc.title.toLowerCase()) ||
+                            docId.toLowerCase().includes(doc.name.toLowerCase())
+                          );
+                        }
+                        
                         if (targetDocument) {
                           setCurrentDocument(targetDocument);
                           setCurrentPage(1); // Start at the first page

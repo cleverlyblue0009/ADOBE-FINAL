@@ -1051,3 +1051,83 @@ class LLMService:
         except Exception as e:
             print(f"Error analyzing multi-document insights: {e}")
             return {"insights": [], "patterns": [], "contradictions": [], "recommendations": []}
+
+    async def define_terms(self, text: str, context: str) -> str:
+        """Define terms and concepts found in the selected text."""
+        if not self.is_available():
+            return "LLM service not available. Please configure GEMINI_API_KEY."
+        
+        try:
+            prompt = f"""
+            Analyze the following text and provide clear, concise definitions for key terms, concepts, or jargon found within it.
+            
+            Text to analyze:
+            {text[:1000]}
+            
+            Context:
+            {context[:500]}
+            
+            Instructions:
+            1. Identify 3-5 key terms, concepts, or technical phrases that would benefit from definition
+            2. Provide clear, accessible definitions (2-3 sentences each)
+            3. Include relevant context or examples where helpful
+            4. Focus on terms that are essential for understanding the text
+            
+            Format your response as:
+            **Term 1**: Definition here
+            **Term 2**: Definition here
+            etc.
+            
+            If no significant terms need definition, explain the main concepts briefly instead.
+            """
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content,
+                prompt
+            )
+            
+            return self._clean_json_artifacts(response.text.strip())
+            
+        except Exception as e:
+            print(f"Error defining terms: {e}")
+            return "Unable to define terms at this time. Please try again later."
+
+    async def find_text_connections(self, text: str, document_context: str, available_docs: List[str]) -> str:
+        """Find connections between selected text and other content."""
+        if not self.is_available():
+            return "LLM service not available. Please configure GEMINI_API_KEY."
+        
+        try:
+            prompt = f"""
+            Analyze the following text and identify connections to other concepts, ideas, or potential related content.
+            
+            Selected text:
+            {text[:800]}
+            
+            Document context (for reference):
+            {document_context[:1000]}
+            
+            Instructions:
+            1. Identify key themes and concepts in the selected text
+            2. Suggest connections to:
+               - Other sections that might be related
+               - Broader concepts or fields of study
+               - Practical applications or implications
+               - Similar ideas or contrasting viewpoints
+            3. Explain why these connections are relevant
+            4. Keep suggestions specific and actionable
+            
+            Format your response as a clear, organized analysis focusing on the most valuable connections.
+            Use bullet points or short paragraphs for clarity.
+            """
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content,
+                prompt
+            )
+            
+            return self._clean_json_artifacts(response.text.strip())
+            
+        except Exception as e:
+            print(f"Error finding connections: {e}")
+            return "Unable to find connections at this time. Please try again later."
