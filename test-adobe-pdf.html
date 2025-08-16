@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adobe PDF Text Selection Test</title>
+    <script src="https://documentservices.adobe.com/view-sdk/viewer.js"></script>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        #adobe-dc-view { width: 100vw; height: 100vh; }
+        #debug { position: fixed; top: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 10px; border-radius: 5px; max-width: 300px; z-index: 1000; }
+        .context-menu { position: fixed; background: #333; color: white; padding: 10px; border-radius: 5px; z-index: 1001; }
+        .context-menu button { display: block; width: 100%; margin: 5px 0; padding: 8px; background: #555; color: white; border: none; border-radius: 3px; cursor: pointer; }
+        .context-menu button:hover { background: #777; }
+    </style>
+</head>
+<body>
+    <div id="debug">
+        <h4>Adobe PDF Debug</h4>
+        <div id="debug-content">Initializing...</div>
+    </div>
+    
+    <div id="adobe-dc-view"></div>
+    <div id="context-menu" class="context-menu" style="display: none;"></div>
+
+    <script>
+        let debugEl = document.getElementById('debug-content');
+        let contextMenuEl = document.getElementById('context-menu');
+        let adobeView = null;
+        
+        function log(message) {
+            console.log(message);
+            debugEl.innerHTML += '<br>' + message;
+        }
+
+        function showContextMenu(x, y, text) {
+            contextMenuEl.style.left = x + 'px';
+            contextMenuEl.style.top = y + 'px';
+            contextMenuEl.style.display = 'block';
+            contextMenuEl.innerHTML = `
+                <div style="margin-bottom: 10px; font-size: 12px; max-width: 200px; word-wrap: break-word;">"${text.substring(0, 50)}..."</div>
+                <button onclick="simplifyText('${text.replace(/'/g, "\\'")}')">🧠 Simplify</button>
+                <button onclick="generateInsights('${text.replace(/'/g, "\\'")}')">💡 Insights</button>
+                <button onclick="highlightText('${text.replace(/'/g, "\\'")}')">🔆 Highlight</button>
+                <button onclick="copyText('${text.replace(/'/g, "\\'")}')">📋 Copy</button>
+                <button onclick="hideContextMenu()">✕ Close</button>
+            `;
+        }
+
+        function hideContextMenu() {
+            contextMenuEl.style.display = 'none';
+        }
+
+        function simplifyText(text) {
+            log('Simplifying: ' + text.substring(0, 30) + '...');
+            hideContextMenu();
+        }
+
+        function generateInsights(text) {
+            log('Generating insights: ' + text.substring(0, 30) + '...');
+            hideContextMenu();
+        }
+
+        function highlightText(text) {
+            log('Highlighting: ' + text.substring(0, 30) + '...');
+            hideContextMenu();
+        }
+
+        function copyText(text) {
+            navigator.clipboard.writeText(text);
+            log('Copied to clipboard');
+            hideContextMenu();
+        }
+
+        // Hide context menu when clicking elsewhere
+        document.addEventListener('click', (e) => {
+            if (!contextMenuEl.contains(e.target)) {
+                hideContextMenu();
+            }
+        });
+
+        document.addEventListener('DOMContentLoaded', function() {
+            log('DOM loaded, checking Adobe DC...');
+            
+            function initAdobeViewer() {
+                if (window.AdobeDC) {
+                    log('Adobe DC available, initializing...');
+                    
+                    try {
+                        adobeView = new window.AdobeDC.View({
+                            clientId: "85e35211c6c24c5bb8a6c4c8b9a2b4e8", // Demo client ID
+                            divId: "adobe-dc-view",
+                            locale: "en-US",
+                        });
+
+                        log('Adobe view created, setting up callbacks...');
+
+                        // Register text selection callback
+                        adobeView.registerCallback(
+                            window.AdobeDC.View.Enum.CallbackType.TEXT_SELECTION,
+                            function(event) {
+                                log('TEXT_SELECTION event fired!');
+                                console.log('Text selection event:', event);
+                                
+                                const selectedText = event.data?.selectedText || event.data?.selection?.text;
+                                const boundingRect = event.data?.boundingRect || event.data?.selection?.boundingRect;
+                                
+                                if (selectedText && selectedText.trim()) {
+                                    log('Selected text: ' + selectedText.substring(0, 50) + '...');
+                                    
+                                    const x = boundingRect ? boundingRect.x : 100;
+                                    const y = boundingRect ? boundingRect.y + boundingRect.height + 10 : 100;
+                                    
+                                    showContextMenu(x, y, selectedText);
+                                }
+                            },
+                            { enableTextSelection: true }
+                        );
+
+                        // Register event listener for other events
+                        adobeView.registerCallback(
+                            window.AdobeDC.View.Enum.CallbackType.EVENT_LISTENER,
+                            function(event) {
+                                log('Event: ' + event.type);
+                                
+                                if (event.type === "TEXT_SELECTION") {
+                                    log('TEXT_SELECTION via EVENT_LISTENER');
+                                    console.log('Text selection via event listener:', event);
+                                }
+                            }
+                        );
+
+                        // Load a sample PDF
+                        const pdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+                        
+                        adobeView.previewFile({
+                            content: { location: { url: pdfUrl } },
+                            metaData: { fileName: "test.pdf" }
+                        }, {
+                            enableFormFillAPIs: true,
+                            enablePDFAnalytics: false,
+                            showAnnotationTools: false,
+                            showLeftHandPanel: false,
+                            showDownloadPDF: false,
+                            enableTextSelection: true,
+                            enableSearchAPIs: true
+                        }).then(() => {
+                            log('PDF loaded successfully!');
+                        }).catch((error) => {
+                            log('Error loading PDF: ' + error.message);
+                        });
+
+                    } catch (error) {
+                        log('Error initializing Adobe viewer: ' + error.message);
+                    }
+                } else {
+                    log('Adobe DC not available, retrying...');
+                    setTimeout(initAdobeViewer, 500);
+                }
+            }
+
+            initAdobeViewer();
+        });
+    </script>
+</body>
+</html>
