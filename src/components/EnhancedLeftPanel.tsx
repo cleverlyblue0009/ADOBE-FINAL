@@ -7,6 +7,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
+import { DocumentOutline } from './DocumentOutline';
 import { 
   FileText, 
   Search, 
@@ -39,6 +40,7 @@ interface OutlineItem {
 interface PDFDocument {
   id: string;
   name: string;
+  title: string;
   url: string;
   outline: OutlineItem[];
 }
@@ -461,35 +463,21 @@ export function EnhancedLeftPanel({
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-3">
-              {currentDocument && displayOutline.length > 0 ? (
-                <div className="space-y-1">
-                  {filteredOutline.length === 0 && displayOutline.length > 0 && (
-                    <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-md">
-                      <p className="text-xs text-blue-600 flex items-center gap-1">
-                        <Target className="h-3 w-3" />
-                        Auto-generated page navigation (PDF has no bookmarks)
-                      </p>
-                    </div>
-                  )}
-                  {displayOutline.map(item => renderOutlineItem(item))}
-                </div>
-              ) : (
-                <div className="text-center py-6 text-gray-500">
-                  <List className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <div className="space-y-2">
-                    <p className="text-sm font-medium">
-                      {currentDocument ? 'No outline available' : 'No document selected'}
-                    </p>
-                    {currentDocument && (
-                      <div className="text-xs text-gray-400 space-y-1">
-                        <p>This PDF doesn't contain bookmark data.</p>
-                        <p>Document: {currentDocument.name}</p>
-                        <p>Current Page: {currentPage} of {totalPages}</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
+              <div className="h-96 overflow-hidden">
+                <DocumentOutline
+                  documents={documents}
+                  outline={currentDocument?.outline}
+                  currentDocument={currentDocument}
+                  currentPage={currentPage}
+                  onItemClick={(item) => {
+                    onPageNavigate?.(item.page);
+                    onSectionNavigate?.(item.page, item.title);
+                  }}
+                  onDocumentSwitch={(document) => {
+                    onDocumentChange?.(document);
+                  }}
+                />
+              </div>
             </CollapsibleContent>
           </Collapsible>
 
