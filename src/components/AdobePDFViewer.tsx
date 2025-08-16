@@ -50,39 +50,55 @@ interface LoadingState {
 
 // Context Menu Component
 function ContextMenu({ contextMenu, onClose }: { contextMenu: ContextMenuState; onClose: () => void }) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (contextMenu.visible && menuRef.current) {
+      menuRef.current.focus();
+      console.log("Custom context menu rendered");
+    }
+  }, [contextMenu.visible]);
+
   if (!contextMenu.visible) return null;
-  
+
   return (
     <>
-      {/* Backdrop */}
+      {/* Invisible backdrop to catch clicks */}
       <div 
         className="fixed inset-0 z-40"
         onClick={onClose}
+        onContextMenu={(e) => e.preventDefault()}
       />
       
-      {/* Context Menu */}
+      {/* OUR CUSTOM AI-POWERED CONTEXT MENU */}
       <div 
-        className="fixed z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-2 min-w-48"
+        ref={menuRef}
+        className="fixed z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-1 min-w-56 animate-in fade-in-0 zoom-in-95"
         style={{
           left: `${contextMenu.position?.x || 0}px`,
           top: `${contextMenu.position?.y || 0}px`,
           transform: 'translate(-50%, 0)'
         }}
+        onContextMenu={(e) => e.preventDefault()}
       >
         {/* Selected text preview */}
-        <div className="px-3 py-2 text-xs text-gray-400 border-b border-gray-700 max-w-64">
-          <div className="truncate">"{contextMenu.selectedText}"</div>
+        <div className="px-4 py-2 text-xs text-gray-400 border-b border-gray-700 max-w-64">
+          <div className="truncate font-medium">"{contextMenu.selectedText}"</div>
         </div>
         
-        {/* Menu options */}
+        {/* AI-POWERED MENU OPTIONS */}
         {contextMenu.options?.map((option, index) => (
           <button
             key={index}
-            className="w-full text-left px-3 py-2 hover:bg-gray-800 text-sm text-white flex items-center gap-3 transition-colors"
-            onClick={option.action}
+            className="w-full text-left px-4 py-3 hover:bg-gray-800 text-sm text-white flex items-center gap-3 transition-all duration-200"
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              option.action();
+            }}
           >
-            <span className="text-lg">{option.icon}</span>
-            <span>{option.label}</span>
+            <span className="text-base">{option.icon}</span>
+            <span className="font-medium">{option.label}</span>
           </button>
         ))}
       </div>
@@ -182,55 +198,117 @@ export function AdobePDFViewer({
 
       console.log("PDF container found, adding event listeners");
 
-      // Add event listener to the PDF container
+      // CRITICAL: Prevent default context menu on PDF container
+      pdfContainer.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log("Default context menu prevented");
+      });
+
+      // Handle text selection immediately (not on right-click)
       const handlePdfTextSelection = (event: MouseEvent) => {
-        // Get selected text using browser Selection API
+        // Prevent any default behavior
+        event.preventDefault();
+        event.stopPropagation();
+
+        // Small delay to ensure selection is captured properly
+        setTimeout(() => {
+          const selection = window.getSelection();
+          const selectedText = selection?.toString().trim();
+          
+          console.log("Text selection detected:", selectedText);
+          
+          if (!selectedText || selectedText.length === 0) {
+            setContextMenu({ visible: false, selectedText: '', position: null, pageNumber: 1, options: [] });
+            return;
+          }
+
+          // Get selection position for menu placement
+          const range = selection?.getRangeAt(0);
+          if (!range) return;
+          
+          const rect = range.getBoundingClientRect();
+          
+          // Verify selection is within PDF container
+          const pdfRect = pdfContainer.getBoundingClientRect();
+          
+          if (rect.top >= pdfRect.top && rect.left >= pdfRect.left && 
+              rect.bottom <= pdfRect.bottom && rect.right <= pdfRect.right) {
+            
+            console.log("Showing custom context menu");
+            
+            // Show OUR custom menu immediately
+            showContextMenu({
+              text: selectedText,
+              position: {
+                x: event.clientX || rect.left + (rect.width / 2),
+                y: event.clientY || rect.bottom + 10,
+                width: rect.width,
+                height: rect.height
+              },
+              pageNumber: currentPage
+            });
+          }
+        }, 100);
+      };
+
+      // Method 2: Listen for selection changes (backup)
+      const handleSelectionChange = () => {
         const selection = window.getSelection();
         const selectedText = selection?.toString().trim();
         
-        console.log("Text selected:", selectedText);
-        
-        if (!selectedText || selectedText.length === 0) {
-          setContextMenu({ ...contextMenu, visible: false });
+        if (!selectedText) {
+          setContextMenu({ visible: false, selectedText: '', position: null, pageNumber: 1, options: [] });
           return;
         }
 
-        // Get selection position
-        const range = selection?.getRangeAt(0);
-        if (!range) return;
-        
-        const rect = range.getBoundingClientRect();
-        console.log("Selection position:", rect);
-        
-        // Check if selection is within PDF container
-        const pdfRect = pdfContainer.getBoundingClientRect();
-        
-        if (rect.top >= pdfRect.top && rect.left >= pdfRect.left && 
-            rect.bottom <= pdfRect.bottom && rect.right <= pdfRect.right) {
+        // Check if selection is in PDF area
+        if (selection && selection.rangeCount > 0) {
+          const range = selection.getRangeAt(0);
+          const container = range.commonAncestorContainer;
+          const pdfContainer = document.getElementById('adobe-dc-view');
           
-          console.log("Selection within PDF container, showing context menu");
-          
-          // Show context menu for PDF text selection
-          showContextMenu({
-            text: selectedText,
-            position: {
-              x: rect.left + (rect.width / 2),
-              y: rect.bottom + 10,
-              width: rect.width,
-              height: rect.height
-            },
-            pageNumber: currentPage
-          });
+          if (pdfContainer && pdfContainer.contains(container)) {
+            const rect = range.getBoundingClientRect();
+            
+            console.log("Selection change detected in PDF:", selectedText);
+            
+            // Show custom menu immediately when text is selected
+            showContextMenu({
+              text: selectedText,
+              position: {
+                x: rect.left + (rect.width / 2),
+                y: rect.bottom + 10,
+                width: rect.width,
+                height: rect.height
+              },
+              pageNumber: currentPage
+            });
+          }
         }
       };
 
       pdfContainer.addEventListener('mouseup', handlePdfTextSelection);
       pdfContainer.addEventListener('touchend', handlePdfTextSelection);
       
+      // Method 2: Listen for selection changes (backup)
+      document.addEventListener('selectionchange', handleSelectionChange);
+      
+      // Prevent right-click default behavior
+      pdfContainer.addEventListener('mousedown', (e) => {
+        if (e.button === 2) { // Right click
+          e.preventDefault();
+          console.log("Right-click prevented");
+        }
+      });
+
+      console.log("Both selection methods active");
+      
       // Store cleanup function
       return () => {
         pdfContainer.removeEventListener('mouseup', handlePdfTextSelection);
         pdfContainer.removeEventListener('touchend', handlePdfTextSelection);
+        document.removeEventListener('selectionchange', handleSelectionChange);
       };
     }, 2000); // Wait for PDF to fully load
   };
@@ -259,7 +337,7 @@ export function AdobePDFViewer({
         },
         {
           icon: "🧠",
-          label: "Simplify",
+          label: "Simplify with AI",
           action: () => simplifyText(text)
         },
         {
@@ -269,10 +347,10 @@ export function AdobePDFViewer({
         },
         {
           icon: "📋",
-          label: "Copy",
+          label: "Copy Text",
           action: () => {
             navigator.clipboard.writeText(text);
-            setContextMenu({ ...contextMenu, visible: false });
+            setContextMenu({ visible: false, selectedText: '', position: null, pageNumber: 1, options: [] });
             toast({
               title: "Copied",
               description: "Text copied to clipboard",
@@ -299,7 +377,7 @@ export function AdobePDFViewer({
       };
       
       // Close context menu
-      setContextMenu({ ...contextMenu, visible: false });
+      setContextMenu({ visible: false, selectedText: '', position: null, pageNumber: 1, options: [] });
       
       // Visual feedback
       toast({
@@ -319,7 +397,7 @@ export function AdobePDFViewer({
 
   const simplifyText = async (selectedText: string) => {
     setLoading({ type: "simplify", active: true });
-    setContextMenu({ ...contextMenu, visible: false });
+    setContextMenu({ visible: false, selectedText: '', position: null, pageNumber: 1, options: [] });
     
     try {
       const response = await fetch('/api/simplify-text', {
@@ -354,7 +432,7 @@ export function AdobePDFViewer({
 
   const generateInsights = async (selectedText: string) => {
     setLoading({ type: "insights", active: true });
-    setContextMenu({ ...contextMenu, visible: false });
+    setContextMenu({ visible: false, selectedText: '', position: null, pageNumber: 1, options: [] });
     
     try {
       const response = await fetch('/api/generate-insights', {
@@ -651,6 +729,50 @@ export function AdobePDFViewer({
     }
   };
 
+  // Global context menu prevention for PDF area
+  useEffect(() => {
+    // Globally prevent context menu in PDF area
+    const preventContextMenu = (e: Event) => {
+      const pdfContainer = document.getElementById('adobe-dc-view');
+      if (pdfContainer && pdfContainer.contains(e.target as Node)) {
+        e.preventDefault();
+        e.stopPropagation();
+        console.log("Global context menu prevented on PDF");
+        return false;
+      }
+    };
+
+    // Use capture phase to catch events early
+    document.addEventListener('contextmenu', preventContextMenu, true);
+    
+    return () => {
+      document.removeEventListener('contextmenu', preventContextMenu, true);
+    };
+  }, [documentUrl]);
+
+  // NUCLEAR OPTION: Complete context menu disable (as backup)
+  useEffect(() => {
+    // Only enable if needed - can be controlled by a flag
+    const enableNuclearOption = false; // Set to true if default menu still appears
+    
+    if (!enableNuclearOption) return;
+    
+    // NUCLEAR OPTION: Disable ALL context menus when PDF is active
+    const disableAllContextMenus = (e: Event) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log("All context menus disabled (nuclear option)");
+      return false;
+    };
+
+    // Add to capture phase to catch all context menu events
+    document.addEventListener('contextmenu', disableAllContextMenus, true);
+    
+    return () => {
+      document.removeEventListener('contextmenu', disableAllContextMenus, true);
+    };
+  }, []);
+
   // Effect to handle goToSection prop changes
   useEffect(() => {
     if (goToSection && isReady) {
@@ -851,15 +973,37 @@ export function AdobePDFViewer({
   }
 
   return (
-    <div className="relative h-full w-full flex flex-col">
-      {isLoading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
-          <div className="text-center">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-brand-primary" />
-            <p className="text-sm text-text-secondary">Loading PDF...</p>
+    <>
+      {/* CSS to prevent default context menus and enable text selection */}
+      <style>{`
+        /* Force text selection and prevent default context menus */
+        #adobe-dc-view {
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          user-select: text !important;
+        }
+
+        #adobe-dc-view * {
+          -webkit-user-select: text !important;
+          -moz-user-select: text !important;
+          user-select: text !important;
+        }
+
+        /* Hide any iframe context menus */
+        #adobe-dc-view iframe {
+          pointer-events: auto;
+        }
+      `}</style>
+      
+      <div className="relative h-full w-full flex flex-col">
+        {isLoading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-brand-primary" />
+              <p className="text-sm text-text-secondary">Loading PDF...</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
       
       {error && (
         <div className="absolute inset-0 flex items-center justify-center bg-background z-10">
@@ -881,13 +1025,13 @@ export function AdobePDFViewer({
       {/* Context Menu */}
       <ContextMenu
         contextMenu={contextMenu}
-        onClose={() => setContextMenu({ ...contextMenu, visible: false })}
+        onClose={() => setContextMenu({ visible: false, selectedText: '', position: null, pageNumber: 1, options: [] })}
       />
 
       {/* AI Popup */}
       <AiPopup
         aiPopup={aiPopup}
-        onClose={() => setAiPopup({ ...aiPopup, visible: false })}
+        onClose={() => setAiPopup({ visible: false, type: 'simplify', originalText: '', result: '', title: '' })}
       />
 
       {/* Loading overlay for AI operations */}
@@ -900,8 +1044,9 @@ export function AdobePDFViewer({
             </span>
           </div>
         </div>
-      )}
-    </div>
+              )}
+      </div>
+    </>
   );
 }
 
