@@ -198,18 +198,41 @@ export function AdobePDFViewer({
 
       console.log("PDF container found, adding event listeners");
 
-      // CRITICAL: Prevent default context menu on PDF container
-      pdfContainer.addEventListener('contextmenu', (e) => {
+      // CRITICAL: Prevent default context menu on PDF container and ALL its children
+      const preventContextMenu = (e: Event) => {
         e.preventDefault();
         e.stopPropagation();
-        console.log("Default context menu prevented");
-      });
+        e.stopImmediatePropagation();
+        console.log("Default context menu prevented on PDF container");
+        return false;
+      };
+
+      // Add context menu prevention to container and all child elements
+      pdfContainer.addEventListener('contextmenu', preventContextMenu, true);
+      
+      // NUCLEAR OPTION: Also prevent on all iframes within the container
+      const preventIframeContextMenu = () => {
+        const iframes = pdfContainer.querySelectorAll('iframe');
+        iframes.forEach(iframe => {
+          try {
+            iframe.addEventListener('contextmenu', preventContextMenu, true);
+            // Also try to access iframe content if same-origin
+            if (iframe.contentDocument) {
+              iframe.contentDocument.addEventListener('contextmenu', preventContextMenu, true);
+            }
+          } catch (e) {
+            console.log('Could not access iframe content (cross-origin)');
+          }
+        });
+      };
+
+      // Run iframe prevention immediately and periodically
+      preventIframeContextMenu();
+      const iframeInterval = setInterval(preventIframeContextMenu, 1000);
 
       // Handle text selection immediately (not on right-click)
       const handlePdfTextSelection = (event: MouseEvent) => {
-        // Prevent any default behavior
-        event.preventDefault();
-        event.stopPropagation();
+        console.log("Text selection event triggered:", event.type);
 
         // Small delay to ensure selection is captured properly
         setTimeout(() => {
@@ -235,29 +258,30 @@ export function AdobePDFViewer({
           if (rect.top >= pdfRect.top && rect.left >= pdfRect.left && 
               rect.bottom <= pdfRect.bottom && rect.right <= pdfRect.right) {
             
-            console.log("Showing custom context menu");
+            console.log("Showing custom context menu at:", rect);
             
             // Show OUR custom menu immediately
             showContextMenu({
               text: selectedText,
               position: {
-                x: event.clientX || rect.left + (rect.width / 2),
-                y: event.clientY || rect.bottom + 10,
+                x: rect.left + (rect.width / 2),
+                y: rect.bottom + 10,
                 width: rect.width,
                 height: rect.height
               },
               pageNumber: currentPage
             });
           }
-        }, 100);
+        }, 50); // Reduced delay for faster response
       };
 
-      // Method 2: Listen for selection changes (backup)
+      // Enhanced selection change handler
       const handleSelectionChange = () => {
         const selection = window.getSelection();
         const selectedText = selection?.toString().trim();
         
         if (!selectedText) {
+          // Only hide menu if no text is selected
           setContextMenu({ visible: false, selectedText: '', position: null, pageNumber: 1, options: [] });
           return;
         }
@@ -268,7 +292,7 @@ export function AdobePDFViewer({
           const container = range.commonAncestorContainer;
           const pdfContainer = document.getElementById('adobe-dc-view');
           
-          if (pdfContainer && pdfContainer.contains(container)) {
+          if (pdfContainer && (pdfContainer.contains(container) || pdfContainer === container)) {
             const rect = range.getBoundingClientRect();
             
             console.log("Selection change detected in PDF:", selectedText);
@@ -288,29 +312,63 @@ export function AdobePDFViewer({
         }
       };
 
-      pdfContainer.addEventListener('mouseup', handlePdfTextSelection);
-      pdfContainer.addEventListener('touchend', handlePdfTextSelection);
+      // Add multiple event listeners for comprehensive text selection detection
+      pdfContainer.addEventListener('mouseup', handlePdfTextSelection, true);
+      pdfContainer.addEventListener('touchend', handlePdfTextSelection, true);
+      pdfContainer.addEventListener('click', handlePdfTextSelection, true);
       
-      // Method 2: Listen for selection changes (backup)
+      // Global selection change listener
       document.addEventListener('selectionchange', handleSelectionChange);
       
-      // Prevent right-click default behavior
+      // Prevent right-click default behavior on all mouse buttons
       pdfContainer.addEventListener('mousedown', (e) => {
         if (e.button === 2) { // Right click
           e.preventDefault();
+          e.stopPropagation();
           console.log("Right-click prevented");
         }
-      });
+      }, true);
 
-      console.log("Both selection methods active");
+      // Also prevent on mouse context menu specifically
+      pdfContainer.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
+        console.log("Context menu event specifically prevented");
+        
+        // If there's selected text, show our menu
+        const selection = window.getSelection();
+        const selectedText = selection?.toString().trim();
+        if (selectedText) {
+          const rect = selection?.getRangeAt(0).getBoundingClientRect();
+          if (rect) {
+            showContextMenu({
+              text: selectedText,
+              position: {
+                x: e.clientX,
+                y: e.clientY,
+                width: rect.width,
+                height: rect.height
+              },
+              pageNumber: currentPage
+            });
+          }
+        }
+        return false;
+      }, true);
+
+      console.log("Enhanced text selection setup complete");
       
       // Store cleanup function
       return () => {
-        pdfContainer.removeEventListener('mouseup', handlePdfTextSelection);
-        pdfContainer.removeEventListener('touchend', handlePdfTextSelection);
+        clearInterval(iframeInterval);
+        pdfContainer.removeEventListener('mouseup', handlePdfTextSelection, true);
+        pdfContainer.removeEventListener('touchend', handlePdfTextSelection, true);
+        pdfContainer.removeEventListener('click', handlePdfTextSelection, true);
+        pdfContainer.removeEventListener('contextmenu', preventContextMenu, true);
         document.removeEventListener('selectionchange', handleSelectionChange);
       };
-    }, 2000); // Wait for PDF to fully load
+    }, 3000); // Increased wait time to ensure PDF is fully loaded
   };
 
   // Handle Adobe PDF text selection events (REMOVED - this was causing the error)
@@ -731,24 +789,51 @@ export function AdobePDFViewer({
 
   // Global context menu prevention for PDF area
   useEffect(() => {
-    // Globally prevent context menu in PDF area
+    // Globally prevent context menu in PDF area with enhanced detection
     const preventContextMenu = (e: Event) => {
       const pdfContainer = document.getElementById('adobe-dc-view');
-      if (pdfContainer && pdfContainer.contains(e.target as Node)) {
+      const target = e.target as Node;
+      
+      if (pdfContainer && (pdfContainer.contains(target) || pdfContainer === target)) {
         e.preventDefault();
         e.stopPropagation();
-        console.log("Global context menu prevented on PDF");
+        e.stopImmediatePropagation();
+        console.log("Global context menu prevented on PDF area");
+        
+        // If there's selected text, show our custom menu
+        const selection = window.getSelection();
+        const selectedText = selection?.toString().trim();
+        if (selectedText && e instanceof MouseEvent) {
+          const range = selection?.getRangeAt(0);
+          const rect = range?.getBoundingClientRect();
+          if (rect) {
+            showContextMenu({
+              text: selectedText,
+              position: {
+                x: e.clientX,
+                y: e.clientY,
+                width: rect.width,
+                height: rect.height
+              },
+              pageNumber: currentPage
+            });
+          }
+        }
         return false;
       }
     };
 
-    // Use capture phase to catch events early
-    document.addEventListener('contextmenu', preventContextMenu, true);
+    // Use capture phase to catch events early, with higher priority
+    document.addEventListener('contextmenu', preventContextMenu, { capture: true, passive: false });
+    
+    // Also prevent on window level as backup
+    window.addEventListener('contextmenu', preventContextMenu, { capture: true, passive: false });
     
     return () => {
       document.removeEventListener('contextmenu', preventContextMenu, true);
+      window.removeEventListener('contextmenu', preventContextMenu, true);
     };
-  }, [documentUrl]);
+  }, [documentUrl, currentPage]);
 
   // NUCLEAR OPTION: Complete context menu disable (as backup)
   useEffect(() => {
@@ -833,10 +918,11 @@ export function AdobePDFViewer({
 
     const initializeViewer = async () => {
       try {
-        console.log("Initializing Adobe PDF viewer...");
+        console.log("🚀 INITIALIZING ADOBE PDF VIEWER (NOT SIMPLE VIEWER)");
         console.log("Adobe DC available:", !!window.AdobeDC);
         console.log("PDF URL:", documentUrl);
         console.log("Adobe Client ID:", clientId || process.env.VITE_ADOBE_CLIENT_ID);
+        console.log("Container element:", viewerRef.current);
         
         setIsLoading(true);
         setError(null);
@@ -875,7 +961,7 @@ export function AdobePDFViewer({
           content: { location: { url: documentUrl } },
           metaData: { fileName: documentName }
         }, {
-          // Basic PDF preview without problematic callbacks
+          // Enhanced PDF preview configuration for better text selection
           embedMode: "SIZED_CONTAINER",
           showAnnotationTools: false,
           showLeftHandPanel: false,
@@ -883,7 +969,11 @@ export function AdobePDFViewer({
           showPrintPDF: false,
           showZoomControl: true,
           enableFormFillAPIs: false,
-          enablePDFAnalytics: false
+          enablePDFAnalytics: false,
+          showPageControls: true,
+          dockPageControls: false,
+          enableTextSelection: true,
+          enableSearchAPIs: true
         });
 
         // REGISTER ONLY SUPPORTED CALLBACKS
@@ -981,26 +1071,50 @@ export function AdobePDFViewer({
           -webkit-user-select: text !important;
           -moz-user-select: text !important;
           user-select: text !important;
+          -webkit-context-menu: none !important;
+          -moz-context-menu: none !important;
+          context-menu: none !important;
         }
 
         #adobe-dc-view * {
           -webkit-user-select: text !important;
           -moz-user-select: text !important;
           user-select: text !important;
+          -webkit-context-menu: none !important;
+          -moz-context-menu: none !important;
+          context-menu: none !important;
         }
 
-        /* Hide any iframe context menus */
-        #adobe-dc-view iframe {
+        /* Disable context menus on all PDF elements */
+        #adobe-dc-view iframe,
+        #adobe-dc-view iframe *,
+        #adobe-dc-view canvas,
+        #adobe-dc-view canvas *,
+        #adobe-dc-view div,
+        #adobe-dc-view div * {
+          -webkit-context-menu: none !important;
+          -moz-context-menu: none !important;
+          context-menu: none !important;
           pointer-events: auto;
+        }
+
+        /* Ensure our custom context menu appears above everything */
+        .fixed.z-50 {
+          z-index: 999999 !important;
         }
       `}</style>
       
       <div className="relative h-full w-full flex flex-col">
+        {/* Adobe Viewer Indicator */}
+        <div className="absolute top-2 left-2 z-20 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+          Adobe PDF Viewer Active
+        </div>
+        
         {isLoading && (
           <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
             <div className="text-center">
               <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-brand-primary" />
-              <p className="text-sm text-text-secondary">Loading PDF...</p>
+              <p className="text-sm text-text-secondary">Loading Adobe PDF Viewer...</p>
             </div>
           </div>
         )}
@@ -1324,14 +1438,19 @@ export function FallbackPDFViewer({
   };
   
   return (
-    <div className="h-full flex flex-col bg-surface-elevated rounded-lg border border-border-subtle">
+    <div className="h-full flex flex-col bg-surface-elevated rounded-lg border border-border-subtle relative">
+      {/* Simple Viewer Indicator */}
+      <div className="absolute top-2 left-2 z-20 bg-orange-600 text-white text-xs px-2 py-1 rounded">
+        Simple PDF Viewer Active
+      </div>
+      
       {/* Enhanced toolbar */}
       <div className="p-4 border-b border-border-subtle bg-gray-50">
         <div className="flex items-center justify-between">
           <div>
             <h3 className="font-medium text-text-primary">{documentName}</h3>
             <p className="text-sm text-text-secondary">
-              Enhanced PDF viewer with navigation support
+              Simple PDF viewer (fallback mode)
             </p>
           </div>
           
