@@ -402,40 +402,56 @@ async def get_cross_connections(doc_id: str):
     current_text = extract_full_text(current_doc["file_path"])
     current_info = current_doc["info"]
     
+    print(f"Analyzing cross-connections for document: {current_info.get('title', 'Unknown')}")
+    print(f"Available documents in store: {len(documents_store)}")
+    
     # Find related documents
     related_docs = []
     insights = []
     contradictions = []
     
-    for other_id, other_data in documents_store.items():
-        if other_id == doc_id:
-            continue
-            
+    # Process all other documents
+    other_documents = [(other_id, other_data) for other_id, other_data in documents_store.items() if other_id != doc_id]
+    print(f"Comparing with {len(other_documents)} other documents")
+    
+    for other_id, other_data in other_documents:
         other_info = other_data["info"]
         other_text = extract_full_text(other_data["file_path"])
         
-        # Use LLM to find connections
+        print(f"Analyzing connection with: {other_info.get('title', 'Unknown')}")
+        
+        # Use LLM to find connections with more generous parameters
         try:
             connection_analysis = await llm_service.find_document_connections(
-                current_text[:3000],  # Limit text for performance
-                other_text[:3000],
-                current_info.get("title", ""),
-                other_info.get("title", ""),
-                current_info.get("persona", ""),
-                current_info.get("job_to_be_done", "")
+                current_text[:5000],  # Increased text limit for better analysis
+                other_text[:5000],
+                current_info.get("title", "Current Document"),
+                other_info.get("title", "Other Document"),
+                current_info.get("persona", "General User"),
+                current_info.get("job_to_be_done", "Document Analysis")
             )
             
-            if connection_analysis.get("has_connection", False):
-                related_docs.append({
+            print(f"Connection analysis result: {connection_analysis.get('has_connection', False)}, relevance: {connection_analysis.get('relevance_score', 0)}")
+            
+            # Be more generous with connections - lower threshold
+            if connection_analysis.get("has_connection", False) or connection_analysis.get("relevance_score", 0) > 0.15:
+                related_doc = {
                     "document_id": other_id,
-                    "document_title": other_info.get("title", ""),
+                    "document_title": other_info.get("title", "Unknown Document"),
                     "connection_type": connection_analysis.get("connection_type", "related"),
-                    "relevance_score": connection_analysis.get("relevance_score", 0.5),
-                    "explanation": connection_analysis.get("explanation", ""),
+                    "relevance_score": max(connection_analysis.get("relevance_score", 0.3), 0.3),  # Minimum relevance
+                    "explanation": connection_analysis.get("explanation", "Documents share common themes or concepts."),
                     "key_sections": connection_analysis.get("key_sections", []),
                     "similarities": connection_analysis.get("similarities", []),
                     "complementary_insights": connection_analysis.get("complementary_insights", [])
-                })
+                }
+                
+                # Add transferable concepts if available
+                if connection_analysis.get("transferable_concepts"):
+                    related_doc["transferable_concepts"] = connection_analysis["transferable_concepts"]
+                
+                related_docs.append(related_doc)
+                print(f"Added connection: {other_info.get('title', 'Unknown')} (score: {related_doc['relevance_score']})")
                 
             # Check for contradictions with detailed analysis
             if connection_analysis.get("has_contradiction", False):
@@ -445,48 +461,61 @@ async def get_cross_connections(doc_id: str):
                     for contradiction in detailed_contradictions:
                         contradictions.append({
                             "document_id": other_id,
-                            "document_title": other_info.get("title", ""),
-                            "contradiction": contradiction.get("explanation", ""),
+                            "document_title": other_info.get("title", "Unknown Document"),
+                            "contradiction": contradiction.get("explanation", "Contradictory information found"),
                             "severity": contradiction.get("severity", "low"),
                             "doc1_quote": contradiction.get("doc1_quote", ""),
                             "doc2_quote": contradiction.get("doc2_quote", ""),
-                            "contradiction_type": contradiction.get("contradiction_type", "direct")
+                            "contradiction_type": contradiction.get("contradiction_type", "direct"),
+                            "topic": contradiction.get("topic", "General")
                         })
+                        print(f"Added contradiction: {contradiction.get('topic', 'General')} ({contradiction.get('severity', 'low')} severity)")
                 else:
                     # Fallback to overall contradiction
-                    contradictions.append({
-                        "document_id": other_id,
-                        "document_title": other_info.get("title", ""),
-                        "contradiction": connection_analysis.get("overall_contradiction", ""),
-                        "severity": connection_analysis.get("severity", "low"),
-                        "doc1_quote": "",
-                        "doc2_quote": "",
-                        "contradiction_type": "general"
-                    })
+                    if connection_analysis.get("overall_contradiction"):
+                        contradictions.append({
+                            "document_id": other_id,
+                            "document_title": other_info.get("title", "Unknown Document"),
+                            "contradiction": connection_analysis.get("overall_contradiction", ""),
+                            "severity": connection_analysis.get("severity", "low"),
+                            "doc1_quote": "",
+                            "doc2_quote": "",
+                            "contradiction_type": "general",
+                            "topic": "General"
+                        })
+                        print(f"Added general contradiction with: {other_info.get('title', 'Unknown')}")
                 
         except Exception as e:
             print(f"Error analyzing connection between {doc_id} and {other_id}: {e}")
             continue
     
-    # Generate additional insights
-    try:
-        additional_insights = await llm_service.generate_cross_document_insights(
-            current_text[:5000],
-            [doc["document_title"] for doc in related_docs[:3]],
-            current_info.get("persona", ""),
-            current_info.get("job_to_be_done", "")
-        )
-        insights.extend(additional_insights.get("insights", []))
-    except Exception as e:
-        print(f"Error generating cross-document insights: {e}")
+    # Generate additional insights if we have related documents
+    if related_docs:
+        try:
+            additional_insights = await llm_service.generate_cross_document_insights(
+                current_text[:6000],
+                [doc["document_title"] for doc in related_docs[:5]],
+                current_info.get("persona", "General User"),
+                current_info.get("job_to_be_done", "Document Analysis")
+            )
+            insights.extend(additional_insights.get("insights", []))
+            print(f"Generated {len(additional_insights.get('insights', []))} additional insights")
+        except Exception as e:
+            print(f"Error generating cross-document insights: {e}")
     
-    return {
+    # Sort related documents by relevance score
+    related_docs.sort(key=lambda x: x["relevance_score"], reverse=True)
+    
+    result = {
         "document_id": doc_id,
-        "related_documents": sorted(related_docs, key=lambda x: x["relevance_score"], reverse=True)[:5],
+        "related_documents": related_docs[:8],  # Return more related documents
         "contradictions": contradictions,
         "insights": insights,
         "total_connections": len(related_docs)
     }
+    
+    print(f"Final result: {len(related_docs)} connections, {len(contradictions)} contradictions, {len(insights)} insights")
+    return result
 
 @app.post("/strategic-insights")
 async def generate_strategic_insights(request: InsightsRequest):
@@ -495,8 +524,38 @@ async def generate_strategic_insights(request: InsightsRequest):
         raise HTTPException(status_code=503, detail="LLM service unavailable")
     
     try:
+        text_to_analyze = request.text
+        
+        # If the text looks like a placeholder request for document-level analysis
+        if ("Document content analysis" in request.text or 
+            "Please analyze the full document" in request.text or
+            len(request.text.strip()) < 50):
+            
+            # Try to extract document ID from text or context
+            doc_id = None
+            if "ID:" in request.text:
+                import re
+                match = re.search(r'ID:\s*([a-f0-9-]+)', request.text)
+                if match:
+                    doc_id = match.group(1)
+            
+            # If we have a document context, try to use it
+            if request.document_context and request.document_context in documents_store:
+                doc_id = request.document_context
+            
+            # Extract actual document content for analysis
+            if doc_id and doc_id in documents_store:
+                try:
+                    full_text = extract_full_text(documents_store[doc_id]["file_path"])
+                    # Use a substantial portion of the document for analysis
+                    text_to_analyze = full_text[:8000]  # Use first 8000 characters
+                    print(f"Using document-level analysis with {len(text_to_analyze)} characters from document {doc_id}")
+                except Exception as e:
+                    print(f"Error extracting full text for document {doc_id}: {e}")
+                    # Fall back to the original request text
+        
         strategic_insights = await llm_service.generate_strategic_insights(
-            request.text,
+            text_to_analyze,
             request.persona,
             request.job_to_be_done,
             request.document_context

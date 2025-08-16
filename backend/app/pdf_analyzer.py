@@ -106,7 +106,7 @@ def detect_headings(text_blocks, title):
         font_size_counts[round(block["font_size"], 2)] += 1
     body_text_size = sorted(font_size_counts, key=font_size_counts.get, reverse=True)[0]
     
-    # Enhanced heading detection with more criteria
+    # Enhanced heading detection with more criteria and lower thresholds
     for block in text_blocks:
         text = block["text"].strip()
         page = block["page"]
@@ -117,14 +117,14 @@ def detect_headings(text_blocks, title):
             continue
         if re.match(r'^\s*Page\s+\d+\s*$', text, re.IGNORECASE):
             continue
-        if text.endswith(":") or text.endswith(";"):
+        if re.match(r'^\s*\d+\s*$', text):  # Skip standalone numbers
             continue
-        if len(text) > 120 and font_size < max(size_to_level_map.keys()) if size_to_level_map else False:
+        if len(text) > 150 and font_size < max(size_to_level_map.keys()) if size_to_level_map else False:
             continue
 
         level = None
         
-        # Pattern-based detection (numbered sections)
+        # Pattern-based detection (numbered sections) - expanded patterns
         if re.match(r'^\d+\.\d+\.\d+\.\d+\s', text): 
             level = "H4"
         elif re.match(r'^\d+\.\d+\.\d+\s', text): 
@@ -145,53 +145,79 @@ def detect_headings(text_blocks, title):
             level = "H2"
         elif re.match(r'^[a-z]\.\s', text) and len(text.split()) > 1:
             level = "H3"
+        
+        # Parenthetical numbering
+        elif re.match(r'^\(\d+\)\s', text) and len(text.split()) > 1:
+            level = "H3"
+        elif re.match(r'^\([a-z]\)\s', text) and len(text.split()) > 1:
+            level = "H4"
             
         # Skip lines that are clearly not headings
-        if ':' in text and len(text.split(':')[-1].strip().split()) > 4:
+        if ':' in text and len(text.split(':')[-1].strip().split()) > 6:
             continue
             
-        # Font-size based detection (improved)
-        if level is None and font_size > body_text_size:
+        # Font-size based detection (improved with lower thresholds)
+        if level is None and font_size >= body_text_size:
             word_count = len(text.split())
             
-            # All uppercase short text (likely headings)
-            if text.isupper() and 1 <= word_count <= 8:
+            # All uppercase short text (likely headings) - more lenient
+            if text.isupper() and 1 <= word_count <= 12:
+                if font_size > body_text_size * 1.05:
+                    level = "H1"
+                else:
+                    level = "H2"
+            # Mixed case but larger font - more lenient thresholds
+            elif font_size > body_text_size * 1.15 and 1 <= word_count <= 15:
                 level = "H1"
-            # Mixed case but larger font
-            elif font_size > body_text_size * 1.2 and 1 <= word_count <= 10:
-                level = "H1"
-            # Slightly larger font with moderate word count
-            elif font_size > body_text_size * 1.1 and 1 <= word_count <= 12:
+            elif font_size > body_text_size * 1.08 and 1 <= word_count <= 15:
                 level = "H2"
+            # Even slightly larger font with moderate word count
+            elif font_size > body_text_size * 1.02 and 1 <= word_count <= 12:
+                level = "H3"
                 
-        # Font size mapping from hierarchy
+        # Font size mapping from hierarchy (more lenient)
         if level is None and font_size in size_to_level_map:
-            if len(text) < 100 and text.count('.') < 3 and text.count(' ') < 20:
+            if len(text) < 120 and text.count('.') < 4 and text.count(' ') < 25:
                 level = size_to_level_map[font_size]
         
-        # Bold text detection (if available in metadata)
-        if level is None and font_size >= body_text_size * 1.05:
+        # Bold text detection with lower font size requirements
+        if level is None and font_size >= body_text_size * 1.01:
             word_count = len(text.split())
-            if 1 <= word_count <= 15 and not text.lower() == text:
+            if 1 <= word_count <= 20 and not text.lower() == text:
                 # Check if it looks like a heading (starts with capital, reasonable length)
-                if text[0].isupper() and 10 <= len(text) <= 80:
-                    level = "H2"
+                if text[0].isupper() and 8 <= len(text) <= 100:
+                    level = "H3"
         
         # Additional patterns for common heading styles
         if level is None:
+            word_count = len(text.split())
             # Chapter/Section patterns
-            if re.match(r'^(Chapter|Section|Part|Appendix)\s+\d+', text, re.IGNORECASE):
+            if re.match(r'^(Chapter|Section|Part|Appendix|Article|Unit)\s+\d+', text, re.IGNORECASE):
                 level = "H1"
-            elif re.match(r'^(Summary|Conclusion|Introduction|Abstract|Overview)', text, re.IGNORECASE):
+            elif re.match(r'^(Summary|Conclusion|Introduction|Abstract|Overview|Background|Methodology|Results|Discussion|References|Bibliography|Acknowledgments)', text, re.IGNORECASE):
                 level = "H1"
             # Question patterns
-            elif text.endswith('?') and len(text.split()) <= 10:
+            elif text.endswith('?') and 3 <= word_count <= 15:
+                level = "H3"
+            # Title case patterns (more lenient)
+            elif text.istitle() and 2 <= word_count <= 12 and font_size >= body_text_size:
+                level = "H3"
+            # Colon endings (common in headings)
+            elif text.endswith(':') and 1 <= word_count <= 8 and font_size >= body_text_size:
                 level = "H3"
         
+        # Position-based hints (beginning of page, significant whitespace)
+        if level is None and font_size >= body_text_size * 0.98:
+            word_count = len(text.split())
+            # If it's at the top of a page and reasonably formatted
+            if block.get("bbox") and block["bbox"][1] < 150:  # Near top of page
+                if 2 <= word_count <= 15 and text[0].isupper():
+                    level = "H3"
+        
         # Skip very short or very long texts that don't look like headings
-        if len(text.strip()) < 3:
+        if len(text.strip()) < 2:
             continue
-        if level is None and len(text) > 150:
+        if level is None and len(text) > 120:
             continue
             
         if level:

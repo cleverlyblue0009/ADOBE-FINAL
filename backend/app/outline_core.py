@@ -6,10 +6,10 @@ from typing import List, Tuple, Optional
 from collections import defaultdict
 
 # --- thresholds (match your tuned Round 1A) ---
-MAX_WORDS_HEADING = 12  # Increased from 8 to catch longer headings
-UPPERCASE_RATIO_MIN = 0.4  # Lowered from 0.6 to catch mixed case headings
-MIN_HEADING_SCORE = 2.0  # Lowered from 2.5 to be more inclusive
-GAP_THRESH = 6  # Lowered from 8 to detect headings with smaller gaps
+MAX_WORDS_HEADING = 15  # Increased from 12 to catch longer headings
+UPPERCASE_RATIO_MIN = 0.3  # Lowered from 0.4 to catch mixed case headings
+MIN_HEADING_SCORE = 1.5  # Lowered from 2.0 to be more inclusive
+GAP_THRESH = 4  # Lowered from 6 to detect headings with smaller gaps
 
 BULLET_START_TOKENS = ("•", "-", "–", "*", "·", "o", "●", "◦")
 PUNCT = set(",.;:!?()[]{}'\"")

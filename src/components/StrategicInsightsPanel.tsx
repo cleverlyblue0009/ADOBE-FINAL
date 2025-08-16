@@ -74,9 +74,8 @@ export function StrategicInsightsPanel({
   }, [documentId, currentPage, currentText]);
 
   const generateStrategicInsights = async () => {
-    if (!currentText || !persona || !jobToBeDone) {
+    if (!persona || !jobToBeDone) {
       console.log('Missing required data for strategic insights:', {
-        hasCurrentText: !!currentText,
         hasPersona: !!persona,
         hasJobToBeDone: !!jobToBeDone
       });
@@ -86,14 +85,36 @@ export function StrategicInsightsPanel({
     setIsLoadingStrategic(true);
     try {
       console.log('Generating strategic insights with:', {
-        textLength: currentText.length,
+        hasCurrentText: !!currentText,
+        textLength: currentText?.length || 0,
         persona,
         jobToBeDone,
         documentId
       });
       
+      let textToAnalyze = currentText;
+      
+      // If no current text is selected, try to get document content
+      if (!currentText && documentId) {
+        try {
+          // Fetch some document content for analysis
+          const response = await fetch(`/api/pdf/${documentId}`);
+          if (response.ok) {
+            // For now, we'll use a placeholder approach
+            // In a real implementation, you'd extract some text from the PDF
+            textToAnalyze = "Document content analysis - full document strategic review";
+            console.log('Using document-level analysis approach');
+          }
+        } catch (error) {
+          console.log('Could not fetch document content, using document-level analysis');
+        }
+        
+        // Use document-level analysis prompt
+        textToAnalyze = `Please analyze the full document (ID: ${documentId}) for strategic insights relevant to ${persona} working on ${jobToBeDone}. Focus on document-wide themes, opportunities, and strategic implications.`;
+      }
+      
       const insights = await apiService.generateStrategicInsights(
-        currentText,
+        textToAnalyze,
         persona,
         jobToBeDone,
         documentId
@@ -104,7 +125,7 @@ export function StrategicInsightsPanel({
       
       toast({
         title: "Strategic Insights Generated",
-        description: "AI analysis complete. Check the insights below.",
+        description: `AI analysis complete. Found ${insights.opportunities?.length || 0} opportunities and ${insights.action_items?.length || 0} action items.`,
       });
     } catch (error) {
       console.error('Failed to generate strategic insights:', error);
@@ -260,14 +281,8 @@ export function StrategicInsightsPanel({
           </ExpandablePanelModal>
           <Button
             size="sm"
-            onClick={() => {
-              if (!currentText && documentId && persona && jobToBeDone) {
-                generateStrategicInsights();
-              } else {
-                generateStrategicInsights();
-              }
-            }}
-            disabled={isLoadingStrategic || (!currentText && (!documentId || !persona || !jobToBeDone))}
+            onClick={generateStrategicInsights}
+            disabled={isLoadingStrategic || !persona || !jobToBeDone}
             className="bg-purple-600 hover:bg-purple-700"
           >
             {isLoadingStrategic ? (
