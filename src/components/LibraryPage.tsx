@@ -178,355 +178,391 @@ export function LibraryPage({ onDocumentSelect, onBack }: LibraryPageProps) {
     });
   };
 
-  const getPersonaColor = (persona: string) => {
-    const colors = [
-      'bg-blue-100 text-blue-800',
-      'bg-green-100 text-green-800',
-      'bg-purple-100 text-purple-800',
-      'bg-orange-100 text-orange-800',
-      'bg-pink-100 text-pink-800',
-      'bg-indigo-100 text-indigo-800'
+  const getNeonColor = (index: number) => {
+    const neonColors = [
+      'neon-cyan',
+      'neon-pink', 
+      'neon-green',
+      'neon-purple',
+      'neon-orange',
+      'neon-blue'
     ];
-    const index = persona.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    return colors[index % colors.length];
+    return neonColors[index % neonColors.length];
   };
 
-  const getJobColor = (job: string) => {
-    const colors = [
-      'bg-emerald-100 text-emerald-800',
-      'bg-cyan-100 text-cyan-800',
-      'bg-rose-100 text-rose-800',
-      'bg-amber-100 text-amber-800',
-      'bg-violet-100 text-violet-800',
-      'bg-teal-100 text-teal-800'
+  const getNeonBorderClass = (index: number) => {
+    const neonBorders = [
+      'border-neon-cyan shadow-[0_0_20px_rgba(0,255,255,0.3)]',
+      'border-neon-pink shadow-[0_0_20px_rgba(255,20,147,0.3)]',
+      'border-neon-green shadow-[0_0_20px_rgba(0,255,0,0.3)]',
+      'border-neon-purple shadow-[0_0_20px_rgba(138,43,226,0.3)]',
+      'border-neon-orange shadow-[0_0_20px_rgba(255,165,0,0.3)]',
+      'border-neon-blue shadow-[0_0_20px_rgba(30,144,255,0.3)]'
     ];
-    const index = job.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-    return colors[index % colors.length];
+    return neonBorders[index % neonBorders.length];
   };
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50 flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-blue-600" />
-          <p className="text-lg font-medium text-gray-700">Loading your document library...</p>
-          <p className="text-sm text-gray-500 mt-2">Organizing your knowledge base</p>
+      <div className="min-h-screen bg-gradient-subtle flex items-center justify-center relative overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-5">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `radial-gradient(circle at 25% 25%, hsl(var(--brand-primary)) 0%, transparent 50%), 
+                             radial-gradient(circle at 75% 75%, hsl(var(--brand-secondary)) 0%, transparent 50%),
+                             radial-gradient(circle at 50% 50%, hsl(var(--brand-accent)) 0%, transparent 50%)`,
+            backgroundSize: '400px 400px, 300px 300px, 500px 500px',
+            backgroundPosition: '0 0, 100px 100px, 200px 50px'
+          }} />
+        </div>
+        
+        {/* Floating Elements */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <div className="absolute top-20 left-10 w-72 h-72 bg-neon-cyan/10 rounded-full blur-3xl animate-pulse" />
+          <div className="absolute top-40 right-20 w-96 h-96 bg-neon-purple/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+          <div className="absolute bottom-32 left-1/3 w-80 h-80 bg-neon-green/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }} />
+          <div className="absolute bottom-20 right-10 w-64 h-64 bg-neon-orange/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+        </div>
+
+        <div className="text-center relative z-10">
+          <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-brand-primary" />
+          <p className="text-lg font-medium text-text-primary">Loading your document library...</p>
+          <p className="text-sm text-text-secondary mt-2">Organizing your knowledge base</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-purple-50">
+    <div className="min-h-screen bg-gradient-subtle flex flex-col relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `radial-gradient(circle at 25% 25%, hsl(var(--brand-primary)) 0%, transparent 50%), 
+                           radial-gradient(circle at 75% 75%, hsl(var(--brand-secondary)) 0%, transparent 50%),
+                           radial-gradient(circle at 50% 50%, hsl(var(--brand-accent)) 0%, transparent 50%)`,
+          backgroundSize: '400px 400px, 300px 300px, 500px 500px',
+          backgroundPosition: '0 0, 100px 100px, 200px 50px'
+        }} />
+      </div>
+      
+      {/* Floating Elements */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute top-20 left-10 w-72 h-72 bg-neon-cyan/10 rounded-full blur-3xl animate-pulse" />
+        <div className="absolute top-40 right-20 w-96 h-96 bg-neon-purple/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />
+        <div className="absolute bottom-32 left-1/3 w-80 h-80 bg-neon-green/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '4s' }} />
+        <div className="absolute bottom-20 right-10 w-64 h-64 bg-neon-orange/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '1s' }} />
+      </div>
+
       {/* Modern Header */}
-      <header className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-20 shadow-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
+      <header className="relative z-10 p-6 border-b border-border-subtle bg-surface-elevated/80 backdrop-blur-sm">
+        <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <Button
+              variant="ghost"
+              onClick={onBack}
+              className="flex items-center gap-2 hover:bg-brand-primary/10 hover:text-brand-primary"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </Button>
+            <Logo size="sm" />
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-sm font-semibold text-text-primary">
+                {documents.length} Documents
+              </p>
+              <p className="text-xs text-text-secondary">
+                {selectedDocuments.size} selected
+              </p>
+            </div>
+            <div className="flex items-center gap-2 bg-surface-elevated rounded-lg p-1 border border-border-subtle">
               <Button
-                variant="ghost"
-                onClick={onBack}
-                className="flex items-center gap-2 hover:bg-gray-100"
+                variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('grid')}
+                className="h-8 w-8 p-0"
               >
-                <ArrowLeft className="h-4 w-4" />
-                Back
+                <Grid3x3 className="h-4 w-4" />
               </Button>
-              <Logo size="sm" />
+              <Button
+                variant={viewMode === 'list' ? 'default' : 'ghost'}
+                size="sm"
+                onClick={() => setViewMode('list')}
+                className="h-8 w-8 p-0"
+              >
+                <List className="h-4 w-4" />
+              </Button>
             </div>
-            <div className="flex items-center gap-4">
-              <div className="text-right">
-                <p className="text-sm font-semibold text-gray-700">
-                  {documents.length} Documents
-                </p>
-                <p className="text-xs text-gray-500">
-                  {selectedDocuments.size} selected
-                </p>
-              </div>
-              <div className="flex items-center gap-2 bg-gray-100 rounded-lg p-1">
-                <Button
-                  variant={viewMode === 'grid' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('grid')}
-                  className="h-8 w-8 p-0"
-                >
-                  <Grid3x3 className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant={viewMode === 'list' ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => setViewMode('list')}
-                  className="h-8 w-8 p-0"
-                >
-                  <List className="h-4 w-4" />
-                </Button>
-              </div>
-              <ThemeToggle />
-            </div>
+            <ThemeToggle />
           </div>
         </div>
       </header>
 
-      <div className="container mx-auto px-6 py-8">
-        {/* Hero Section */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-black text-gray-900 mb-3 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-            Document Library
-          </h1>
-          <p className="text-lg text-gray-600">
-            Manage, organize, and analyze your intelligent document collection
-          </p>
-        </div>
+      <div className="relative z-10 flex-1 p-6">
+        <div className="max-w-6xl mx-auto">
+          {/* Hero Section */}
+          <div className="mb-8 text-center">
+            <h1 className="text-4xl md:text-6xl font-black text-text-primary mb-3 headline-gradient text-transparent bg-clip-text">
+              Document Library
+            </h1>
+            <p className="text-lg text-text-secondary max-w-2xl mx-auto">
+              Manage, organize, and analyze your intelligent document collection with neon-powered insights
+            </p>
+          </div>
 
-        {/* Enhanced Filters Section */}
-        <Card className="mb-8 border-0 shadow-lg bg-white/90 backdrop-blur-sm">
-          <CardContent className="p-6">
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-5 w-5" />
-                <Input
-                  placeholder="Search documents..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 h-12 bg-gray-50 border-gray-200 focus:bg-white transition-colors"
-                />
+          {/* Enhanced Filters Section */}
+          <Card className="mb-8 border-0 shadow-xl bg-surface-elevated/80 backdrop-blur-md">
+            <CardContent className="p-6">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-text-tertiary h-5 w-5" />
+                  <Input
+                    placeholder="Search documents..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-12 bg-surface-hover border-border-subtle focus:bg-surface-elevated transition-colors"
+                  />
+                </div>
+                
+                <Select value={selectedPersona} onValueChange={setSelectedPersona}>
+                  <SelectTrigger className="h-12 bg-surface-hover border-border-subtle focus:bg-surface-elevated">
+                    <div className="flex items-center gap-2">
+                      <User className="h-4 w-4 text-text-tertiary" />
+                      <SelectValue placeholder="All personas" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All personas</SelectItem>
+                    {personas.map(persona => (
+                      <SelectItem key={persona} value={persona}>
+                        {persona}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={selectedJob} onValueChange={setSelectedJob}>
+                  <SelectTrigger className="h-12 bg-surface-hover border-border-subtle focus:bg-surface-elevated">
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4 text-text-tertiary" />
+                      <SelectValue placeholder="All jobs" />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All jobs</SelectItem>
+                    {jobs.map(job => (
+                      <SelectItem key={job} value={job}>
+                        {job}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Button 
+                  onClick={handleAnalyzeSelected}
+                  disabled={selectedDocuments.size === 0}
+                  className="h-12 bg-gradient-primary hover:opacity-90 text-white font-semibold shadow-xl transition-all hover:shadow-2xl"
+                >
+                  <Eye className="h-5 w-5 mr-2" />
+                  Analyze ({selectedDocuments.size})
+                </Button>
               </div>
               
-              <Select value={selectedPersona} onValueChange={setSelectedPersona}>
-                <SelectTrigger className="h-12 bg-gray-50 border-gray-200 focus:bg-white">
-                  <div className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-gray-500" />
-                    <SelectValue placeholder="All personas" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All personas</SelectItem>
-                  {personas.map(persona => (
-                    <SelectItem key={persona} value={persona}>
-                      {persona}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Select value={selectedJob} onValueChange={setSelectedJob}>
-                <SelectTrigger className="h-12 bg-gray-50 border-gray-200 focus:bg-white">
-                  <div className="flex items-center gap-2">
-                    <Target className="h-4 w-4 text-gray-500" />
-                    <SelectValue placeholder="All jobs" />
-                  </div>
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All jobs</SelectItem>
-                  {jobs.map(job => (
-                    <SelectItem key={job} value={job}>
-                      {job}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <Button 
-                onClick={handleAnalyzeSelected}
-                disabled={selectedDocuments.size === 0}
-                className="h-12 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold shadow-lg transition-all hover:shadow-xl"
-              >
-                <Eye className="h-5 w-5 mr-2" />
-                Analyze ({selectedDocuments.size})
-              </Button>
-            </div>
-            
-            {/* Quick Stats */}
-            <div className="grid grid-cols-4 gap-4 mt-6 pt-6 border-t border-gray-200">
-              <div className="text-center">
-                <div className="text-2xl font-bold text-gray-900">{documents.length}</div>
-                <div className="text-xs text-gray-500 uppercase tracking-wider">Total Docs</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-blue-600">{personas.length}</div>
-                <div className="text-xs text-gray-500 uppercase tracking-wider">Personas</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-purple-600">{jobs.length}</div>
-                <div className="text-xs text-gray-500 uppercase tracking-wider">Jobs</div>
-              </div>
-              <div className="text-center">
-                <div className="text-2xl font-bold text-green-600">
-                  {documents.reduce((acc, doc) => acc + (doc.outline?.length || 0), 0)}
+              {/* Quick Stats */}
+              <div className="grid grid-cols-4 gap-4 mt-6 pt-6 border-t border-border-subtle">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-text-primary">{documents.length}</div>
+                  <div className="text-xs text-text-tertiary uppercase tracking-wider">Total Docs</div>
                 </div>
-                <div className="text-xs text-gray-500 uppercase tracking-wider">Sections</div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-brand-primary">{personas.length}</div>
+                  <div className="text-xs text-text-tertiary uppercase tracking-wider">Personas</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-brand-secondary">{jobs.length}</div>
+                  <div className="text-xs text-text-tertiary uppercase tracking-wider">Jobs</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-neon-green">
+                    {documents.reduce((acc, doc) => acc + (doc.outline?.length || 0), 0)}
+                  </div>
+                  <div className="text-xs text-text-tertiary uppercase tracking-wider">Sections</div>
+                </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Document Grid/List */}
-        {filteredDocuments.length === 0 ? (
-          <Card className="border-0 shadow-lg bg-white/90 backdrop-blur-sm">
-            <CardContent className="py-16 text-center">
-              <div className="inline-flex items-center justify-center w-20 h-20 bg-gray-100 rounded-full mb-6">
-                <FileText className="h-10 w-10 text-gray-400" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                {documents.length === 0 ? 'No documents yet' : 'No documents match your filters'}
-              </h3>
-              <p className="text-gray-500 max-w-md mx-auto">
-                {documents.length === 0 
-                  ? 'Upload your first PDF to get started with intelligent document analysis.'
-                  : 'Try adjusting your search or filter criteria to find what you\'re looking for.'
-                }
-              </p>
-              {documents.length > 0 && (
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setSearchQuery('');
-                    setSelectedPersona('');
-                    setSelectedJob('');
-                  }}
-                  className="mt-6"
-                >
-                  Clear Filters
-                </Button>
-              )}
             </CardContent>
           </Card>
-        ) : (
-          <div className={viewMode === 'grid' 
-            ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" 
-            : "space-y-4"
-          }>
-            {filteredDocuments.map((doc) => (
-              <Card 
-                key={doc.id}
-                className={`
-                  group cursor-pointer transition-all duration-300 border-0 shadow-lg
-                  ${selectedDocuments.has(doc.id) 
-                    ? 'ring-2 ring-blue-500 shadow-xl scale-[1.02] bg-blue-50/50' 
-                    : 'hover:shadow-xl hover:scale-[1.02] bg-white/90'
+
+          {/* Document Grid/List */}
+          {filteredDocuments.length === 0 ? (
+            <Card className="border-0 shadow-xl bg-surface-elevated/80 backdrop-blur-md">
+              <CardContent className="py-16 text-center">
+                <div className="inline-flex items-center justify-center w-20 h-20 bg-surface-hover rounded-full mb-6">
+                  <FileText className="h-10 w-10 text-text-tertiary" />
+                </div>
+                <h3 className="text-xl font-semibold text-text-primary mb-2">
+                  {documents.length === 0 ? 'No documents yet' : 'No documents match your filters'}
+                </h3>
+                <p className="text-text-secondary max-w-md mx-auto">
+                  {documents.length === 0 
+                    ? 'Upload your first PDF to get started with intelligent document analysis.'
+                    : 'Try adjusting your search or filter criteria to find what you\'re looking for.'
                   }
-                  backdrop-blur-sm hover:bg-white
-                  ${viewMode === 'list' ? 'flex flex-row' : ''}
-                `}
-                onClick={() => handleDocumentToggle(doc.id)}
-              >
-                {viewMode === 'grid' ? (
-                  <>
-                    {/* Grid View Card */}
-                    <CardHeader className="pb-3">
-                      <div className="flex justify-between items-start mb-2">
-                        <div className="flex-1">
-                          <CardTitle className="text-lg font-bold line-clamp-2 text-gray-900 group-hover:text-blue-600 transition-colors">
-                            {doc.title}
-                          </CardTitle>
-                        </div>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteDocument(doc.id);
-                          }}
-                          className="opacity-0 group-hover:opacity-100 transition-opacity text-red-500 hover:text-red-700 hover:bg-red-50"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <CardDescription className="text-sm text-gray-500 line-clamp-1">
-                        {doc.name}
-                      </CardDescription>
-                    </CardHeader>
-                    
-                    <CardContent className="space-y-3">
-                      {/* Tags */}
-                      <div className="flex flex-wrap gap-2">
-                        {doc.persona && (
-                          <Badge className="bg-blue-100 text-blue-700 border-blue-200">
-                            <User className="h-3 w-3 mr-1" />
-                            {doc.persona}
-                          </Badge>
-                        )}
-                        {doc.job_to_be_done && (
-                          <Badge className="bg-purple-100 text-purple-700 border-purple-200">
-                            <Target className="h-3 w-3 mr-1" />
-                            {doc.job_to_be_done}
-                          </Badge>
-                        )}
-                      </div>
-
-                      {/* Stats */}
-                      <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div className="flex items-center gap-1 text-gray-500">
-                          <Clock className="h-3 w-3" />
-                          {formatDate(doc.upload_timestamp)}
-                        </div>
-                        <div className="flex items-center gap-1 text-gray-500">
-                          <FileText className="h-3 w-3" />
-                          {doc.outline.length} sections
-                        </div>
-                      </div>
-
-                      {/* Selection indicator */}
-                      {selectedDocuments.has(doc.id) && (
-                        <div className="flex items-center justify-center py-2 bg-blue-100 rounded-lg">
-                          <span className="text-blue-700 text-sm font-semibold">✓ Selected</span>
-                        </div>
-                      )}
-                    </CardContent>
-                  </>
-                ) : (
-                  <>
-                    {/* List View Card */}
-                    <div className="flex-1 p-6 flex items-center gap-6">
-                      <div className="flex-shrink-0">
-                        <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
-                          <FileText className="h-6 w-6 text-white" />
-                        </div>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors truncate">
-                          {doc.title}
-                        </h3>
-                        <p className="text-sm text-gray-500 truncate">{doc.name}</p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        {doc.persona && (
-                          <Badge className="bg-blue-100 text-blue-700">
-                            {doc.persona}
-                          </Badge>
-                        )}
-                        {doc.job_to_be_done && (
-                          <Badge className="bg-purple-100 text-purple-700">
-                            {doc.job_to_be_done}
-                          </Badge>
-                        )}
-                        <div className="text-sm text-gray-500">
-                          {doc.outline.length} sections
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {formatDate(doc.upload_timestamp)}
-                        </div>
-                        {selectedDocuments.has(doc.id) && (
-                          <Badge className="bg-blue-600 text-white">Selected</Badge>
-                        )}
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDeleteDocument(doc.id);
-                          }}
-                          className="text-red-500 hover:text-red-700"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </>
+                </p>
+                {documents.length > 0 && (
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setSearchQuery('');
+                      setSelectedPersona('');
+                      setSelectedJob('');
+                    }}
+                    className="mt-6"
+                  >
+                    Clear Filters
+                  </Button>
                 )}
-              </Card>
-            ))}
-          </div>
-        )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className={viewMode === 'grid' 
+              ? "grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6" 
+              : "space-y-4"
+            }>
+              {filteredDocuments.map((doc, index) => (
+                <Card 
+                  key={doc.id}
+                  className={`
+                    group cursor-pointer transition-all duration-500 border-2
+                    ${selectedDocuments.has(doc.id) 
+                      ? `${getNeonBorderClass(index)} scale-105 bg-surface-elevated shadow-2xl animate-pulse` 
+                      : 'border-border-subtle hover:border-neon-cyan/50 hover:shadow-[0_0_15px_rgba(0,255,255,0.2)] hover:scale-[1.02] bg-surface-elevated/80'
+                    }
+                    backdrop-blur-md hover:bg-surface-elevated
+                    ${viewMode === 'list' ? 'flex flex-row' : ''}
+                  `}
+                  onClick={() => handleDocumentToggle(doc.id)}
+                >
+                  {viewMode === 'grid' ? (
+                    <>
+                      {/* Grid View Card */}
+                      <CardHeader className="pb-3">
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="flex-1">
+                            <CardTitle className="text-lg font-bold line-clamp-2 text-text-primary group-hover:text-neon-cyan transition-colors">
+                              {doc.title}
+                            </CardTitle>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteDocument(doc.id);
+                            }}
+                            className="opacity-0 group-hover:opacity-100 transition-opacity text-error hover:text-error/80 hover:bg-error/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                        <CardDescription className="text-sm text-text-secondary line-clamp-1">
+                          {doc.name}
+                        </CardDescription>
+                      </CardHeader>
+                      
+                      <CardContent className="space-y-3">
+                        {/* Tags */}
+                        <div className="flex flex-wrap gap-2">
+                          {doc.persona && (
+                            <Badge className="bg-neon-blue/20 text-neon-blue border-neon-blue/30 hover:bg-neon-blue/30 transition-colors">
+                              <User className="h-3 w-3 mr-1" />
+                              {doc.persona}
+                            </Badge>
+                          )}
+                          {doc.job_to_be_done && (
+                            <Badge className="bg-neon-purple/20 text-neon-purple border-neon-purple/30 hover:bg-neon-purple/30 transition-colors">
+                              <Target className="h-3 w-3 mr-1" />
+                              {doc.job_to_be_done}
+                            </Badge>
+                          )}
+                        </div>
+
+                        {/* Stats */}
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div className="flex items-center gap-1 text-text-secondary">
+                            <Clock className="h-3 w-3" />
+                            {formatDate(doc.upload_timestamp)}
+                          </div>
+                          <div className="flex items-center gap-1 text-text-secondary">
+                            <FileText className="h-3 w-3" />
+                            {doc.outline.length} sections
+                          </div>
+                        </div>
+
+                        {/* Selection indicator */}
+                        {selectedDocuments.has(doc.id) && (
+                          <div className="flex items-center justify-center py-2 bg-neon-cyan/10 rounded-lg border border-neon-cyan/30">
+                            <span className="text-neon-cyan text-sm font-semibold">✓ Selected</span>
+                          </div>
+                        )}
+                      </CardContent>
+                    </>
+                  ) : (
+                    <>
+                      {/* List View Card */}
+                      <div className="flex-1 p-6 flex items-center gap-6">
+                        <div className="flex-shrink-0">
+                          <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${selectedDocuments.has(doc.id) ? `bg-${getNeonColor(index)}/20 border border-${getNeonColor(index)}/50` : 'bg-gradient-primary'}`}>
+                            <FileText className={`h-6 w-6 ${selectedDocuments.has(doc.id) ? `text-${getNeonColor(index)}` : 'text-white'}`} />
+                          </div>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <h3 className="text-lg font-bold text-text-primary group-hover:text-neon-cyan transition-colors truncate">
+                            {doc.title}
+                          </h3>
+                          <p className="text-sm text-text-secondary truncate">{doc.name}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          {doc.persona && (
+                            <Badge className="bg-neon-blue/20 text-neon-blue border-neon-blue/30">
+                              {doc.persona}
+                            </Badge>
+                          )}
+                          {doc.job_to_be_done && (
+                            <Badge className="bg-neon-purple/20 text-neon-purple border-neon-purple/30">
+                              {doc.job_to_be_done}
+                            </Badge>
+                          )}
+                          <div className="text-sm text-text-secondary">
+                            {doc.outline.length} sections
+                          </div>
+                          <div className="text-sm text-text-secondary">
+                            {formatDate(doc.upload_timestamp)}
+                          </div>
+                          {selectedDocuments.has(doc.id) && (
+                            <Badge className={`bg-${getNeonColor(index)}/20 text-${getNeonColor(index)} border-${getNeonColor(index)}/50`}>Selected</Badge>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteDocument(doc.id);
+                            }}
+                            className="text-error hover:text-error/80 hover:bg-error/10"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

@@ -44,6 +44,45 @@
     box-shadow: var(--accessibility-shadow);
   }
 
+  /* Neon Glow Effects */
+  .neon-glow-cyan {
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.3), 0 0 40px rgba(0, 255, 255, 0.1);
+  }
+  
+  .neon-glow-pink {
+    box-shadow: 0 0 20px rgba(255, 20, 147, 0.3), 0 0 40px rgba(255, 20, 147, 0.1);
+  }
+  
+  .neon-glow-green {
+    box-shadow: 0 0 20px rgba(0, 255, 0, 0.3), 0 0 40px rgba(0, 255, 0, 0.1);
+  }
+  
+  .neon-glow-purple {
+    box-shadow: 0 0 20px rgba(138, 43, 226, 0.3), 0 0 40px rgba(138, 43, 226, 0.1);
+  }
+  
+  .neon-glow-orange {
+    box-shadow: 0 0 20px rgba(255, 165, 0, 0.3), 0 0 40px rgba(255, 165, 0, 0.1);
+  }
+  
+  .neon-glow-blue {
+    box-shadow: 0 0 20px rgba(30, 144, 255, 0.3), 0 0 40px rgba(30, 144, 255, 0.1);
+  }
+
+  /* Pulsing neon animation */
+  @keyframes neon-pulse {
+    0%, 100% {
+      filter: brightness(1) drop-shadow(0 0 10px currentColor);
+    }
+    50% {
+      filter: brightness(1.2) drop-shadow(0 0 20px currentColor);
+    }
+  }
+
+  .neon-pulse {
+    animation: neon-pulse 2s ease-in-out infinite;
+  }
+
   /* PDF Viewer Accessibility Styles */
   .pdf-viewer, iframe[src*=".pdf"], canvas {
     color: var(--pdf-text-color) !important;
@@ -124,10 +163,19 @@
     --shadow-lg: 0 10px 15px -3px hsl(220 13% 0% / 0.1), 0 4px 6px -4px hsl(220 13% 0% / 0.1);
     --shadow-xl: 0 20px 25px -5px hsl(220 13% 0% / 0.1), 0 8px 10px -6px hsl(220 13% 0% / 0.1);
     
+    /* Neon Colors for Flashcards */
+    --neon-cyan: 180 100% 50%;           /* Electric cyan */
+    --neon-pink: 330 100% 65%;           /* Hot pink */
+    --neon-green: 120 100% 50%;          /* Electric green */
+    --neon-purple: 270 100% 70%;         /* Electric purple */
+    --neon-orange: 30 100% 60%;          /* Electric orange */
+    --neon-blue: 210 100% 60%;           /* Electric blue */
+    
     /* Gradients */
     --gradient-primary: linear-gradient(135deg, hsl(var(--brand-primary)), hsl(var(--brand-secondary)));
     --gradient-subtle: linear-gradient(180deg, hsl(var(--background)), hsl(var(--background-secondary)));
     --gradient-accent: linear-gradient(135deg, hsl(var(--brand-accent)), hsl(var(--brand-primary)));
+    --gradient-neon: linear-gradient(135deg, hsl(var(--neon-cyan)), hsl(var(--neon-pink)), hsl(var(--neon-purple)));
     
     /* Animation Timing */
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);

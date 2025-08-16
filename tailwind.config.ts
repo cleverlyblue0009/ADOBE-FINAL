@@ -62,6 +62,14 @@ export default {
 				'border-moderate': 'hsl(var(--border-moderate))',
 				'border-strong': 'hsl(var(--border-strong))',
 				
+				/* Neon Colors */
+				'neon-cyan': 'hsl(var(--neon-cyan))',
+				'neon-pink': 'hsl(var(--neon-pink))',
+				'neon-green': 'hsl(var(--neon-green))',
+				'neon-purple': 'hsl(var(--neon-purple))',
+				'neon-orange': 'hsl(var(--neon-orange))',
+				'neon-blue': 'hsl(var(--neon-blue))',
+				
 				/* Legacy support for shadcn components */
 				border: 'hsl(var(--border-subtle))',
 				input: 'hsl(var(--border-subtle))',
