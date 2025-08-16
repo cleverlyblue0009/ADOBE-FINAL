@@ -2,39 +2,46 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { 
-  Highlighter, 
-  BookOpen, 
   Brain, 
-  Languages,
+  Lightbulb, 
+  BookOpen, 
+  Link,
   Copy,
-  Volume2,
-  Download,
-  Palette
+  Loader2,
+  X,
+  Highlighter
 } from 'lucide-react';
+import { apiService } from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 
 interface TextSelectionMenuProps {
   selectedText: string;
   position: { x: number; y: number } | null;
-  onHighlight: (color: 'yellow' | 'green' | 'blue' | 'pink') => void;
-  onSimplify: () => void;
-  onTranslate: () => void;
-  onCopy: () => void;
-  onSpeak: () => void;
+  pageContext?: string;
+  documentId?: string;
+  onHighlight?: (color: 'yellow' | 'green' | 'blue' | 'pink') => void;
   onClose: () => void;
+}
+
+interface AIInsight {
+  type: 'simplification' | 'insight' | 'definition' | 'connection';
+  content: string;
+  title: string;
 }
 
 export function TextSelectionMenu({
   selectedText,
   position,
+  pageContext,
+  documentId,
   onHighlight,
-  onSimplify,
-  onTranslate,
-  onCopy,
-  onSpeak,
   onClose
 }: TextSelectionMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [aiInsight, setAiInsight] = useState<AIInsight | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -58,7 +65,73 @@ export function TextSelectionMenu({
     };
   }, [onClose]);
 
-  if (!position || !selectedText) return null;
+  const handleAIAction = async (action: 'simplify' | 'insights' | 'define' | 'connections') => {
+    if (!selectedText.trim()) return;
+    
+    setIsLoading(true);
+    try {
+      let result;
+      let title;
+      let type: AIInsight['type'];
+
+      switch (action) {
+        case 'simplify':
+          result = await apiService.simplifyText(selectedText);
+          title = '🧠 Simplified Text';
+          type = 'simplification';
+          break;
+        case 'insights':
+          result = await apiService.generateInsights(selectedText, 'general', 'understanding');
+          title = '💡 Generated Insights';
+          type = 'insight';
+          break;
+        case 'define':
+          result = await apiService.defineTerms(selectedText, pageContext || '');
+          title = '📖 Term Definitions';
+          type = 'definition';
+          break;
+        case 'connections':
+          result = await apiService.findConnections(selectedText, documentId || '');
+          title = '🔗 Related Connections';
+          type = 'connection';
+          break;
+        default:
+          throw new Error('Unknown action');
+      }
+
+      setAiInsight({
+        type,
+        content: typeof result === 'string' ? result : JSON.stringify(result, null, 2),
+        title
+      });
+    } catch (error) {
+      console.error(`Failed to ${action} text:`, error);
+      toast({
+        title: "Error",
+        description: `Failed to ${action} the selected text. Please try again.`,
+        variant: "destructive"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(selectedText);
+      toast({
+        title: "Copied",
+        description: "Text copied to clipboard",
+      });
+    } catch (error) {
+      console.error('Failed to copy text:', error);
+      toast({
+        title: "Error",
+        description: "Failed to copy text to clipboard",
+        variant: "destructive"
+      });
+    }
+  };
 
   const highlightColors = [
     { name: 'Yellow', value: 'yellow', color: 'bg-yellow-300' },
@@ -66,6 +139,8 @@ export function TextSelectionMenu({
     { name: 'Blue', value: 'blue', color: 'bg-blue-300' },
     { name: 'Pink', value: 'pink', color: 'bg-pink-300' }
   ];
+
+  if (!position || !selectedText) return null;
 
   return (
     <div
@@ -78,87 +153,127 @@ export function TextSelectionMenu({
         marginTop: '-10px'
       }}
     >
-      <Card className="p-2 shadow-2xl border-0 bg-white/95 backdrop-blur-md">
-        <div className="flex flex-col gap-1">
-          {/* Main Actions Row */}
-          <div className="flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setShowColorPicker(!showColorPicker)}
-              className="gap-2 hover:bg-yellow-50"
-              title="Highlight"
-            >
-              <Highlighter className="h-4 w-4 text-yellow-600" />
-              <span className="text-xs">Highlight</span>
-            </Button>
+      <Card className="shadow-2xl border border-gray-700 bg-gray-900/95 backdrop-blur-md text-white">
+        {/* AI Insight Display */}
+        {aiInsight && (
+          <div className="p-4 border-b border-gray-700 max-w-md">
+            <div className="flex items-center justify-between mb-2">
+              <h4 className="font-semibold text-sm">{aiInsight.title}</h4>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setAiInsight(null)}
+                className="h-6 w-6 p-0 hover:bg-gray-700"
+              >
+                <X className="h-3 w-3" />
+              </Button>
+            </div>
+            <div className="text-sm text-gray-300 max-h-32 overflow-y-auto">
+              {aiInsight.content}
+            </div>
+          </div>
+        )}
 
+        <div className="p-2">
+          {/* Main Actions Row */}
+          <div className="flex items-center gap-1 mb-2">
             <Button
               variant="ghost"
               size="sm"
-              onClick={onSimplify}
-              className="gap-2 hover:bg-blue-50"
-              title="Simplify"
+              onClick={() => handleAIAction('simplify')}
+              disabled={isLoading}
+              className="gap-2 hover:bg-indigo-600/20 text-indigo-300 hover:text-indigo-200"
+              title="Simplify Text"
             >
-              <BookOpen className="h-4 w-4 text-blue-600" />
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
               <span className="text-xs">Simplify</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
-              onClick={onTranslate}
-              className="gap-2 hover:bg-green-50"
-              title="Translate"
+              onClick={() => handleAIAction('insights')}
+              disabled={isLoading}
+              className="gap-2 hover:bg-purple-600/20 text-purple-300 hover:text-purple-200"
+              title="Generate Insights"
             >
-              <Languages className="h-4 w-4 text-green-600" />
-              <span className="text-xs">Translate</span>
+              <Lightbulb className="h-4 w-4" />
+              <span className="text-xs">Insights</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
-              onClick={onSpeak}
-              className="gap-2 hover:bg-purple-50"
-              title="Read Aloud"
+              onClick={() => handleAIAction('define')}
+              disabled={isLoading}
+              className="gap-2 hover:bg-cyan-600/20 text-cyan-300 hover:text-cyan-200"
+              title="Define Terms"
             >
-              <Volume2 className="h-4 w-4 text-purple-600" />
-              <span className="text-xs">Speak</span>
+              <BookOpen className="h-4 w-4" />
+              <span className="text-xs">Define</span>
             </Button>
 
             <Button
               variant="ghost"
               size="sm"
-              onClick={onCopy}
-              className="gap-2 hover:bg-gray-50"
-              title="Copy"
+              onClick={() => handleAIAction('connections')}
+              disabled={isLoading}
+              className="gap-2 hover:bg-green-600/20 text-green-300 hover:text-green-200"
+              title="Find Connections"
             >
-              <Copy className="h-4 w-4 text-gray-600" />
+              <Link className="h-4 w-4" />
+              <span className="text-xs">Connect</span>
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleCopy}
+              className="gap-2 hover:bg-gray-600/20 text-gray-300 hover:text-gray-200"
+              title="Copy Text"
+            >
+              <Copy className="h-4 w-4" />
               <span className="text-xs">Copy</span>
             </Button>
           </div>
 
-          {/* Color Picker Row */}
-          {showColorPicker && (
-            <div className="flex items-center gap-2 pt-2 border-t border-gray-200">
-              <span className="text-xs text-gray-500">Color:</span>
-              {highlightColors.map((color) => (
-                <button
-                  key={color.value}
-                  onClick={() => {
-                    onHighlight(color.value as any);
-                    setShowColorPicker(false);
-                  }}
-                  className={`w-6 h-6 rounded-full ${color.color} hover:scale-110 transition-transform border-2 border-white shadow-sm`}
-                  title={color.name}
-                />
-              ))}
+          {/* Highlight Section */}
+          {onHighlight && (
+            <div className="border-t border-gray-700 pt-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                className="gap-2 hover:bg-yellow-600/20 text-yellow-300 hover:text-yellow-200 mb-2"
+                title="Highlight"
+              >
+                <Highlighter className="h-4 w-4" />
+                <span className="text-xs">Highlight</span>
+              </Button>
+
+              {/* Color Picker */}
+              {showColorPicker && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">Color:</span>
+                  {highlightColors.map((color) => (
+                    <button
+                      key={color.value}
+                      onClick={() => {
+                        onHighlight(color.value as any);
+                        setShowColorPicker(false);
+                      }}
+                      className={`w-6 h-6 rounded-full ${color.color} hover:scale-110 transition-transform border-2 border-gray-600 shadow-sm`}
+                      title={color.name}
+                    />
+                  ))}
+                </div>
+              )}
             </div>
           )}
 
           {/* Selected Text Preview */}
-          <div className="pt-2 border-t border-gray-200 max-w-xs">
-            <p className="text-xs text-gray-500 line-clamp-2">
+          <div className="pt-2 border-t border-gray-700 max-w-xs">
+            <p className="text-xs text-gray-400 line-clamp-2">
               "{selectedText.substring(0, 100)}{selectedText.length > 100 ? '...' : ''}"
             </p>
           </div>

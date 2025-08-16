@@ -214,10 +214,10 @@ export function LandingPage({ onStart }: LandingPageProps) {
           </div>
 
           {/* Upload Zone */}
-          <Card id="upload-section" className="max-w-4xl mx-auto shadow-xl border-0 bg-surface-elevated/80 backdrop-blur-md">
+          <Card id="upload-section" className="max-w-4xl mx-auto shadow-xl border-0 bg-surface-elevated/80 backdrop-blur-md animate-slide-up hover-lift">
             <CardHeader className="pb-8 text-center">
-              <CardTitle className="text-3xl font-bold">Get Started</CardTitle>
-              <CardDescription className="text-lg text-text-secondary">
+              <CardTitle className="text-3xl font-bold animate-fade-in">Get Started</CardTitle>
+              <CardDescription className="text-lg text-text-secondary animate-fade-in" style={{ animationDelay: '0.2s' }}>
                 Upload your PDFs and personalize your reading experience
               </CardDescription>
             </CardHeader>
@@ -325,7 +325,8 @@ export function LandingPage({ onStart }: LandingPageProps) {
             <div className="grid md:grid-cols-3 gap-8">
                 {/* AI Insights */}
                 <Card 
-                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-hover/90 backdrop-blur-md cursor-pointer hover:from-surface-elevated hover:to-surface-hover hover:-translate-y-2 relative overflow-hidden"
+                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-hover/90 backdrop-blur-md cursor-pointer hover:from-surface-elevated hover:to-surface-hover hover:-translate-y-2 relative overflow-hidden animate-bounce-in hover-lift"
+                  style={{ animationDelay: '0.1s' }}
                   onClick={() => handleFeatureClick('ai-insights')}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-brand-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -343,7 +344,8 @@ export function LandingPage({ onStart }: LandingPageProps) {
                 </Card>
 
                 <Card 
-                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-hover/90 backdrop-blur-md cursor-pointer hover:from-surface-elevated hover:to-surface-hover hover:-translate-y-2 relative overflow-hidden"
+                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-hover/90 backdrop-blur-md cursor-pointer hover:from-surface-elevated hover:to-surface-hover hover:-translate-y-2 relative overflow-hidden animate-bounce-in hover-lift"
+                  style={{ animationDelay: '0.2s' }}
                   onClick={() => handleFeatureClick('podcast')}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-brand-secondary/5 to-brand-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -361,7 +363,8 @@ export function LandingPage({ onStart }: LandingPageProps) {
                 </Card>
 
                 <Card 
-                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-hover/90 backdrop-blur-md cursor-pointer hover:from-surface-elevated hover:to-surface-hover hover:-translate-y-2 relative overflow-hidden"
+                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-hover/90 backdrop-blur-md cursor-pointer hover:from-surface-elevated hover:to-surface-hover hover:-translate-y-2 relative overflow-hidden animate-bounce-in hover-lift"
+                  style={{ animationDelay: '0.3s' }}
                   onClick={() => handleFeatureClick('accessibility')}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-brand-primary/5 to-brand-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -379,7 +382,8 @@ export function LandingPage({ onStart }: LandingPageProps) {
                 </Card>
 
                 <Card 
-                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-hover/90 backdrop-blur-md cursor-pointer hover:from-surface-elevated hover:to-surface-hover hover:-translate-y-2 relative overflow-hidden"
+                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-hover/90 backdrop-blur-md cursor-pointer hover:from-surface-elevated hover:to-surface-hover hover:-translate-y-2 relative overflow-hidden animate-bounce-in hover-lift"
+                  style={{ animationDelay: '0.4s' }}
                   onClick={() => handleFeatureClick('highlights')}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-brand-secondary/5 to-brand-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -397,7 +401,8 @@ export function LandingPage({ onStart }: LandingPageProps) {
                 </Card>
 
                 <Card 
-                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-hover/90 backdrop-blur-md cursor-pointer hover:from-surface-elevated hover:to-surface-hover hover:-translate-y-2 relative overflow-hidden"
+                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-hover/90 backdrop-blur-md cursor-pointer hover:from-surface-elevated hover:to-surface-hover hover:-translate-y-2 relative overflow-hidden animate-bounce-in hover-lift"
+                  style={{ animationDelay: '0.5s' }}
                   onClick={() => handleFeatureClick('progress')}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-brand-accent/5 to-brand-primary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
@@ -415,7 +420,8 @@ export function LandingPage({ onStart }: LandingPageProps) {
                 </Card>
 
                 <Card 
-                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-hover/90 backdrop-blur-md cursor-pointer hover:from-surface-elevated hover:to-surface-hover hover:-translate-y-2 relative overflow-hidden"
+                  className="group text-center transition-all duration-500 border-0 shadow-xl hover:shadow-2xl bg-gradient-to-br from-surface-elevated/90 to-surface-hover/90 backdrop-blur-md cursor-pointer hover:from-surface-elevated hover:to-surface-hover hover:-translate-y-2 relative overflow-hidden animate-bounce-in hover-lift"
+                  style={{ animationDelay: '0.6s' }}
                   onClick={() => handleFeatureClick('themes')}
                 >
                   <div className="absolute inset-0 bg-gradient-to-br from-brand-secondary/5 to-brand-accent/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>

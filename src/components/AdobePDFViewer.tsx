@@ -580,61 +580,7 @@ export function AdobePDFViewer({
     }
   };
 
-  const handleSimplify = async () => {
-    try {
-      console.log('Simplifying text:', selectedText);
-      const simplified = await apiService.simplifyText(selectedText);
-      toast({
-        title: "Simplified Text",
-        description: simplified.text,
-        duration: 5000
-      });
-      
-      // Also trigger insights generation for the selected text
-      if (onTextSelection && selectedText.length > 20) {
-        console.log('Triggering insights generation for simplified text');
-        onTextSelection(selectedText, currentPage);
-      }
-    } catch (error) {
-      console.error('Failed to simplify text:', error);
-      toast({
-        title: "Simplification Failed",
-        description: "Unable to simplify the selected text. Please try again.",
-        variant: "destructive"
-      });
-    }
-    clearSelection();
-  };
 
-  const handleTranslate = async () => {
-    // Implement translation
-    toast({
-      title: "Translation",
-      description: "Translation feature coming soon!"
-    });
-    clearSelection();
-  };
-
-  const handleCopy = () => {
-    navigator.clipboard.writeText(selectedText);
-    toast({
-      title: "Copied",
-      description: "Text copied to clipboard"
-    });
-    clearSelection();
-  };
-
-  const handleSpeak = () => {
-    if ('speechSynthesis' in window) {
-      const utterance = new SpeechSynthesisUtterance(selectedText);
-      window.speechSynthesis.speak(utterance);
-      toast({
-        title: "Reading Aloud",
-        description: "Text is being read aloud"
-      });
-    }
-    clearSelection();
-  };
 
   const clearSelection = () => {
     setSelectedText('');
@@ -886,11 +832,9 @@ export function AdobePDFViewer({
       <TextSelectionMenu
         selectedText={selectedText}
         position={selectionPosition}
+        pageContext={`Page ${currentPage} of ${documentName}`}
+        documentId={documentUrl}
         onHighlight={handleHighlight}
-        onSimplify={handleSimplify}
-        onTranslate={handleTranslate}
-        onCopy={handleCopy}
-        onSpeak={handleSpeak}
         onClose={clearSelection}
       />
     </div>
