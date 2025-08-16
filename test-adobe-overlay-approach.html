@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Adobe PDF with Overlay Text Selection</title>
+    <script src="https://documentservices.adobe.com/view-sdk/viewer.js"></script>
+    <style>
+        body { margin: 0; font-family: Arial, sans-serif; }
+        
+        .pdf-container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        #adobe-dc-view {
+            width: 100%;
+            height: 100%;
+        }
+        
+        .selection-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+        }
+        
+        .selection-capture {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: transparent;
+            pointer-events: auto;
+            z-index: 5;
+        }
+        
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 8px 0;
+            z-index: 1000;
+            min-width: 200px;
+            display: none;
+        }
+        
+        .context-menu-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+        
+        .context-menu-item:hover {
+            background: #f5f5f5;
+        }
+        
+        .context-menu-separator {
+            height: 1px;
+            background: #eee;
+            margin: 4px 0;
+        }
+        
+        .selected-text-preview {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 8px;
+            margin: 8px 16px;
+            font-size: 12px;
+            color: #666;
+            max-height: 60px;
+            overflow: hidden;
+            word-wrap: break-word;
+        }
+        
+        #debug {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 300px;
+            z-index: 1000;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .selection-highlight {
+            position: absolute;
+            background: rgba(255, 255, 0, 0.3);
+            border: 1px solid rgba(255, 255, 0, 0.6);
+            pointer-events: none;
+            z-index: 8;
+        }
+        
+        .status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #333;
+            color: white;
+            padding: 8px 16px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+    </style>
+</head>
+<body>
+    <div id="debug">
+        <h4>Adobe PDF Overlay Debug</h4>
+        <div id="debug-content">Initializing...</div>
+    </div>
+
+    <div class="pdf-container">
+        <div id="adobe-dc-view"></div>
+        
+        <div class="selection-capture" id="selection-capture"></div>
+        <div class="selection-overlay" id="selection-overlay"></div>
+    </div>
+    
+    <div class="status-bar" id="status-bar">
+        Ready - Select text and right-click for custom menu
+    </div>
+
+    <div id="context-menu" class="context-menu">
+        <div class="selected-text-preview" id="selected-text-preview"></div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" onclick="simplifyText()">
+            🧠 Simplify Text
+        </div>
+        <div class="context-menu-item" onclick="generateInsights()">
+            💡 Generate Insights
+        </div>
+        <div class="context-menu-item" onclick="highlightText()">
+            🔆 Highlight
+        </div>
+        <div class="context-menu-item" onclick="copyText()">
+            📋 Copy to Clipboard
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" onclick="hideContextMenu()">
+            ✕ Close
+        </div>
+    </div>
+
+    <script>
+        let debugEl = document.getElementById('debug-content');
+        let contextMenuEl = document.getElementById('context-menu');
+        let statusBar = document.getElementById('status-bar');
+        let adobeView = null;
+        let selectedText = '';
+        let isSelecting = false;
+        let selectionStart = null;
+        let selectionEnd = null;
+        let selectionHighlights = [];
+        
+        function log(message) {
+            console.log(message);
+            debugEl.innerHTML += '<br>' + new Date().toLocaleTimeString() + ': ' + message;
+            debugEl.scrollTop = debugEl.scrollHeight;
+            statusBar.textContent = message;
+        }
+
+        function updateStatus(message) {
+            statusBar.textContent = message;
+        }
+
+        function showContextMenu(x, y, text) {
+            if (!text || !text.trim()) {
+                log('No text selected for context menu');
+                return;
+            }
+            
+            const preview = document.getElementById('selected-text-preview');
+            preview.textContent = '"' + (text.length > 100 ? text.substring(0, 100) + '...' : text) + '"';
+            
+            contextMenuEl.style.left = x + 'px';
+            contextMenuEl.style.top = y + 'px';
+            contextMenuEl.style.display = 'block';
+            
+            // Adjust position if menu goes off screen
+            const rect = contextMenuEl.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+                contextMenuEl.style.left = (x - rect.width) + 'px';
+            }
+            if (rect.bottom > window.innerHeight) {
+                contextMenuEl.style.top = (y - rect.height) + 'px';
+            }
+            
+            log('✅ Context menu shown with text: ' + text.substring(0, 50) + '...');
+        }
+
+        function hideContextMenu() {
+            contextMenuEl.style.display = 'none';
+        }
+
+        function simplifyText() {
+            log('🧠 Simplifying: ' + selectedText.substring(0, 30) + '...');
+            hideContextMenu();
+            alert('Simplify Text feature triggered!\n\nSelected text: ' + selectedText.substring(0, 100) + '...');
+        }
+
+        function generateInsights() {
+            log('💡 Generating insights: ' + selectedText.substring(0, 30) + '...');
+            hideContextMenu();
+            alert('Generate Insights feature triggered!\n\nSelected text: ' + selectedText.substring(0, 100) + '...');
+        }
+
+        function highlightText() {
+            log('🔆 Highlighting: ' + selectedText.substring(0, 30) + '...');
+            hideContextMenu();
+            
+            // Create visual highlight
+            if (selectionStart && selectionEnd) {
+                const highlight = document.createElement('div');
+                highlight.className = 'selection-highlight';
+                highlight.style.left = Math.min(selectionStart.x, selectionEnd.x) + 'px';
+                highlight.style.top = Math.min(selectionStart.y, selectionEnd.y) + 'px';
+                highlight.style.width = Math.abs(selectionEnd.x - selectionStart.x) + 'px';
+                highlight.style.height = Math.abs(selectionEnd.y - selectionStart.y) + 'px';
+                
+                document.getElementById('selection-overlay').appendChild(highlight);
+                selectionHighlights.push(highlight);
+            }
+        }
+
+        function copyText() {
+            if (selectedText) {
+                navigator.clipboard.writeText(selectedText).then(function() {
+                    log('📋 Text copied to clipboard');
+                    hideContextMenu();
+                    updateStatus('Text copied to clipboard!');
+                });
+            }
+        }
+
+        function clearHighlights() {
+            selectionHighlights.forEach(highlight => highlight.remove());
+            selectionHighlights = [];
+        }
+
+        // Selection capture logic
+        function setupSelectionCapture() {
+            const captureEl = document.getElementById('selection-capture');
+            
+            captureEl.addEventListener('mousedown', function(e) {
+                if (e.button === 0) { // Left click
+                    isSelecting = true;
+                    selectionStart = {x: e.clientX, y: e.clientY};
+                    hideContextMenu();
+                    log('📍 Selection started at (' + e.clientX + ', ' + e.clientY + ')');
+                    e.preventDefault();
+                }
+            });
+            
+            captureEl.addEventListener('mousemove', function(e) {
+                if (isSelecting) {
+                    selectionEnd = {x: e.clientX, y: e.clientY};
+                    updateStatus('Selecting text... (' + 
+                        Math.abs(selectionEnd.x - selectionStart.x) + 'x' + 
+                        Math.abs(selectionEnd.y - selectionStart.y) + ')');
+                }
+            });
+            
+            captureEl.addEventListener('mouseup', function(e) {
+                if (isSelecting) {
+                    isSelecting = false;
+                    selectionEnd = {x: e.clientX, y: e.clientY};
+                    
+                    // Try to get selected text from the underlying PDF
+                    setTimeout(() => {
+                        const selection = window.getSelection();
+                        const text = selection.toString().trim();
+                        
+                        if (text) {
+                            selectedText = text;
+                            log('✅ Text selected: ' + text.substring(0, 50) + '...');
+                            updateStatus('Text selected: ' + text.length + ' characters');
+                        } else {
+                            // Fallback: simulate text selection based on coordinates
+                            selectedText = generateFallbackText();
+                            log('⚠️ Using fallback text selection');
+                            updateStatus('Text selection detected (fallback mode)');
+                        }
+                    }, 100);
+                }
+            });
+            
+            // Handle right-click for context menu
+            captureEl.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                
+                // Try to get current selection
+                const selection = window.getSelection();
+                let text = selection.toString().trim();
+                
+                if (!text && selectedText) {
+                    text = selectedText;
+                }
+                
+                if (!text) {
+                    text = generateFallbackText();
+                }
+                
+                if (text) {
+                    selectedText = text;
+                    showContextMenu(e.clientX, e.clientY, text);
+                } else {
+                    log('❌ Right-click detected but no text available');
+                    updateStatus('Right-click detected - no text selected');
+                }
+            });
+        }
+
+        function generateFallbackText() {
+            // Generate sample text based on selection area
+            if (selectionStart && selectionEnd) {
+                const area = Math.abs(selectionEnd.x - selectionStart.x) * Math.abs(selectionEnd.y - selectionStart.y);
+                if (area > 100) { // Minimum selection area
+                    return "Sample text from PDF selection area (" + 
+                           Math.round(area) + " pixels). This is a fallback when actual text extraction fails.";
+                }
+            }
+            return '';
+        }
+
+        // Hide context menu when clicking elsewhere
+        document.addEventListener('click', (e) => {
+            if (!contextMenuEl.contains(e.target)) {
+                hideContextMenu();
+            }
+        });
+
+        // Adobe PDF initialization
+        document.addEventListener('DOMContentLoaded', function() {
+            log('🚀 Adobe PDF Overlay approach initializing...');
+            
+            function initAdobeViewer() {
+                if (window.AdobeDC) {
+                    log('📚 Adobe DC available, setting up viewer...');
+                    
+                    try {
+                        adobeView = new window.AdobeDC.View({
+                            clientId: "85e35211c6c24c5bb8a6c4c8b9a2b4e8",
+                            divId: "adobe-dc-view",
+                            locale: "en-US",
+                        });
+
+                        log('⚙️ Adobe view created, configuring...');
+
+                        // Try to register callbacks (they might not work, but we'll try)
+                        try {
+                            adobeView.registerCallback(
+                                window.AdobeDC.View.Enum.CallbackType.TEXT_SELECTION,
+                                function(event) {
+                                    log('📝 Adobe TEXT_SELECTION callback fired!');
+                                    console.log('Adobe text selection event:', event);
+                                    
+                                    const text = event.data?.selectedText || event.data?.selection?.text;
+                                    if (text && text.trim()) {
+                                        selectedText = text.trim();
+                                        log('✅ Adobe callback provided text: ' + text.substring(0, 50) + '...');
+                                        updateStatus('Text selected via Adobe callback: ' + text.length + ' characters');
+                                    }
+                                },
+                                { enableTextSelection: true }
+                            );
+                        } catch (e) {
+                            log('⚠️ Adobe callback registration failed: ' + e.message);
+                        }
+
+                        // Load PDF
+                        const pdfUrl = "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf";
+                        
+                        adobeView.previewFile({
+                            content: { location: { url: pdfUrl } },
+                            metaData: { fileName: "test.pdf" }
+                        }, {
+                            enableFormFillAPIs: true,
+                            enablePDFAnalytics: false,
+                            showAnnotationTools: false,
+                            showLeftHandPanel: false,
+                            showDownloadPDF: false,
+                            enableTextSelection: true,
+                            enableSearchAPIs: true,
+                            showToolsOnTextSelection: false // Hide Adobe's text selection toolbar
+                        }).then(() => {
+                            log('✅ PDF loaded successfully!');
+                            updateStatus('PDF loaded - ready for text selection');
+                            
+                            // Setup our overlay capture after PDF loads
+                            setTimeout(() => {
+                                setupSelectionCapture();
+                                log('🎯 Selection capture overlay activated');
+                            }, 2000);
+                            
+                        }).catch((error) => {
+                            log('❌ Error loading PDF: ' + error.message);
+                            updateStatus('Error loading PDF: ' + error.message);
+                        });
+
+                    } catch (error) {
+                        log('❌ Error initializing Adobe viewer: ' + error.message);
+                        updateStatus('Error initializing Adobe viewer');
+                    }
+                } else {
+                    log('⏳ Adobe DC not available, retrying...');
+                    setTimeout(initAdobeViewer, 500);
+                }
+            }
+
+            initAdobeViewer();
+        });
+    </script>
+</body>
+</html>
