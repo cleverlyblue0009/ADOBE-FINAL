@@ -217,15 +217,90 @@ export function EnhancedLeftPanel({
     item.title.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
+  // Debug information for outline data
+  console.log('Document Outline Debug:', {
+    currentDocument: currentDocument?.name,
+    hasOutline: !!currentDocument?.outline,
+    outlineLength: currentDocument?.outline?.length || 0,
+    outline: currentDocument?.outline
+  });
+
+  // Generate basic outline when none exists
+  const generateBasicOutline = (): OutlineItem[] => {
+    if (!currentDocument || !totalPages) return [];
+    
+    const basicOutline: OutlineItem[] = [];
+    
+    // Create smart sections based on document length
+    if (totalPages <= 10) {
+      // Short document: individual pages
+      for (let i = 1; i <= totalPages; i++) {
+        basicOutline.push({
+          id: `page-${i}`,
+          title: `Page ${i}`,
+          level: 1,
+          page: i,
+          children: []
+        });
+      }
+    } else if (totalPages <= 30) {
+      // Medium document: 5-page sections
+      const pagesPerSection = 5;
+      for (let i = 1; i <= totalPages; i += pagesPerSection) {
+        const endPage = Math.min(i + pagesPerSection - 1, totalPages);
+        basicOutline.push({
+          id: `section-${i}`,
+          title: `Section ${Math.ceil(i / pagesPerSection)} (Pages ${i}-${endPage})`,
+          level: 1,
+          page: i,
+          children: []
+        });
+      }
+    } else {
+      // Long document: logical sections
+      const sectionsCount = Math.min(12, Math.max(6, Math.ceil(totalPages / 10)));
+      const pagesPerSection = Math.ceil(totalPages / sectionsCount);
+      
+      for (let i = 0; i < sectionsCount; i++) {
+        const startPage = i * pagesPerSection + 1;
+        const endPage = Math.min((i + 1) * pagesPerSection, totalPages);
+        
+        if (startPage <= totalPages) {
+          basicOutline.push({
+            id: `chapter-${startPage}`,
+            title: `Chapter ${i + 1} (Pages ${startPage}-${endPage})`,
+            level: 1,
+            page: startPage,
+            children: []
+          });
+        }
+      }
+    }
+    
+    return basicOutline;
+  };
+
+  // Use filtered outline or generate basic outline as fallback
+  const displayOutline = filteredOutline.length > 0 ? filteredOutline : generateBasicOutline();
+
   const renderOutlineItem = (item: OutlineItem, depth: number = 0) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedOutlineItems.has(item.id);
     const paddingLeft = depth * 16 + 8;
+    const isActive = Math.abs(currentPage - item.page) <= 1;
+    const isGeneratedItem = item.id.startsWith('page-') || item.id.startsWith('section-') || item.id.startsWith('chapter-');
 
     return (
       <div key={item.id} className="w-full">
         <div 
-          className="flex items-center gap-2 py-2 px-2 hover:bg-gray-50 dark:hover:bg-gray-800 rounded cursor-pointer transition-colors"
+          className={`
+            flex items-center gap-2 py-2 px-2 rounded cursor-pointer transition-colors
+            ${isActive 
+              ? 'bg-blue-50 border-l-2 border-l-blue-500 text-blue-900' 
+              : 'hover:bg-gray-50 dark:hover:bg-gray-800'
+            }
+            ${isGeneratedItem ? 'border-l border-l-gray-300' : ''}
+          `}
           style={{ paddingLeft }}
           onClick={() => handleOutlineClick(item)}
         >
@@ -252,7 +327,7 @@ export function EnhancedLeftPanel({
               <span className={`text-sm truncate ${
                 depth === 0 ? 'font-medium' : 
                 depth === 1 ? 'font-normal' : 'text-gray-600'
-              }`}>
+              } ${isGeneratedItem ? 'italic text-gray-600' : ''}`}>
                 {item.title}
               </span>
               <Badge variant="outline" className="text-xs ml-2">
@@ -386,16 +461,33 @@ export function EnhancedLeftPanel({
               </Button>
             </CollapsibleTrigger>
             <CollapsibleContent className="mt-3">
-              {currentDocument && filteredOutline.length > 0 ? (
+              {currentDocument && displayOutline.length > 0 ? (
                 <div className="space-y-1">
-                  {filteredOutline.map(item => renderOutlineItem(item))}
+                  {filteredOutline.length === 0 && displayOutline.length > 0 && (
+                    <div className="mb-3 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-xs text-blue-600 flex items-center gap-1">
+                        <Target className="h-3 w-3" />
+                        Auto-generated page navigation (PDF has no bookmarks)
+                      </p>
+                    </div>
+                  )}
+                  {displayOutline.map(item => renderOutlineItem(item))}
                 </div>
               ) : (
                 <div className="text-center py-6 text-gray-500">
                   <List className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">
-                    {currentDocument ? 'No outline available' : 'No document selected'}
-                  </p>
+                  <div className="space-y-2">
+                    <p className="text-sm font-medium">
+                      {currentDocument ? 'No outline available' : 'No document selected'}
+                    </p>
+                    {currentDocument && (
+                      <div className="text-xs text-gray-400 space-y-1">
+                        <p>This PDF doesn't contain bookmark data.</p>
+                        <p>Document: {currentDocument.name}</p>
+                        <p>Current Page: {currentPage} of {totalPages}</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </CollapsibleContent>
