@@ -102,6 +102,7 @@ import {
 export interface PDFDocument {
   id: string;
   name: string;
+  title: string;
   url: string;
   outline: OutlineItem[];
 }

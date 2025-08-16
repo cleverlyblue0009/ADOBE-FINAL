@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { LandingPage } from '@/components/LandingPage';
-import { PDFReader, PDFDocument } from '@/components/PDFReader';
+import { PDFReader, PDFDocument, OutlineItem } from '@/components/PDFReader';
 import { DocumentInfo } from '@/lib/api';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import UserProfile from '@/components/UserProfile';
@@ -14,17 +14,53 @@ const Index = () => {
 
   const handleStart = (uploadedDocuments: DocumentInfo[], userPersona: string, userJob: string) => {
     // Convert backend DocumentInfo to frontend PDFDocument format
-    const pdfDocs: PDFDocument[] = uploadedDocuments.map((doc) => ({
-      id: doc.id,
-      name: doc.name,
-      url: `http://localhost:8000/pdf/${doc.id}`, // Use backend PDF endpoint
-      outline: doc.outline.map((item, index) => ({
-        id: index.toString(),
-        title: item.text,
-        level: parseInt(item.level.replace('H', '')),
-        page: item.page
-      }))
-    }));
+    const pdfDocs: PDFDocument[] = uploadedDocuments.map((doc) => {
+      // Convert flat outline to hierarchical structure
+      const buildHierarchicalOutline = (flatOutline: any[]): OutlineItem[] => {
+        const result: OutlineItem[] = [];
+        const stack: OutlineItem[] = [];
+        
+        flatOutline.forEach((item, index) => {
+          const level = parseInt(item.level.replace('H', ''));
+          const outlineItem: OutlineItem = {
+            id: `${doc.id}-${index}`,
+            title: item.text,
+            level: level,
+            page: item.page,
+            children: []
+          };
+          
+          // Find the correct parent based on level hierarchy
+          while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+            stack.pop();
+          }
+          
+          if (stack.length === 0) {
+            // Top level item
+            result.push(outlineItem);
+          } else {
+            // Child item
+            const parent = stack[stack.length - 1];
+            if (!parent.children) {
+              parent.children = [];
+            }
+            parent.children.push(outlineItem);
+          }
+          
+          stack.push(outlineItem);
+        });
+        
+        return result;
+      };
+      
+      return {
+        id: doc.id,
+        name: doc.name,
+        title: doc.title,
+        url: `http://localhost:8000/pdf/${doc.id}`, // Use backend PDF endpoint
+        outline: buildHierarchicalOutline(doc.outline)
+      };
+    });
     
     setDocuments(pdfDocs);
     setPersona(userPersona);
