@@ -3,8 +3,9 @@ import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { ChevronRight, ChevronDown, FileText, Eye, File, BookOpen } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, Eye, File, BookOpen, Navigation, MapPin } from 'lucide-react';
 import { OutlineItem } from './PDFReader';
+import { useToast } from '@/hooks/use-toast';
 
 interface PDFDocument {
   id: string;
@@ -34,6 +35,8 @@ export function DocumentOutline({
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set(['root']));
   const [expandedDocuments, setExpandedDocuments] = useState<Set<string>>(new Set(documents?.map(d => d.id) || []));
   const [hoveredItem, setHoveredItem] = useState<string | null>(null);
+  const [navigatingItem, setNavigatingItem] = useState<string | null>(null);
+  const { toast } = useToast();
 
   // Use either multiple documents or single document outline
   const isMultiDocument = documents && documents.length > 0;
@@ -59,41 +62,85 @@ export function DocumentOutline({
     setExpandedDocuments(newExpanded);
   };
 
+  const handleItemNavigation = async (item: OutlineItem, documentId?: string) => {
+    try {
+      setNavigatingItem(item.id);
+      
+      console.log(`Navigating to page ${item.page} for item: ${item.title}`);
+      
+      // Enhanced navigation with better feedback
+      if (documentId && onDocumentSwitch) {
+        const doc = documents?.find(d => d.id === documentId);
+        if (doc && doc.id !== currentDocument?.id) {
+          toast({
+            title: "Switching Document",
+            description: `Opening ${doc.title}...`,
+            duration: 2000
+          });
+          
+          onDocumentSwitch(doc);
+          
+          // Wait for document switch to complete before navigating to page
+          setTimeout(() => {
+            toast({
+              title: "Navigating to Section",
+              description: `Going to "${item.title}" on page ${item.page}`,
+              duration: 2000
+            });
+            onItemClick(item);
+            setNavigatingItem(null);
+          }, 500);
+          return;
+        }
+      }
+      
+      // Navigate to the page with enhanced feedback
+      toast({
+        title: "Navigating to Section",
+        description: `Going to "${item.title}" on page ${item.page}`,
+        duration: 2000
+      });
+      
+      onItemClick(item);
+      
+      // Clear navigation state after a delay
+      setTimeout(() => {
+        setNavigatingItem(null);
+      }, 1000);
+      
+    } catch (error) {
+      console.error('Navigation failed:', error);
+      setNavigatingItem(null);
+      toast({
+        title: "Navigation Error",
+        description: "Failed to navigate to the selected section. Please try again.",
+        variant: "destructive",
+        duration: 3000
+      });
+    }
+  };
+
   const renderOutlineItem = (item: OutlineItem, depth = 0, documentId?: string) => {
     const isActive = Math.abs(currentPage - item.page) <= 1 && 
                     (!documentId || documentId === currentDocument?.id);
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedItems.has(item.id);
     const isHovered = hoveredItem === item.id;
+    const isNavigating = navigatingItem === item.id;
 
     return (
       <div key={item.id} className="select-none">
         <div
           className={`
-            outline-item flex items-center gap-2 cursor-pointer group
+            outline-item flex items-center gap-2 cursor-pointer group relative
             ${isActive ? 'active bg-blue-50 border-l-2 border-l-blue-500' : ''}
-            hover:bg-gray-50 transition-colors duration-150 rounded-md p-1
+            ${isNavigating ? 'bg-amber-50 border-l-2 border-l-amber-500' : ''}
+            hover:bg-gray-50 transition-all duration-200 rounded-md p-1
           `}
           style={{ paddingLeft: `${depth * 12 + 12}px` }}
           onClick={(e) => {
             e.preventDefault();
-            console.log(`Navigating to page ${item.page} for item: ${item.title}`);
-            
-            // Switch to the correct document if needed
-            if (documentId && onDocumentSwitch) {
-              const doc = documents?.find(d => d.id === documentId);
-              if (doc && doc.id !== currentDocument?.id) {
-                onDocumentSwitch(doc);
-                // Small delay to ensure document switch completes before page navigation
-                setTimeout(() => {
-                  onItemClick(item);
-                }, 100);
-                return;
-              }
-            }
-            
-            // Navigate to the page
-            onItemClick(item);
+            handleItemNavigation(item, documentId);
           }}
           onMouseEnter={() => setHoveredItem(item.id)}
           onMouseLeave={() => setHoveredItem(null)}
@@ -116,7 +163,11 @@ export function DocumentOutline({
             </Button>
           ) : (
             <div className="w-6 h-6 flex items-center justify-center">
-              <FileText className="h-3 w-3 text-text-tertiary" />
+              {isNavigating ? (
+                <Navigation className="h-3 w-3 text-amber-600 animate-pulse" />
+              ) : (
+                <FileText className="h-3 w-3 text-text-tertiary" />
+              )}
             </div>
           )}
 
@@ -125,27 +176,50 @@ export function DocumentOutline({
             ${item.level === 1 ? 'font-medium' : ''}
             ${item.level === 2 ? 'font-normal' : ''}
             ${item.level >= 3 ? 'text-text-secondary' : ''}
+            ${isNavigating ? 'text-amber-700' : ''}
           `}>
             {item.title}
           </span>
 
           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-            {isHovered && (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-6 w-6 p-0 hover:bg-surface-hover"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  // Would show page preview
-                }}
-                aria-label="Preview page"
-              >
-                <Eye className="h-3 w-3" />
-              </Button>
+            {isHovered && !isNavigating && (
+              <>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 hover:bg-surface-hover"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    toast({
+                      title: "Section Preview",
+                      description: `"${item.title}" on page ${item.page}`,
+                      duration: 2000
+                    });
+                  }}
+                  aria-label="Preview section"
+                >
+                  <Eye className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0 hover:bg-surface-hover"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleItemNavigation(item, documentId);
+                  }}
+                  aria-label="Navigate to section"
+                >
+                  <MapPin className="h-3 w-3" />
+                </Button>
+              </>
             )}
             
-            <span className="text-xs text-text-tertiary font-mono">
+            <span className={`text-xs font-mono px-1 py-0.5 rounded ${
+              isActive ? 'bg-blue-200 text-blue-800' : 
+              isNavigating ? 'bg-amber-200 text-amber-800' :
+              'text-text-tertiary'
+            }`}>
               {item.page}
             </span>
           </div>
@@ -232,6 +306,8 @@ export function DocumentOutline({
           ) : (
             <>
               {singleOutline.length} sections • Currently on page {currentPage}
+              <br />
+              <span className="text-xs text-text-tertiary">Click any section to navigate there</span>
             </>
           )}
         </p>

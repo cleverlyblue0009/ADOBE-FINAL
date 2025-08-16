@@ -349,8 +349,8 @@ class ApiService {
   }
 
   async getCrossConnections(docId: string): Promise<CrossConnectionsResponse> {
-    const response = await fetch(`${this.baseUrl}/documents/${docId}/cross-connections`, {
-      method: 'POST',
+    const response = await fetch(`${this.baseUrl}/cross-connections/${docId}`, {
+      method: 'GET',
     });
 
     if (!response.ok) {
