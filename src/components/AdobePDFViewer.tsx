@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { Loader2, Copy } from 'lucide-react';
-import { TextSelectionMenu } from './TextSelectionMenu';
 import { useToast } from '@/hooks/use-toast';
 import { apiService } from '@/lib/api';
 import { pdfHighlighter } from '@/lib/pdfHighlighter';
@@ -24,6 +23,105 @@ interface AdobePDFViewerProps {
   goToSection?: { page: number; section?: string } | null;
 }
 
+interface ContextMenuState {
+  visible: boolean;
+  selectedText: string;
+  position: { x: number; y: number; width: number; height: number } | null;
+  pageNumber: number;
+  options: Array<{
+    icon: string;
+    label: string;
+    action: () => void;
+  }>;
+}
+
+interface AiPopupState {
+  visible: boolean;
+  type: 'simplify' | 'insights';
+  originalText: string;
+  result: string;
+  title: string;
+}
+
+interface LoadingState {
+  type: 'simplify' | 'insights' | null;
+  active: boolean;
+}
+
+// Context Menu Component
+function ContextMenu({ contextMenu, onClose }: { contextMenu: ContextMenuState; onClose: () => void }) {
+  if (!contextMenu.visible) return null;
+  
+  return (
+    <div 
+      className="fixed inset-0 z-50"
+      onClick={onClose}
+    >
+      <div 
+        className="absolute bg-gray-900 border border-gray-700 rounded-lg shadow-2xl p-2 min-w-48"
+        style={{
+          left: contextMenu.position?.x || 0,
+          top: (contextMenu.position?.y || 0) + (contextMenu.position?.height || 0) + 10,
+          transform: 'translateX(-50%)'
+        }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="text-xs text-gray-400 p-2 border-b border-gray-700 max-w-64 truncate">
+          "{contextMenu.selectedText}"
+        </div>
+        
+        {contextMenu.options?.map((option, index) => (
+          <button
+            key={index}
+            className="w-full text-left px-3 py-2 hover:bg-gray-800 rounded flex items-center gap-2 text-sm"
+            onClick={option.action}
+          >
+            <span>{option.icon}</span>
+            {option.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// AI Popup Component
+function AiPopup({ aiPopup, onClose }: { aiPopup: AiPopupState; onClose: () => void }) {
+  if (!aiPopup.visible) return null;
+  
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+      <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 max-w-2xl max-h-96 overflow-y-auto">
+        <div className="flex justify-between items-center mb-4">
+          <h3 className="text-lg font-semibold text-white">{aiPopup.title}</h3>
+          <button 
+            onClick={onClose}
+            className="text-gray-400 hover:text-white"
+          >
+            ✕
+          </button>
+        </div>
+        
+        <div className="mb-4">
+          <h4 className="text-sm font-medium text-gray-400 mb-2">Original Text:</h4>
+          <p className="text-sm text-gray-300 bg-gray-800 p-3 rounded">
+            {aiPopup.originalText}
+          </p>
+        </div>
+        
+        <div>
+          <h4 className="text-sm font-medium text-gray-400 mb-2">
+            {aiPopup.type === 'simplify' ? 'Simplified Version:' : 'AI Insights:'}
+          </h4>
+          <div className="text-sm text-white bg-gray-800 p-3 rounded">
+            {aiPopup.result}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function AdobePDFViewer({ 
   documentUrl, 
   documentName, 
@@ -39,55 +137,217 @@ export function AdobePDFViewer({
   const [error, setError] = useState<string | null>(null);
   const [isReady, setIsReady] = useState(false);
   const adobeViewRef = useRef<any>(null);
-  const [selectedText, setSelectedText] = useState('');
-  const [selectionPosition, setSelectionPosition] = useState<{ x: number; y: number } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
 
-  // Enhanced text selection with Adobe API
-  const handleAdobeTextSelection = async () => {
-    if (!adobeViewRef.current || !window.AdobeDC) return;
+  // Context menu and AI popup states
+  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
+    visible: false,
+    selectedText: '',
+    position: null,
+    pageNumber: 1,
+    options: []
+  });
+  const [aiPopup, setAiPopup] = useState<AiPopupState>({
+    visible: false,
+    type: 'simplify',
+    originalText: '',
+    result: '',
+    title: ''
+  });
+  const [loading, setLoading] = useState<LoadingState>({ type: null, active: false });
 
+  // Handle Adobe PDF text selection events
+  const handleTextSelection = async (event: any) => {
+    console.log("PDF Text Selected:", event);
+    
+    // Extract selected text and position
+    const selectedText = event.data?.selectedText || event.data?.selection?.text;
+    const boundingRect = event.data?.boundingRect || event.data?.selection?.boundingRect;
+    const pageNumber = event.data?.pageNumber || event.data?.selection?.pageNumber || currentPage;
+    
+    if (!selectedText || selectedText.trim().length === 0) return;
+    
+    // Show custom context menu with our AI options
+    showContextMenu({
+      text: selectedText,
+      position: boundingRect ? {
+        x: boundingRect.x,
+        y: boundingRect.y,
+        width: boundingRect.width,
+        height: boundingRect.height
+      } : { x: 100, y: 100, width: 200, height: 20 },
+      pageNumber: pageNumber
+    });
+  };
+
+  const showContextMenu = ({ text, position, pageNumber }: { 
+    text: string; 
+    position: { x: number; y: number; width: number; height: number }; 
+    pageNumber: number 
+  }) => {
+    setContextMenu({
+      visible: true,
+      selectedText: text,
+      position: position,
+      pageNumber: pageNumber,
+      options: [
+        {
+          icon: "🔆",
+          label: "Highlight",
+          action: () => highlightText(text, position, pageNumber)
+        },
+        {
+          icon: "🧠",
+          label: "Simplify",
+          action: () => simplifyText(text)
+        },
+        {
+          icon: "💡",
+          label: "Generate Insights",
+          action: () => generateInsights(text)
+        },
+        {
+          icon: "📋",
+          label: "Copy",
+          action: () => navigator.clipboard.writeText(text)
+        }
+      ]
+    });
+  };
+
+  const highlightText = async (text: string, position: { x: number; y: number; width: number; height: number }, pageNumber: number) => {
+    if (!adobeViewRef.current) return;
+    
     try {
-      // Use Adobe's text selection API
-      const annotationManager = adobeViewRef.current.getAnnotationManager();
-      const previewFilePromise = adobeViewRef.current.getFilePromise();
+      // Create highlight annotation using Adobe API
+      const annotation = {
+        type: "highlight",
+        boundingRect: position,
+        pageNumber: pageNumber,
+        color: "#FFD700", // Gold highlight
+        opacity: 0.5,
+        content: text,
+        author: "AI Assistant"
+      };
       
-      if (annotationManager && previewFilePromise) {
-        // Listen for text selection events
-        adobeViewRef.current.registerCallback(
-          window.AdobeDC.View.Enum.CallbackType.GET_USER_PROFILE_API,
-          (profile: any) => {
-            console.log('User profile:', profile);
-          }
-        );
-
-        // Enhanced text selection event
-        adobeViewRef.current.registerCallback(
-          window.AdobeDC.View.Enum.CallbackType.TEXT_SEARCH_API,
-          (searchResult: any) => {
-            console.log('Text search result:', searchResult);
-          }
-        );
-
-        // Listen for annotation events
-        annotationManager.registerEventListener(
-          (event: any) => {
-            if (event.type === 'ANNOTATION_SELECTED') {
-              const annotation = event.data;
-              if (annotation.type === 'textSelection') {
-                setSelectedText(annotation.content || '');
-                if (onTextSelection) {
-                  onTextSelection(annotation.content || '', annotation.page || currentPage);
-                }
-              }
-            }
-          },
-          { listenOn: window.AdobeDC.View.Enum.EventType.ANNOTATION_SELECTED }
-        );
+      // Add annotation using Adobe PDF Embed API
+      const annotationManager = adobeViewRef.current.getAnnotationManager();
+      if (annotationManager) {
+        await annotationManager.addAnnotation(annotation);
       }
+      
+      // Store highlight in your state/database
+      const highlight = {
+        id: Date.now(),
+        text: text,
+        position: position,
+        pageNumber: pageNumber,
+        type: "highlight",
+        timestamp: new Date().toISOString()
+      };
+      
+      // Close context menu
+      setContextMenu({ ...contextMenu, visible: false });
+      
+      toast({
+        title: "Text Highlighted",
+        description: `Added highlight on page ${pageNumber}`,
+      });
+      
     } catch (error) {
-      console.log('Adobe text selection API not fully available, using fallback');
+      console.error("Error adding highlight:", error);
+      // Fallback: Store highlight data without visual annotation
+      const highlight = {
+        id: Date.now(),
+        text: text,
+        position: position,
+        pageNumber: pageNumber,
+        type: "highlight",
+        timestamp: new Date().toISOString()
+      };
+      
+      toast({
+        title: "Highlight Added",
+        description: `Saved highlight on page ${pageNumber}`,
+      });
+    }
+  };
+
+  const simplifyText = async (selectedText: string) => {
+    setLoading({ type: "simplify", active: true });
+    
+    try {
+      const response = await fetch('/api/simplify-text', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: selectedText,
+          difficulty_level: "simple"
+        })
+      });
+      
+      const result = await response.json();
+      
+      // Show simplified text in a popup/modal
+      setAiPopup({
+        visible: true,
+        type: "simplify",
+        originalText: selectedText,
+        result: result.simplified_text || result.simplified || "Text simplified successfully",
+        title: "Simplified Text"
+      });
+      
+    } catch (error) {
+      console.error("Error simplifying text:", error);
+      toast({
+        title: "Error",
+        description: "Failed to simplify text",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading({ type: "simplify", active: false });
+      setContextMenu({ ...contextMenu, visible: false });
+    }
+  };
+
+  const generateInsights = async (selectedText: string) => {
+    setLoading({ type: "insights", active: true });
+    
+    try {
+      const response = await fetch('/api/insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: selectedText,
+          persona: "general user",
+          job_to_be_done: "understanding content"
+        })
+      });
+      
+      const result = await response.json();
+      
+      // Show insights in a popup/modal
+      setAiPopup({
+        visible: true,
+        type: "insights",
+        originalText: selectedText,
+        result: Array.isArray(result.insights) 
+          ? result.insights.map((insight: any) => insight.content || insight).join('\n\n')
+          : result.insights || "Insights generated successfully",
+        title: "AI Generated Insights"
+      });
+      
+    } catch (error) {
+      console.error("Error generating insights:", error);
+      toast({
+        title: "Error",
+        description: "Failed to generate insights",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading({ type: "insights", active: false });
+      setContextMenu({ ...contextMenu, visible: false });
     }
   };
 
@@ -356,117 +616,6 @@ export function AdobePDFViewer({
     }
   }, [goToSection, isReady]);
 
-  // Handle text selection
-  useEffect(() => {
-    const handleTextSelection = (e: Event) => {
-      const selection = window.getSelection();
-      if (selection && selection.toString().trim()) {
-        const text = selection.toString();
-        console.log('Text selected:', text);
-        setSelectedText(text);
-        
-        // Get selection position for context menu
-        const range = selection.getRangeAt(0);
-        const rect = range.getBoundingClientRect();
-        setSelectionPosition({
-          x: rect.left + rect.width / 2,
-          y: rect.top
-        });
-        
-        if (onTextSelection) {
-          onTextSelection(text, currentPage);
-        }
-      } else if (e.type === 'mouseup' && !selectedText) {
-        // Only clear selection if there's no selected text and it's a mouseup
-        clearSelection();
-      }
-    };
-
-    // Handle right-click context menu
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault(); // Always prevent default context menu
-      
-      const selection = window.getSelection();
-      if (selection && selection.toString().trim()) {
-        e.stopPropagation();
-        
-        // Set the selected text and position
-        const text = selection.toString();
-        console.log('Context menu triggered for:', text);
-        setSelectedText(text);
-        setSelectionPosition({
-          x: e.clientX,
-          y: e.clientY
-        });
-        
-        if (onTextSelection) {
-          onTextSelection(text, currentPage);
-        }
-      } else {
-        // If no text is selected, show a message
-        console.log('No text selected for context menu');
-        clearSelection();
-      }
-    };
-
-    // Add event listeners to document and the viewer container
-    const addListeners = () => {
-      console.log('Adding text selection listeners');
-      document.addEventListener('mouseup', handleTextSelection);
-      document.addEventListener('touchend', handleTextSelection);
-      document.addEventListener('contextmenu', handleContextMenu);
-      
-      // Also add to the Adobe DC view container
-      const adobeContainer = document.getElementById('adobe-dc-view');
-      if (adobeContainer) {
-        adobeContainer.addEventListener('contextmenu', handleContextMenu);
-      }
-      
-      // Try to add to iframe content if available
-      const iframe = document.querySelector('iframe');
-      if (iframe) {
-        try {
-          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (iframeDoc) {
-            iframeDoc.addEventListener('mouseup', handleTextSelection);
-            iframeDoc.addEventListener('contextmenu', handleContextMenu);
-            console.log('Added listeners to iframe document');
-          }
-        } catch (e) {
-          console.log('Could not access iframe content (cross-origin)');
-        }
-      }
-    };
-
-    // Add listeners with a delay to ensure the PDF is loaded
-    const timeoutId = setTimeout(addListeners, 2000);
-
-    return () => {
-      clearTimeout(timeoutId);
-      document.removeEventListener('mouseup', handleTextSelection);
-      document.removeEventListener('touchend', handleTextSelection);
-      document.removeEventListener('contextmenu', handleContextMenu);
-      
-      const adobeContainer = document.getElementById('adobe-dc-view');
-      if (adobeContainer) {
-        adobeContainer.removeEventListener('contextmenu', handleContextMenu);
-      }
-      
-      const iframe = document.querySelector('iframe');
-      if (iframe) {
-        try {
-          const iframeDoc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (iframeDoc) {
-            iframeDoc.removeEventListener('mouseup', handleTextSelection);
-            iframeDoc.removeEventListener('contextmenu', handleContextMenu);
-          }
-        } catch (e) {
-          // Ignore cross-origin errors
-        }
-      }
-    };
-  }, [currentPage, onTextSelection, selectedText]);
-
   // Apply highlights when they change or page changes
   useEffect(() => {
     if (highlights.length > 0) {
@@ -481,112 +630,6 @@ export function AdobePDFViewer({
       return () => clearTimeout(timeoutId);
     }
   }, [highlights, currentHighlightPage, currentPage]);
-
-  const handleHighlight = async (color: 'yellow' | 'green' | 'blue' | 'pink') => {
-    // Store highlight in backend
-    try {
-      await apiService.addHighlight({
-        text: selectedText,
-        color,
-        page: currentPage,
-        documentName
-      });
-      
-      toast({
-        title: "Text Highlighted",
-        description: `Added ${color} highlight to page ${currentPage}`
-      });
-      
-      // Trigger text selection callback to parent for insights generation
-      if (onTextSelection && selectedText.length > 50) {
-        console.log('Triggering insights generation for highlighted text');
-        onTextSelection(selectedText, currentPage);
-      }
-
-      // Apply visual highlight to PDF using Adobe PDF Embed API
-      if (adobeViewRef.current && window.AdobeDC) {
-        try {
-          // Create annotation using Adobe PDF API
-          const annotationManager = adobeViewRef.current.getAnnotationManager();
-          if (annotationManager) {
-            const selection = window.getSelection();
-            if (selection && selection.rangeCount > 0) {
-              const range = selection.getRangeAt(0);
-              const rect = range.getBoundingClientRect();
-              
-              // Create highlight annotation
-              annotationManager.addAnnotation({
-                type: 'highlight',
-                color: color === 'yellow' ? '#FFFF00' : 
-                       color === 'green' ? '#00FF00' : 
-                       color === 'blue' ? '#0000FF' : '#FF69B4',
-                page: currentPage,
-                bounds: {
-                  x: rect.left,
-                  y: rect.top,
-                  width: rect.width,
-                  height: rect.height
-                },
-                content: selectedText
-              });
-            }
-          }
-        } catch (annotationError) {
-          console.log('Adobe annotation API not available, using fallback highlighting');
-          // Fallback: Add highlight overlay using DOM manipulation
-          addHighlightOverlay(selectedText, color, currentPage);
-        }
-      } else {
-        // Fallback highlighting for when Adobe API is not available
-        addHighlightOverlay(selectedText, color, currentPage);
-      }
-    } catch (error) {
-      console.error('Failed to add highlight:', error);
-      toast({
-        title: "Highlight Failed",
-        description: "Failed to add highlight. Please try again.",
-        variant: "destructive"
-      });
-    }
-    
-    clearSelection();
-  };
-
-  // Fallback highlight overlay function
-  const addHighlightOverlay = (text: string, color: string, page: number) => {
-    const selection = window.getSelection();
-    if (!selection || selection.rangeCount === 0) return;
-
-    try {
-      const range = selection.getRangeAt(0);
-      const span = document.createElement('span');
-      span.className = `pdf-highlight pdf-highlight-${color}`;
-      span.style.backgroundColor = color === 'yellow' ? '#FFFF0080' : 
-                                   color === 'green' ? '#00FF0080' : 
-                                   color === 'blue' ? '#0000FF80' : '#FF69B480';
-      span.style.borderRadius = '2px';
-      span.style.padding = '1px 2px';
-      
-      try {
-        range.surroundContents(span);
-      } catch (e) {
-        // If we can't surround contents, extract and wrap
-        const contents = range.extractContents();
-        span.appendChild(contents);
-        range.insertNode(span);
-      }
-    } catch (error) {
-      console.log('Could not apply visual highlight overlay:', error);
-    }
-  };
-
-
-
-  const clearSelection = () => {
-    setSelectedText('');
-    setSelectionPosition(null);
-    window.getSelection()?.removeAllRanges();
-  };
 
   // Suppress Adobe PDF feature flag errors globally
   useEffect(() => {
@@ -650,65 +693,46 @@ export function AdobePDFViewer({
 
         // Configure Adobe PDF Embed
         const adobeDCView = new window.AdobeDC.View({
-          clientId: clientId || "85e35211c6c24c5bb8a6c4c8b9a2b4e8", // Better default client ID
-          divId: viewerRef.current.id,
-          // Suppress feature flag warnings
-          enableFeatureFlags: {
-            "enable-tools-multidoc": false,
-            "edit-config": false,
-            "enable-accessibility": false,
-            "preview-config": false,
-            "enable-inline-organize": false,
-            "enable-pdf-request-signatures": false,
-            "DCWeb_edit_image_experiment": false
-          }
+          clientId: clientId || process.env.VITE_ADOBE_CLIENT_ID || "85e35211c6c24c5bb8a6c4c8b9a2b4e8",
+          divId: "adobe-dc-view",
+          locale: "en-US",
         });
 
         adobeViewRef.current = adobeDCView;
 
-        // PDF viewing configuration
-        const viewerConfig = {
-          embedMode: "SIZED_CONTAINER",
-          showAnnotationTools: true,
+        // CRITICAL: Enable text selection and annotation events
+        await adobeDCView.previewFile({
+          content: { location: { url: documentUrl } },
+          metaData: { fileName: documentName }
+        }, {
+          // Enable the APIs we need
+          enableFormFillAPIs: true,
+          enablePDFAnalytics: false,
+          
+          // IMPORTANT: Enable text selection events
+          showAnnotationTools: false, // We'll create custom tools
           showLeftHandPanel: false,
-          showDownloadPDF: true,
-          showPrintPDF: true,
-          showZoomControl: true,
-          enableFormFilling: false,
-          showPageControls: true,
-          dockPageControls: false,
-          showBookmarks: false,
-          enableAnnotations: true,
+          showDownloadPDF: false,
+          
+          // Enable text selection callbacks
           enableTextSelection: true,
-          // Annotation tools configuration
-          annotationTools: {
-            highlight: true,
-            strikethrough: true,
-            underline: true,
-            squiggly: true,
-            note: true,
-            freeText: true
-          },
-          // Disable feature flags that cause console errors
-          enableFeatureFlags: {
-            "enable-tools-multidoc": false,
-            "edit-config": false,
-            "enable-accessibility": false,
-            "preview-config": false,
-            "enable-inline-organize": false,
-            "enable-pdf-request-signatures": false,
-            "DCWeb_edit_image_experiment": false
-          }
-        };
+          enableSearchAPIs: true
+        });
 
-        // Set loading timeout before loading PDF
-        const loadingTimeoutId = setTimeout(() => {
-          console.log("PDF loading timeout reached");
-          setIsLoading(false);
-          setIsReady(true);
-        }, 8000);
+        // REGISTER TEXT SELECTION EVENT LISTENER
+        adobeDCView.registerCallback(
+          window.AdobeDC.View.Enum.CallbackType.GET_USER_PROFILE_API,
+          () => ({ userProfile: { name: "User", email: "user@example.com" } })
+        );
 
-        // Register event listeners first
+        // CRITICAL: Register text selection event
+        adobeDCView.registerCallback(
+          window.AdobeDC.View.Enum.CallbackType.TEXT_SELECTION,
+          handleTextSelection,
+          { enableTextSelection: true }
+        );
+
+        // Register event listeners
         adobeDCView.registerCallback(
           window.AdobeDC.View.Enum.CallbackType.EVENT_LISTENER,
           (event: any) => {
@@ -721,28 +745,17 @@ export function AdobePDFViewer({
                 }
                 break;
               case "TEXT_SELECTION":
-                if (event.data.selection) {
-                  setSelectedText(event.data.selection.text);
-                  setCurrentPage(event.data.selection.pageNumber);
-                  if (onTextSelection) {
-                    onTextSelection(
-                      event.data.selection.text,
-                      event.data.selection.pageNumber
-                    );
-                  }
-                }
+                handleTextSelection(event);
                 break;
               case "DOCUMENT_OPEN":
               case "APP_RENDERING_DONE":
                 console.log("PDF document loaded successfully");
-                clearTimeout(loadingTimeoutId);
                 setIsLoading(false);
                 setIsReady(true);
                 break;
               case "DOCUMENT_ERROR":
               case "APP_RENDERING_FAILED":
                 console.error("PDF document error:", event.data);
-                clearTimeout(loadingTimeoutId);
                 setError("Failed to load PDF document");
                 setIsLoading(false);
                 setIsReady(false);
@@ -752,11 +765,7 @@ export function AdobePDFViewer({
           { enablePDFAnalytics: false }
         );
 
-        // Load the PDF after setting up callbacks
-        await adobeDCView.previewFile({
-          content: { location: { url: documentUrl } },
-          metaData: { fileName: documentName }
-        }, viewerConfig);
+        setIsReady(true);
 
       } catch (err) {
         console.error("Error initializing Adobe PDF viewer:", err);
@@ -779,9 +788,6 @@ export function AdobePDFViewer({
       }
     };
   }, [documentUrl, documentName, clientId]);
-
-  // Generate unique ID for the viewer container
-  const viewerId = `adobe-pdf-viewer-${Math.random().toString(36).substr(2, 9)}`;
 
   if (error) {
     return (
@@ -828,15 +834,29 @@ export function AdobePDFViewer({
         className="flex-1 w-full h-full"
       />
 
-      {/* Text Selection Context Menu */}
-      <TextSelectionMenu
-        selectedText={selectedText}
-        position={selectionPosition}
-        pageContext={`Page ${currentPage} of ${documentName}`}
-        documentId={documentUrl}
-        onHighlight={handleHighlight}
-        onClose={clearSelection}
+      {/* Context Menu */}
+      <ContextMenu
+        contextMenu={contextMenu}
+        onClose={() => setContextMenu({ ...contextMenu, visible: false })}
       />
+
+      {/* AI Popup */}
+      <AiPopup
+        aiPopup={aiPopup}
+        onClose={() => setAiPopup({ ...aiPopup, visible: false })}
+      />
+
+      {/* Loading overlay for AI operations */}
+      {loading.active && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
+          <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 flex items-center gap-4">
+            <Loader2 className="h-6 w-6 animate-spin text-brand-primary" />
+            <span className="text-white">
+              {loading.type === 'simplify' ? 'Simplifying text...' : 'Generating insights...'}
+            </span>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

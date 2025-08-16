@@ -295,6 +295,17 @@ async def simplify_text(request: SimplifyTextRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Text simplification failed: {str(e)}")
 
+# Add API prefix routes for frontend compatibility
+@app.post("/api/simplify-text")
+async def api_simplify_text(request: SimplifyTextRequest):
+    """Simplify text difficulty using LLM (API route)."""
+    return await simplify_text(request)
+
+@app.post("/api/insights")
+async def api_generate_insights(request: InsightsRequest):
+    """Generate AI insights for current text using LLM (API route)."""
+    return await generate_insights(request)
+
 @app.post("/define-term")
 async def define_term(request: TermDefinitionRequest):
     """Get definition for a complex term."""
