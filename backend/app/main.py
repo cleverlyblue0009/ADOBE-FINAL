@@ -395,12 +395,33 @@ async def get_jobs():
 @app.get("/cross-connections/{doc_id}")
 async def get_cross_connections(doc_id: str):
     """Get cross-document connections for a specific document with enhanced analysis."""
-    if doc_id not in documents_store:
-        raise HTTPException(status_code=404, detail="Document not found")
+    try:
+        if doc_id not in documents_store:
+            raise HTTPException(status_code=404, detail="Document not found")
+        
+        print(f"Cross-connections request for document: {doc_id}")
+        print(f"LLM service available: {llm_service.is_available()}")
+        print(f"Total documents in store: {len(documents_store)}")
+        
+        if not llm_service.is_available():
+            print("LLM service not available, using fallback analysis")
+            # Provide fallback analysis even without LLM
+            return await _fallback_cross_connections_analysis(doc_id)
     
-    if not llm_service.is_available():
-        # Provide fallback analysis even without LLM
-        return await _fallback_cross_connections_analysis(doc_id)
+    except Exception as e:
+        print(f"Error in cross-connections endpoint: {e}")
+        # Return fallback even on error
+        try:
+            return await _fallback_cross_connections_analysis(doc_id)
+        except Exception as fallback_error:
+            print(f"Fallback also failed: {fallback_error}")
+            return {
+                "document_id": doc_id,
+                "related_documents": [],
+                "contradictions": [],
+                "insights": [{"type": "error", "content": "Unable to analyze cross-connections at this time. Please try again later.", "confidence": 0.0}],
+                "total_connections": 0
+            }
     
     current_doc = documents_store[doc_id]
     current_text = extract_full_text(current_doc["file_path"])

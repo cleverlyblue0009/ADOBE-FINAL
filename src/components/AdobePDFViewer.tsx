@@ -496,6 +496,12 @@ export function AdobePDFViewer({
         title: "Text Highlighted",
         description: `Added ${color} highlight to page ${currentPage}`
       });
+      
+      // Trigger text selection callback to parent for insights generation
+      if (onTextSelection && selectedText.length > 50) {
+        console.log('Triggering insights generation for highlighted text');
+        onTextSelection(selectedText, currentPage);
+      }
 
       // Apply visual highlight to PDF using Adobe PDF Embed API
       if (adobeViewRef.current && window.AdobeDC) {
@@ -576,13 +582,26 @@ export function AdobePDFViewer({
 
   const handleSimplify = async () => {
     try {
+      console.log('Simplifying text:', selectedText);
       const simplified = await apiService.simplifyText(selectedText);
       toast({
         title: "Simplified Text",
-        description: simplified.text
+        description: simplified.text,
+        duration: 5000
       });
+      
+      // Also trigger insights generation for the selected text
+      if (onTextSelection && selectedText.length > 20) {
+        console.log('Triggering insights generation for simplified text');
+        onTextSelection(selectedText, currentPage);
+      }
     } catch (error) {
       console.error('Failed to simplify text:', error);
+      toast({
+        title: "Simplification Failed",
+        description: "Unable to simplify the selected text. Please try again.",
+        variant: "destructive"
+      });
     }
     clearSelection();
   };

@@ -20,11 +20,32 @@ def extract_text_with_metadata(pdf_path: str):
                     if not full_line_text:
                         continue
                     first_span = line["spans"][0]
+                    
+                    # Extract font formatting information
+                    is_bold = False
+                    is_italic = False
+                    font_name = first_span.get("font", "").lower()
+                    
+                    # Check for bold/italic in font flags or font name
+                    if first_span.get("flags") is not None:
+                        flags = first_span["flags"]
+                        is_bold = bool(flags & 2**4)  # Bold flag
+                        is_italic = bool(flags & 2**1)  # Italic flag
+                    
+                    # Also check font name for bold/italic indicators
+                    if not is_bold:
+                        is_bold = any(bold_indicator in font_name for bold_indicator in ['bold', 'black', 'heavy', 'demi'])
+                    if not is_italic:
+                        is_italic = any(italic_indicator in font_name for italic_indicator in ['italic', 'oblique'])
+                    
                     text_blocks.append({
                         "text": full_line_text,
                         "page": page_num,
                         "font_size": first_span["size"],
-                        "bbox": line["bbox"]
+                        "bbox": line["bbox"],
+                        "is_bold": is_bold,
+                        "is_italic": is_italic,
+                        "font_name": font_name
                     })
     document.close()
     return text_blocks
@@ -180,13 +201,30 @@ def detect_headings(text_blocks, title):
             if len(text) < 120 and text.count('.') < 4 and text.count(' ') < 25:
                 level = size_to_level_map[font_size]
         
-        # Bold text detection with lower font size requirements
-        if level is None and font_size >= body_text_size * 1.01:
+        # Enhanced bold text detection using actual font formatting
+        if level is None:
             word_count = len(text.split())
-            if 1 <= word_count <= 20 and not text.lower() == text:
-                # Check if it looks like a heading (starts with capital, reasonable length)
-                if text[0].isupper() and 8 <= len(text) <= 100:
+            is_bold = block.get("is_bold", False)
+            
+            # Bold text is a strong indicator of headings
+            if is_bold and 1 <= word_count <= 25:
+                # Bold text with larger font size
+                if font_size >= body_text_size * 1.15:
+                    level = "H1"
+                elif font_size >= body_text_size * 1.05:
+                    level = "H2"
+                elif font_size >= body_text_size * 0.95:
                     level = "H3"
+                # Even bold text at normal size can be a heading if it looks like one
+                elif text[0].isupper() and 3 <= word_count <= 15:
+                    level = "H3"
+            
+            # Fallback to font size based detection for non-bold text
+            elif not is_bold and font_size >= body_text_size * 1.01:
+                if 1 <= word_count <= 20 and not text.lower() == text:
+                    # Check if it looks like a heading (starts with capital, reasonable length)
+                    if text[0].isupper() and 8 <= len(text) <= 100:
+                        level = "H3"
         
         # Additional patterns for common heading styles
         if level is None:
