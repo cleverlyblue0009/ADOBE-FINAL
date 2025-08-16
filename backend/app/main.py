@@ -392,11 +392,15 @@ async def get_jobs():
             jobs.add(job)
     return sorted(list(jobs))
 
-@app.post("/documents/{doc_id}/cross-connections")
+@app.get("/cross-connections/{doc_id}")
 async def get_cross_connections(doc_id: str):
-    """Get cross-connections and insights for a document based on existing library."""
+    """Get cross-document connections for a specific document with enhanced analysis."""
     if doc_id not in documents_store:
         raise HTTPException(status_code=404, detail="Document not found")
+    
+    if not llm_service.is_available():
+        # Provide fallback analysis even without LLM
+        return await _fallback_cross_connections_analysis(doc_id)
     
     current_doc = documents_store[doc_id]
     current_text = extract_full_text(current_doc["file_path"])
@@ -420,80 +424,116 @@ async def get_cross_connections(doc_id: str):
         
         print(f"Analyzing connection with: {other_info.get('title', 'Unknown')}")
         
-        # Use LLM to find connections with more generous parameters
+        # Enhanced connection analysis with multiple approaches
+        connection_found = False
+        connection_analysis = {}
+        
         try:
+            # Primary LLM analysis with more generous parameters
             connection_analysis = await llm_service.find_document_connections(
-                current_text[:5000],  # Increased text limit for better analysis
-                other_text[:5000],
+                current_text[:6000],  # Increased text limit for better analysis
+                other_text[:6000],
                 current_info.get("title", "Current Document"),
                 other_info.get("title", "Other Document"),
                 current_info.get("persona", "General User"),
                 current_info.get("job_to_be_done", "Document Analysis")
             )
             
-            print(f"Connection analysis result: {connection_analysis.get('has_connection', False)}, relevance: {connection_analysis.get('relevance_score', 0)}")
+            print(f"LLM analysis result: {connection_analysis.get('has_connection', False)}, relevance: {connection_analysis.get('relevance_score', 0)}")
             
-            # Be more generous with connections - lower threshold
-            if connection_analysis.get("has_connection", False) or connection_analysis.get("relevance_score", 0) > 0.15:
-                related_doc = {
-                    "document_id": other_id,
-                    "document_title": other_info.get("title", "Unknown Document"),
-                    "connection_type": connection_analysis.get("connection_type", "related"),
-                    "relevance_score": max(connection_analysis.get("relevance_score", 0.3), 0.3),  # Minimum relevance
-                    "explanation": connection_analysis.get("explanation", "Documents share common themes or concepts."),
-                    "key_sections": connection_analysis.get("key_sections", []),
-                    "similarities": connection_analysis.get("similarities", []),
-                    "complementary_insights": connection_analysis.get("complementary_insights", [])
-                }
-                
-                # Add transferable concepts if available
-                if connection_analysis.get("transferable_concepts"):
-                    related_doc["transferable_concepts"] = connection_analysis["transferable_concepts"]
-                
-                related_docs.append(related_doc)
-                print(f"Added connection: {other_info.get('title', 'Unknown')} (score: {related_doc['relevance_score']})")
-                
-            # Check for contradictions with detailed analysis
-            if connection_analysis.get("has_contradiction", False):
-                # Add detailed contradictions from the enhanced analysis
-                detailed_contradictions = connection_analysis.get("contradictions", [])
-                if detailed_contradictions:
-                    for contradiction in detailed_contradictions:
-                        contradictions.append({
-                            "document_id": other_id,
-                            "document_title": other_info.get("title", "Unknown Document"),
-                            "contradiction": contradiction.get("explanation", "Contradictory information found"),
-                            "severity": contradiction.get("severity", "low"),
-                            "doc1_quote": contradiction.get("doc1_quote", ""),
-                            "doc2_quote": contradiction.get("doc2_quote", ""),
-                            "contradiction_type": contradiction.get("contradiction_type", "direct"),
-                            "topic": contradiction.get("topic", "General")
-                        })
-                        print(f"Added contradiction: {contradiction.get('topic', 'General')} ({contradiction.get('severity', 'low')} severity)")
-                else:
-                    # Fallback to overall contradiction
-                    if connection_analysis.get("overall_contradiction"):
-                        contradictions.append({
-                            "document_id": other_id,
-                            "document_title": other_info.get("title", "Unknown Document"),
-                            "contradiction": connection_analysis.get("overall_contradiction", ""),
-                            "severity": connection_analysis.get("severity", "low"),
-                            "doc1_quote": "",
-                            "doc2_quote": "",
-                            "contradiction_type": "general",
-                            "topic": "General"
-                        })
-                        print(f"Added general contradiction with: {other_info.get('title', 'Unknown')}")
+            # Very generous threshold for connections
+            if (connection_analysis.get("has_connection", False) or 
+                connection_analysis.get("relevance_score", 0) > 0.1 or
+                connection_analysis.get("similarities") or
+                connection_analysis.get("complementary_insights")):
+                connection_found = True
                 
         except Exception as e:
-            print(f"Error analyzing connection between {doc_id} and {other_id}: {e}")
-            continue
+            print(f"LLM analysis failed for {other_id}: {e}")
+            # Fallback to simpler analysis
+            connection_analysis = await _simple_connection_analysis(
+                current_text, other_text, 
+                current_info.get("title", ""), other_info.get("title", "")
+            )
+            connection_found = connection_analysis.get("has_connection", False)
+        
+        # If still no connection, try keyword-based analysis
+        if not connection_found:
+            keyword_analysis = _keyword_based_connection_analysis(
+                current_text, other_text,
+                current_info.get("title", ""), other_info.get("title", "")
+            )
+            if keyword_analysis.get("has_connection", False):
+                connection_found = True
+                # Merge analyses
+                for key, value in keyword_analysis.items():
+                    if key not in connection_analysis or not connection_analysis[key]:
+                        connection_analysis[key] = value
+        
+        if connection_found:
+            related_doc = {
+                "document_id": other_id,
+                "document_title": other_info.get("title", "Unknown Document"),
+                "connection_type": connection_analysis.get("connection_type", "related"),
+                "relevance_score": max(connection_analysis.get("relevance_score", 0.25), 0.25),  # Minimum relevance
+                "explanation": connection_analysis.get("explanation", "Documents share common themes, concepts, or are relevant to your role and objectives."),
+                "key_sections": connection_analysis.get("key_sections", []),
+                "similarities": connection_analysis.get("similarities", []),
+                "complementary_insights": connection_analysis.get("complementary_insights", [])
+            }
+            
+            # Add transferable concepts if available
+            if connection_analysis.get("transferable_concepts"):
+                related_doc["transferable_concepts"] = connection_analysis["transferable_concepts"]
+            
+            related_docs.append(related_doc)
+            print(f"Added connection: {other_info.get('title', 'Unknown')} (score: {related_doc['relevance_score']})")
+            
+        # Enhanced contradiction detection
+        if connection_analysis.get("has_contradiction", False):
+            # Add detailed contradictions from the enhanced analysis
+            detailed_contradictions = connection_analysis.get("contradictions", [])
+            if detailed_contradictions:
+                for contradiction in detailed_contradictions:
+                    contradictions.append({
+                        "document_id": other_id,
+                        "document_title": other_info.get("title", "Unknown Document"),
+                        "contradiction": contradiction.get("explanation", "Contradictory information found"),
+                        "severity": contradiction.get("severity", "low"),
+                        "doc1_quote": contradiction.get("doc1_quote", ""),
+                        "doc2_quote": contradiction.get("doc2_quote", ""),
+                        "contradiction_type": contradiction.get("contradiction_type", "direct"),
+                        "topic": contradiction.get("topic", "General")
+                    })
+                    print(f"Added contradiction: {contradiction.get('topic', 'General')} ({contradiction.get('severity', 'low')} severity)")
+            else:
+                # Fallback to overall contradiction
+                if connection_analysis.get("overall_contradiction"):
+                    contradictions.append({
+                        "document_id": other_id,
+                        "document_title": other_info.get("title", "Unknown Document"),
+                        "contradiction": connection_analysis.get("overall_contradiction", ""),
+                        "severity": connection_analysis.get("severity", "low"),
+                        "doc1_quote": "",
+                        "doc2_quote": "",
+                        "contradiction_type": "general",
+                        "topic": "General"
+                    })
+                    print(f"Added general contradiction with: {other_info.get('title', 'Unknown')}")
+    
+    # If we still have very few connections, add some based on document types or themes
+    if len(related_docs) < 2 and len(other_documents) > 0:
+        print("Adding thematic connections to ensure useful results...")
+        additional_connections = await _add_thematic_connections(
+            doc_id, current_info, other_documents, related_docs
+        )
+        related_docs.extend(additional_connections)
     
     # Generate additional insights if we have related documents
     if related_docs:
         try:
             additional_insights = await llm_service.generate_cross_document_insights(
-                current_text[:6000],
+                current_text[:8000],  # Increased context
                 [doc["document_title"] for doc in related_docs[:5]],
                 current_info.get("persona", "General User"),
                 current_info.get("job_to_be_done", "Document Analysis")
@@ -502,13 +542,19 @@ async def get_cross_connections(doc_id: str):
             print(f"Generated {len(additional_insights.get('insights', []))} additional insights")
         except Exception as e:
             print(f"Error generating cross-document insights: {e}")
+            # Add basic insights as fallback
+            insights.append({
+                "type": "pattern",
+                "content": f"Found {len(related_docs)} related documents that share common themes or concepts with your current document.",
+                "confidence": 0.8
+            })
     
     # Sort related documents by relevance score
     related_docs.sort(key=lambda x: x["relevance_score"], reverse=True)
     
     result = {
         "document_id": doc_id,
-        "related_documents": related_docs[:8],  # Return more related documents
+        "related_documents": related_docs[:10],  # Return more related documents
         "contradictions": contradictions,
         "insights": insights,
         "total_connections": len(related_docs)
@@ -516,6 +562,122 @@ async def get_cross_connections(doc_id: str):
     
     print(f"Final result: {len(related_docs)} connections, {len(contradictions)} contradictions, {len(insights)} insights")
     return result
+
+async def _fallback_cross_connections_analysis(doc_id: str):
+    """Fallback analysis when LLM is not available."""
+    current_doc = documents_store[doc_id]
+    current_info = current_doc["info"]
+    other_documents = [(other_id, other_data) for other_id, other_data in documents_store.items() if other_id != doc_id]
+    
+    related_docs = []
+    for other_id, other_data in other_documents[:5]:  # Limit to avoid overwhelming
+        other_info = other_data["info"]
+        related_docs.append({
+            "document_id": other_id,
+            "document_title": other_info.get("title", "Unknown Document"),
+            "connection_type": "related",
+            "relevance_score": 0.3,
+            "explanation": "Documents are part of your document collection and may contain related information.",
+            "key_sections": [],
+            "similarities": [],
+            "complementary_insights": []
+        })
+    
+    return {
+        "document_id": doc_id,
+        "related_documents": related_docs,
+        "contradictions": [],
+        "insights": [{"type": "info", "content": "LLM service unavailable. Showing basic document relationships.", "confidence": 0.5}],
+        "total_connections": len(related_docs)
+    }
+
+async def _simple_connection_analysis(text1: str, text2: str, title1: str, title2: str):
+    """Simple keyword and structural analysis for connections."""
+    # Extract key terms from both documents
+    import re
+    from collections import Counter
+    
+    # Simple keyword extraction
+    words1 = re.findall(r'\b[a-zA-Z]{4,}\b', text1.lower())
+    words2 = re.findall(r'\b[a-zA-Z]{4,}\b', text2.lower())
+    
+    # Find common words (excluding common stop words)
+    stop_words = {'that', 'this', 'with', 'have', 'will', 'from', 'they', 'been', 'were', 'said', 'each', 'which', 'their', 'time', 'would', 'there', 'could', 'other', 'more', 'very', 'what', 'know', 'just', 'first', 'into', 'over', 'think', 'also', 'your', 'work', 'life', 'only', 'can', 'had', 'her', 'was', 'one', 'our', 'out', 'day', 'get', 'has', 'him', 'his', 'how', 'man', 'new', 'now', 'old', 'see', 'two', 'way', 'who', 'boy', 'did', 'its', 'let', 'put', 'say', 'she', 'too', 'use'}
+    
+    counter1 = Counter([w for w in words1 if w not in stop_words])
+    counter2 = Counter([w for w in words2 if w not in stop_words])
+    
+    # Find overlap
+    common_words = set(counter1.keys()) & set(counter2.keys())
+    
+    if len(common_words) >= 5:  # If at least 5 common meaningful words
+        relevance_score = min(len(common_words) / 20, 0.8)  # Cap at 0.8
+        return {
+            "has_connection": True,
+            "connection_type": "thematic",
+            "relevance_score": relevance_score,
+            "explanation": f"Documents share common terminology and themes including: {', '.join(list(common_words)[:5])}",
+            "key_sections": list(common_words)[:10]
+        }
+    
+    return {"has_connection": False, "relevance_score": 0.0}
+
+def _keyword_based_connection_analysis(text1: str, text2: str, title1: str, title2: str):
+    """Keyword-based connection analysis as final fallback."""
+    # Check for domain-specific connections
+    domains = {
+        'business': ['strategy', 'management', 'leadership', 'market', 'customer', 'revenue', 'profit', 'growth', 'innovation', 'competitive'],
+        'technology': ['software', 'system', 'data', 'digital', 'platform', 'algorithm', 'development', 'engineering', 'automation'],
+        'research': ['study', 'analysis', 'method', 'research', 'findings', 'conclusion', 'hypothesis', 'experiment', 'evidence'],
+        'education': ['learning', 'student', 'education', 'teaching', 'curriculum', 'assessment', 'knowledge', 'skill']
+    }
+    
+    text1_lower = text1.lower()
+    text2_lower = text2.lower()
+    
+    for domain, keywords in domains.items():
+        count1 = sum(1 for kw in keywords if kw in text1_lower)
+        count2 = sum(1 for kw in keywords if kw in text2_lower)
+        
+        if count1 >= 2 and count2 >= 2:  # Both documents have domain keywords
+            return {
+                "has_connection": True,
+                "connection_type": "domain_related",
+                "relevance_score": 0.4,
+                "explanation": f"Both documents appear to be related to {domain} domain with shared terminology and concepts.",
+                "key_sections": [domain]
+            }
+    
+    return {"has_connection": False, "relevance_score": 0.0}
+
+async def _add_thematic_connections(doc_id: str, current_info: dict, other_documents: list, existing_connections: list):
+    """Add thematic connections to ensure users get some useful results."""
+    additional_connections = []
+    existing_ids = {doc["document_id"] for doc in existing_connections}
+    
+    # Add up to 2 additional connections based on simple heuristics
+    for other_id, other_data in other_documents[:5]:
+        if other_id in existing_ids:
+            continue
+            
+        other_info = other_data["info"]
+        
+        # Simple connection based on document presence in collection
+        additional_connections.append({
+            "document_id": other_id,
+            "document_title": other_info.get("title", "Unknown Document"),
+            "connection_type": "collection_related",
+            "relevance_score": 0.2,
+            "explanation": "Part of your document collection and may contain complementary information or different perspectives on related topics.",
+            "key_sections": ["general"],
+            "similarities": [],
+            "complementary_insights": []
+        })
+        
+        if len(additional_connections) >= 2:
+            break
+    
+    return additional_connections
 
 @app.post("/strategic-insights")
 async def generate_strategic_insights(request: InsightsRequest):
