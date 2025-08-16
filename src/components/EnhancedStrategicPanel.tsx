@@ -155,30 +155,86 @@ export function EnhancedStrategicPanel({
     }
   }, [currentText, persona, jobToBeDone, documentId]);
 
+  // Function to analyze actual document content
+  const analyzeDocumentContent = async (text: string): Promise<DocumentAnalysis> => {
+    // Extract key topics from the text
+    const words = text.toLowerCase().split(/\s+/);
+    const wordCount = words.length;
+    
+    // Simple keyword extraction for topics
+    const topicKeywords = [
+      'data', 'analysis', 'machine', 'learning', 'statistics', 'visualization',
+      'research', 'study', 'method', 'result', 'conclusion', 'introduction',
+      'framework', 'model', 'algorithm', 'dataset', 'evaluation', 'performance'
+    ];
+    
+    const keyTopics = topicKeywords.filter(keyword => 
+      text.toLowerCase().includes(keyword)
+    ).slice(0, 4);
+
+    // Estimate reading time (average 200 words per minute)
+    const estimatedMinutes = Math.ceil(wordCount / 200);
+    const readTimeRange = estimatedMinutes < 10 ? 
+      `${estimatedMinutes}-${estimatedMinutes + 2} minutes` :
+      `${estimatedMinutes}-${estimatedMinutes + 5} minutes`;
+
+    // Detect document structure
+    const hasIntroduction = /introduction|overview|abstract/i.test(text);
+    const hasConclusion = /conclusion|summary|findings|results/i.test(text);
+    const hasSummary = /summary|abstract|executive summary/i.test(text);
+    
+    // Count sections (rough estimate based on common heading patterns)
+    const sectionMatches = text.match(/\n\s*\d+\.|\n\s*[A-Z][^.!?]*\n|\n\s*[A-Z]{2,}/g) || [];
+    const sectionCount = Math.max(sectionMatches.length, 3);
+
+    // Estimate figures/tables
+    const figureCount = (text.match(/figure|table|chart|graph|diagram/gi) || []).length;
+
+    // Determine complexity based on vocabulary and structure
+    const complexWords = text.match(/\b\w{8,}\b/g) || [];
+    const complexityRatio = complexWords.length / wordCount;
+    
+    let complexity: 'beginner' | 'intermediate' | 'advanced' | 'expert';
+    if (complexityRatio < 0.1) complexity = 'beginner';
+    else if (complexityRatio < 0.2) complexity = 'intermediate';
+    else if (complexityRatio < 0.3) complexity = 'advanced';
+    else complexity = 'expert';
+
+    // Determine difficulty (1-10)
+    const difficulty = Math.min(10, Math.max(1, Math.round(complexityRatio * 20 + sectionCount * 0.5)));
+
+    // Determine content types
+    const contentTypes = ['Text'];
+    if (figureCount > 0) contentTypes.push('Figures');
+    if (text.includes('table') || text.includes('data')) contentTypes.push('Tables');
+    if (text.match(/code|algorithm|function|class/i)) contentTypes.push('Code Examples');
+
+    return {
+      complexity,
+      estimatedReadTime: readTimeRange,
+      keyTopics: keyTopics.length > 0 ? keyTopics : ['General Content'],
+      difficulty,
+      structure: {
+        hasIntroduction,
+        hasConclusion,
+        hasSummary,
+        sectionCount,
+        figureCount
+      },
+      contentTypes
+    };
+  };
+
   const analyzeDocumentAndGenerateRecommendations = async () => {
     if (!currentText || !persona || !jobToBeDone) return;
     
     setIsAnalyzing(true);
     try {
-      // Simulate document analysis
-      const analysis: DocumentAnalysis = {
-        complexity: 'intermediate',
-        estimatedReadTime: '15-20 minutes',
-        keyTopics: ['Data Analysis', 'Machine Learning', 'Statistics', 'Visualization'],
-        difficulty: 6,
-        structure: {
-          hasIntroduction: true,
-          hasConclusion: true,
-          hasSummary: false,
-          sectionCount: 8,
-          figureCount: 12
-        },
-        contentTypes: ['Text', 'Figures', 'Tables', 'Code Examples']
-      };
-      
+      // Analyze the actual document content
+      const analysis = await analyzeDocumentContent(currentText);
       setDocumentAnalysis(analysis);
 
-      // Generate persona-specific recommendations
+      // Generate persona-specific recommendations based on actual content
       const recs = generatePersonaRecommendations(persona, jobToBeDone, analysis);
       setRecommendations(recs);
 

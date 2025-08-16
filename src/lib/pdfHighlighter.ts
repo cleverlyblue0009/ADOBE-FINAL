@@ -43,6 +43,70 @@ export class PDFHighlighter {
     
     if (!searchText || searchText.length < 3) return positions;
     
+    console.log(`Searching for text: "${searchText}" in container:`, container);
+    
+    // Try multiple search strategies
+    
+    // Strategy 1: Direct text content search
+    const directPositions = this.findTextDirect(searchText, container);
+    if (directPositions.length > 0) {
+      positions.push(...directPositions);
+    }
+    
+    // Strategy 2: Normalized text search
+    if (positions.length === 0) {
+      const normalizedPositions = this.findTextNormalized(searchText, container);
+      positions.push(...normalizedPositions);
+    }
+    
+    // Strategy 3: Partial text search (for long texts)
+    if (positions.length === 0 && searchText.length > 50) {
+      const words = searchText.split(/\s+/);
+      if (words.length > 3) {
+        // Try searching for the first few words
+        const partialText = words.slice(0, 3).join(' ');
+        const partialPositions = this.findTextDirect(partialText, container);
+        positions.push(...partialPositions);
+      }
+    }
+    
+    console.log(`Found ${positions.length} positions for text search`);
+    return positions;
+  }
+
+  /**
+   * Direct text search without normalization
+   */
+  private findTextDirect(searchText: string, container: HTMLElement): HighlightPosition[] {
+    const positions: HighlightPosition[] = [];
+    const textNodes = this.getTextNodes(container);
+    
+    textNodes.forEach((node, nodeIndex) => {
+      const nodeText = node.textContent || '';
+      let startIndex = 0;
+      
+      while (true) {
+        const index = nodeText.indexOf(searchText, startIndex);
+        if (index === -1) break;
+        
+        const position = this.getPositionFromTextNode(node, index, searchText.length, container);
+        if (position) {
+          positions.push(position);
+        }
+        
+        startIndex = index + 1;
+      }
+    });
+    
+    return positions;
+  }
+
+  /**
+   * Normalized text search
+   */
+  private findTextNormalized(searchText: string, container: HTMLElement): HighlightPosition[] {
+    const positions: HighlightPosition[] = [];
+    
     // Normalize search text
     const normalizedSearch = this.normalizeText(searchText);
     
@@ -141,9 +205,9 @@ export class PDFHighlighter {
     
     // Set color based on highlight type
     const colorMap = {
-      'primary': 'rgba(254, 240, 138, 0.4)',
-      'secondary': 'rgba(134, 239, 172, 0.4)',
-      'tertiary': 'rgba(147, 197, 253, 0.4)'
+      'primary': 'rgba(254, 240, 138, 0.6)',
+      'secondary': 'rgba(134, 239, 172, 0.6)',
+      'tertiary': 'rgba(147, 197, 253, 0.6)'
     };
     
     element.style.cssText = `
@@ -158,6 +222,10 @@ export class PDFHighlighter {
       cursor: pointer;
       transition: all 0.3s ease;
       border-radius: 2px;
+      border: 1px solid ${highlight.color === 'primary' ? '#F59E0B' : 
+                          highlight.color === 'secondary' ? '#10B981' : '#3B82F6'};
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+      z-index: 1000;
     `;
     
     // Add hover effect
@@ -272,16 +340,31 @@ export class PDFHighlighter {
       '.pdf-viewer-container',
       '#pdf-content',
       'iframe',
-      '[data-pdf-viewer]'
+      '[data-pdf-viewer]',
+      '.pdf-viewer',
+      '.adobe-pdf-embed',
+      '#pdf-viewer-container'
     ];
     
     for (const selector of selectors) {
       const element = document.querySelector(selector);
       if (element) {
+        console.log(`Found PDF container using selector: ${selector}`);
         return element as HTMLElement;
       }
     }
     
+    // If no specific container found, try to find any element that looks like it contains PDF content
+    const allDivs = document.querySelectorAll('div');
+    for (const div of allDivs) {
+      if (div.innerHTML.includes('pdf') || div.className.includes('pdf') || 
+          div.id.includes('pdf') || div.innerHTML.includes('Adobe')) {
+        console.log('Found PDF container by content search:', div);
+        return div as HTMLElement;
+      }
+    }
+    
+    console.warn('No PDF container found');
     return null;
   }
 
@@ -330,6 +413,35 @@ export class PDFHighlighter {
     }
     
     return textNodes;
+  }
+
+  /**
+   * Get position from text node and offset
+   */
+  private getPositionFromTextNode(node: Text, startOffset: number, length: number, container: HTMLElement): HighlightPosition | null {
+    try {
+      const range = document.createRange();
+      range.setStart(node, startOffset);
+      range.setEnd(node, Math.min(startOffset + length, node.textContent?.length || 0));
+      
+      const rect = range.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      
+      if (rect.width === 0 || rect.height === 0) {
+        return null;
+      }
+      
+      return {
+        page: 1, // Default page, should be determined by context
+        x: rect.left - containerRect.left,
+        y: rect.top - containerRect.top,
+        width: rect.width,
+        height: rect.height
+      };
+    } catch (error) {
+      console.error('Failed to get position from text node:', error);
+      return null;
+    }
   }
 
   /**
@@ -438,16 +550,34 @@ export class PDFHighlighter {
       }
       
       @keyframes highlightPulse {
-        0%, 100% { opacity: 0.4; }
-        50% { opacity: 0.7; }
+        0%, 100% { opacity: 0.6; }
+        50% { opacity: 0.9; }
+      }
+      
+      @keyframes highlightAppear {
+        0% { opacity: 0; transform: scale(0.8); }
+        100% { opacity: 0.6; transform: scale(1); }
       }
       
       .pdf-highlight {
-        animation: highlightPulse 2s ease-in-out;
+        animation: highlightAppear 0.5s ease-out, highlightPulse 3s ease-in-out 0.5s;
       }
       
       .pdf-highlight:hover {
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        transform: scale(1.02);
+      }
+      
+      .pdf-highlight-primary {
+        background: linear-gradient(135deg, rgba(254, 240, 138, 0.6), rgba(251, 191, 36, 0.4));
+      }
+      
+      .pdf-highlight-secondary {
+        background: linear-gradient(135deg, rgba(134, 239, 172, 0.6), rgba(34, 197, 94, 0.4));
+      }
+      
+      .pdf-highlight-tertiary {
+        background: linear-gradient(135deg, rgba(147, 197, 253, 0.6), rgba(59, 130, 246, 0.4));
       }
       
       .highlight-tooltip {
