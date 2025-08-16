@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF.js Text Selection with Custom Context Menu</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <style>
+        body { 
+            margin: 0; 
+            font-family: Arial, sans-serif; 
+            background: #f0f0f0;
+        }
+        
+        .container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        .toolbar {
+            background: #333;
+            color: white;
+            padding: 10px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .toolbar button {
+            background: #555;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .toolbar button:hover {
+            background: #777;
+        }
+        
+        .pdf-container {
+            flex: 1;
+            position: relative;
+            overflow: auto;
+            background: white;
+        }
+        
+        #pdf-canvas {
+            display: block;
+            margin: 20px auto;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            cursor: text;
+        }
+        
+        .text-layer {
+            position: absolute;
+            left: 0;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            overflow: hidden;
+            opacity: 0.2;
+            line-height: 1.0;
+            pointer-events: auto;
+        }
+        
+        .text-layer > span {
+            color: transparent;
+            position: absolute;
+            white-space: pre;
+            cursor: text;
+            transform-origin: 0% 0%;
+        }
+        
+        .text-layer .highlight {
+            margin: -1px;
+            padding: 1px;
+            background-color: rgba(180, 0, 170, 0.2);
+            border-radius: 4px;
+        }
+        
+        .context-menu {
+            position: fixed;
+            background: white;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            padding: 8px 0;
+            z-index: 1000;
+            min-width: 200px;
+            display: none;
+        }
+        
+        .context-menu-item {
+            padding: 12px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 14px;
+        }
+        
+        .context-menu-item:hover {
+            background: #f5f5f5;
+        }
+        
+        .context-menu-separator {
+            height: 1px;
+            background: #eee;
+            margin: 4px 0;
+        }
+        
+        .selected-text-preview {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 8px;
+            margin: 8px 16px;
+            font-size: 12px;
+            color: #666;
+            max-height: 60px;
+            overflow: hidden;
+            word-wrap: break-word;
+        }
+        
+        #debug {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 300px;
+            z-index: 1000;
+            font-size: 12px;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .page-info {
+            background: #333;
+            color: white;
+            padding: 5px 10px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div id="debug">
+        <h4>PDF.js Debug</h4>
+        <div id="debug-content">Initializing...</div>
+    </div>
+
+    <div class="container">
+        <div class="toolbar">
+            <button onclick="loadSamplePDF()">📄 Load Sample PDF</button>
+            <button onclick="prevPage()">⬅️ Previous</button>
+            <span id="page-info">Page 1 of 1</span>
+            <button onclick="nextPage()">➡️ Next</button>
+            <button onclick="zoomIn()">🔍+ Zoom In</button>
+            <button onclick="zoomOut()">🔍- Zoom Out</button>
+            <span id="zoom-info">100%</span>
+        </div>
+        
+        <div class="pdf-container" id="pdf-container">
+            <canvas id="pdf-canvas"></canvas>
+            <div class="text-layer" id="text-layer"></div>
+        </div>
+    </div>
+
+    <div id="context-menu" class="context-menu">
+        <div class="selected-text-preview" id="selected-text-preview"></div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" onclick="simplifyText()">
+            🧠 Simplify Text
+        </div>
+        <div class="context-menu-item" onclick="generateInsights()">
+            💡 Generate Insights
+        </div>
+        <div class="context-menu-item" onclick="highlightText()">
+            🔆 Highlight
+        </div>
+        <div class="context-menu-item" onclick="copyText()">
+            📋 Copy to Clipboard
+        </div>
+        <div class="context-menu-separator"></div>
+        <div class="context-menu-item" onclick="hideContextMenu()">
+            ✕ Close
+        </div>
+    </div>
+
+    <script>
+        // PDF.js configuration
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+        
+        let pdfDoc = null;
+        let pageNum = 1;
+        let pageRendering = false;
+        let pageNumPending = null;
+        let scale = 1.2;
+        let selectedText = '';
+        let textContent = null;
+        
+        const canvas = document.getElementById('pdf-canvas');
+        const ctx = canvas.getContext('2d');
+        const textLayer = document.getElementById('text-layer');
+        const contextMenu = document.getElementById('context-menu');
+        const debugEl = document.getElementById('debug-content');
+        
+        function log(message) {
+            console.log(message);
+            debugEl.innerHTML += '<br>' + new Date().toLocaleTimeString() + ': ' + message;
+            debugEl.scrollTop = debugEl.scrollHeight;
+        }
+        
+        function renderPage(num) {
+            pageRendering = true;
+            
+            pdfDoc.getPage(num).then(function(page) {
+                const viewport = page.getViewport({scale: scale});
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                
+                // Update text layer dimensions
+                textLayer.style.left = canvas.offsetLeft + 'px';
+                textLayer.style.top = canvas.offsetTop + 'px';
+                textLayer.style.height = canvas.height + 'px';
+                textLayer.style.width = canvas.width + 'px';
+                
+                const renderContext = {
+                    canvasContext: ctx,
+                    viewport: viewport
+                };
+                
+                const renderTask = page.render(renderContext);
+                
+                renderTask.promise.then(function() {
+                    pageRendering = false;
+                    if (pageNumPending !== null) {
+                        renderPage(pageNumPending);
+                        pageNumPending = null;
+                    }
+                    
+                    // Render text layer for selection
+                    renderTextLayer(page, viewport);
+                });
+            });
+            
+            document.getElementById('page-info').textContent = `Page ${num} of ${pdfDoc.numPages}`;
+        }
+        
+        function renderTextLayer(page, viewport) {
+            page.getTextContent().then(function(textContentObj) {
+                textContent = textContentObj;
+                textLayer.innerHTML = '';
+                
+                textContentObj.items.forEach(function(textItem) {
+                    const tx = pdfjsLib.Util.transform(
+                        pdfjsLib.Util.transform(viewport.transform, textItem.transform),
+                        [1, 0, 0, -1, 0, 0]
+                    );
+                    
+                    const style = textContentObj.styles[textItem.fontName];
+                    const angle = Math.atan2(tx[1], tx[0]);
+                    
+                    const span = document.createElement('span');
+                    span.textContent = textItem.str;
+                    span.style.left = tx[4] + 'px';
+                    span.style.top = tx[5] + 'px';
+                    span.style.fontSize = tx[0] + 'px';
+                    span.style.fontFamily = style.fontFamily;
+                    span.style.transform = `rotate(${angle}rad)`;
+                    
+                    textLayer.appendChild(span);
+                });
+                
+                log('Text layer rendered with ' + textContentObj.items.length + ' text items');
+                setupTextSelection();
+            });
+        }
+        
+        function setupTextSelection() {
+            let isSelecting = false;
+            let selectionStart = null;
+            let selectionEnd = null;
+            
+            textLayer.addEventListener('mousedown', function(e) {
+                if (e.button === 0) { // Left click
+                    isSelecting = true;
+                    selectionStart = {x: e.clientX, y: e.clientY};
+                    hideContextMenu();
+                    clearSelection();
+                }
+            });
+            
+            textLayer.addEventListener('mousemove', function(e) {
+                if (isSelecting) {
+                    selectionEnd = {x: e.clientX, y: e.clientY};
+                    updateSelection();
+                }
+            });
+            
+            textLayer.addEventListener('mouseup', function(e) {
+                if (isSelecting) {
+                    isSelecting = false;
+                    finalizeSelection();
+                }
+            });
+            
+            // Handle right-click for context menu
+            textLayer.addEventListener('contextmenu', function(e) {
+                e.preventDefault();
+                
+                const selection = window.getSelection();
+                if (selection.toString().trim()) {
+                    selectedText = selection.toString().trim();
+                    showContextMenu(e.clientX, e.clientY, selectedText);
+                    log('Right-click detected with selected text: ' + selectedText.substring(0, 50) + '...');
+                } else {
+                    log('Right-click detected but no text selected');
+                }
+            });
+            
+            function updateSelection() {
+                if (!selectionStart || !selectionEnd) return;
+                
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                
+                // Create selection based on mouse coordinates
+                const range = document.caretRangeFromPoint(selectionStart.x, selectionStart.y);
+                const endRange = document.caretRangeFromPoint(selectionEnd.x, selectionEnd.y);
+                
+                if (range && endRange) {
+                    const newRange = document.createRange();
+                    newRange.setStart(range.startContainer, range.startOffset);
+                    newRange.setEnd(endRange.startContainer, endRange.startOffset);
+                    selection.addRange(newRange);
+                }
+            }
+            
+            function finalizeSelection() {
+                const selection = window.getSelection();
+                const text = selection.toString().trim();
+                
+                if (text) {
+                    selectedText = text;
+                    log('Text selected: ' + text.substring(0, 50) + '...');
+                } else {
+                    clearSelection();
+                }
+            }
+            
+            function clearSelection() {
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selectedText = '';
+            }
+        }
+        
+        function showContextMenu(x, y, text) {
+            const preview = document.getElementById('selected-text-preview');
+            preview.textContent = '"' + (text.length > 100 ? text.substring(0, 100) + '...' : text) + '"';
+            
+            contextMenu.style.left = x + 'px';
+            contextMenu.style.top = y + 'px';
+            contextMenu.style.display = 'block';
+            
+            // Adjust position if menu goes off screen
+            const rect = contextMenu.getBoundingClientRect();
+            if (rect.right > window.innerWidth) {
+                contextMenu.style.left = (x - rect.width) + 'px';
+            }
+            if (rect.bottom > window.innerHeight) {
+                contextMenu.style.top = (y - rect.height) + 'px';
+            }
+            
+            log('Context menu shown at (' + x + ', ' + y + ')');
+        }
+        
+        function hideContextMenu() {
+            contextMenu.style.display = 'none';
+        }
+        
+        function simplifyText() {
+            log('🧠 Simplifying text: ' + selectedText.substring(0, 50) + '...');
+            hideContextMenu();
+            // Here you would integrate with your AI service
+            alert('Simplify Text feature triggered!\n\nSelected text: ' + selectedText.substring(0, 100) + '...');
+        }
+        
+        function generateInsights() {
+            log('💡 Generating insights for: ' + selectedText.substring(0, 50) + '...');
+            hideContextMenu();
+            // Here you would integrate with your AI service
+            alert('Generate Insights feature triggered!\n\nSelected text: ' + selectedText.substring(0, 100) + '...');
+        }
+        
+        function highlightText() {
+            log('🔆 Highlighting text: ' + selectedText.substring(0, 50) + '...');
+            hideContextMenu();
+            
+            // Add highlight to selected text
+            const selection = window.getSelection();
+            if (selection.rangeCount > 0) {
+                const range = selection.getRangeAt(0);
+                const span = document.createElement('span');
+                span.className = 'highlight';
+                try {
+                    range.surroundContents(span);
+                } catch (e) {
+                    // Fallback for complex selections
+                    span.appendChild(range.extractContents());
+                    range.insertNode(span);
+                }
+                selection.removeAllRanges();
+            }
+        }
+        
+        function copyText() {
+            navigator.clipboard.writeText(selectedText).then(function() {
+                log('📋 Text copied to clipboard');
+                hideContextMenu();
+                alert('Text copied to clipboard!');
+            });
+        }
+        
+        function loadSamplePDF() {
+            log('Loading sample PDF...');
+            
+            // Using a reliable sample PDF
+            const url = 'https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf';
+            
+            pdfjsLib.getDocument(url).promise.then(function(pdf) {
+                pdfDoc = pdf;
+                log('PDF loaded successfully. Pages: ' + pdf.numPages);
+                renderPage(pageNum);
+            }).catch(function(error) {
+                log('Error loading PDF: ' + error.message);
+                
+                // Fallback: create a simple PDF with text for testing
+                createTestPDF();
+            });
+        }
+        
+        function createTestPDF() {
+            log('Creating test PDF with sample text...');
+            
+            // For demo purposes, we'll simulate a PDF with text
+            canvas.width = 600;
+            canvas.height = 800;
+            
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = 'black';
+            ctx.font = '16px Arial';
+            
+            const sampleText = [
+                'Sample PDF Document',
+                '',
+                'This is a test document created for demonstrating',
+                'text selection and custom context menu functionality.',
+                '',
+                'You can select any text in this document and',
+                'right-click to see the custom context menu.',
+                '',
+                'Features available:',
+                '• Simplify Text - Makes complex text easier to understand',
+                '• Generate Insights - Provides analysis of the selected text',
+                '• Highlight - Marks important text for later reference',
+                '• Copy - Copies text to clipboard',
+                '',
+                'Try selecting this text and right-clicking!'
+            ];
+            
+            sampleText.forEach((line, index) => {
+                ctx.fillText(line, 50, 50 + (index * 25));
+            });
+            
+            // Create text layer elements for selection
+            textLayer.innerHTML = '';
+            textLayer.style.left = canvas.offsetLeft + 'px';
+            textLayer.style.top = canvas.offsetTop + 'px';
+            textLayer.style.height = canvas.height + 'px';
+            textLayer.style.width = canvas.width + 'px';
+            
+            sampleText.forEach((line, index) => {
+                if (line.trim()) {
+                    const span = document.createElement('span');
+                    span.textContent = line;
+                    span.style.left = '50px';
+                    span.style.top = (35 + (index * 25)) + 'px';
+                    span.style.fontSize = '16px';
+                    span.style.fontFamily = 'Arial';
+                    span.style.position = 'absolute';
+                    textLayer.appendChild(span);
+                }
+            });
+            
+            setupTextSelection();
+            log('Test PDF created with selectable text');
+        }
+        
+        function prevPage() {
+            if (pageNum <= 1) return;
+            pageNum--;
+            queueRenderPage(pageNum);
+        }
+        
+        function nextPage() {
+            if (pageNum >= pdfDoc.numPages) return;
+            pageNum++;
+            queueRenderPage(pageNum);
+        }
+        
+        function queueRenderPage(num) {
+            if (pageRendering) {
+                pageNumPending = num;
+            } else {
+                renderPage(num);
+            }
+        }
+        
+        function zoomIn() {
+            scale += 0.2;
+            document.getElementById('zoom-info').textContent = Math.round(scale * 100) + '%';
+            renderPage(pageNum);
+        }
+        
+        function zoomOut() {
+            if (scale <= 0.4) return;
+            scale -= 0.2;
+            document.getElementById('zoom-info').textContent = Math.round(scale * 100) + '%';
+            renderPage(pageNum);
+        }
+        
+        // Hide context menu when clicking elsewhere
+        document.addEventListener('click', function(e) {
+            if (!contextMenu.contains(e.target)) {
+                hideContextMenu();
+            }
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', function() {
+            log('PDF.js Text Selection Demo initialized');
+            log('Click "Load Sample PDF" to start, then select text and right-click');
+            
+            // Auto-load for testing
+            setTimeout(loadSamplePDF, 1000);
+        });
+    </script>
+</body>
+</html>

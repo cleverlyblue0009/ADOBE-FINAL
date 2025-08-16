@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Text Selection Comparison Test</title>
+    <style>
+        body { 
+            margin: 0; 
+            font-family: Arial, sans-serif; 
+            background: #f0f0f0;
+        }
+        
+        .header {
+            background: #2c3e50;
+            color: white;
+            padding: 15px;
+            text-align: center;
+        }
+        
+        .approach-selector {
+            background: #34495e;
+            color: white;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+        }
+        
+        .approach-btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .approach-btn.active {
+            background: #e74c3c;
+        }
+        
+        .approach-btn:hover {
+            background: #2980b9;
+        }
+        
+        .approach-btn.active:hover {
+            background: #c0392b;
+        }
+        
+        .test-container {
+            position: relative;
+            height: calc(100vh - 120px);
+            overflow: hidden;
+        }
+        
+        .test-frame {
+            width: 100%;
+            height: 100%;
+            border: none;
+            display: none;
+        }
+        
+        .test-frame.active {
+            display: block;
+        }
+        
+        .status-info {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #2c3e50;
+            color: white;
+            padding: 8px 16px;
+            font-size: 12px;
+            z-index: 1000;
+        }
+        
+        .instructions {
+            background: #ecf0f1;
+            padding: 10px 15px;
+            border-left: 4px solid #3498db;
+            margin: 10px;
+            border-radius: 4px;
+        }
+        
+        .instructions h4 {
+            margin: 0 0 8px 0;
+            color: #2c3e50;
+        }
+        
+        .instructions p {
+            margin: 4px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>PDF Text Selection & Custom Context Menu Test</h1>
+        <p>Comparing different approaches to fix Adobe PDF Embed API limitations</p>
+    </div>
+    
+    <div class="approach-selector">
+        <button class="approach-btn active" onclick="switchApproach('pdfjs')">
+            📚 PDF.js Approach (Recommended)
+        </button>
+        <button class="approach-btn" onclick="switchApproach('adobe-overlay')">
+            🔧 Adobe + Overlay Approach
+        </button>
+        <button class="approach-btn" onclick="switchApproach('adobe-original')">
+            ⚠️ Original Adobe Approach (Broken)
+        </button>
+    </div>
+    
+    <div class="instructions">
+        <h4>🧪 Test Instructions:</h4>
+        <p><strong>1.</strong> Select text by clicking and dragging across any text in the PDF</p>
+        <p><strong>2.</strong> Right-click on the selected text to open the custom context menu</p>
+        <p><strong>3.</strong> Try the different menu options: Simplify, Insights, Highlight, Copy</p>
+        <p><strong>4.</strong> Switch between approaches using the buttons above to compare functionality</p>
+    </div>
+    
+    <div class="test-container">
+        <iframe id="pdfjs-frame" class="test-frame active" src="test-pdfjs-alternative.html"></iframe>
+        <iframe id="adobe-overlay-frame" class="test-frame" src="test-adobe-overlay-approach.html"></iframe>
+        <iframe id="adobe-original-frame" class="test-frame" src="test-adobe-pdf.html"></iframe>
+    </div>
+    
+    <div class="status-info" id="status">
+        Currently testing: PDF.js Approach - This should work perfectly for text selection and custom context menus
+    </div>
+
+    <script>
+        let currentApproach = 'pdfjs';
+        
+        function switchApproach(approach) {
+            // Update active button
+            document.querySelectorAll('.approach-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Hide all frames
+            document.querySelectorAll('.test-frame').forEach(frame => frame.classList.remove('active'));
+            
+            // Show selected frame
+            const frameId = approach + '-frame';
+            document.getElementById(frameId).classList.add('active');
+            
+            // Update status
+            const statusEl = document.getElementById('status');
+            currentApproach = approach;
+            
+            switch(approach) {
+                case 'pdfjs':
+                    statusEl.textContent = 'Currently testing: PDF.js Approach - This should work perfectly for text selection and custom context menus';
+                    break;
+                case 'adobe-overlay':
+                    statusEl.textContent = 'Currently testing: Adobe + Overlay Approach - Uses overlay to capture events, may have limited text extraction';
+                    break;
+                case 'adobe-original':
+                    statusEl.textContent = 'Currently testing: Original Adobe Approach - This is broken and demonstrates the Adobe PDF Embed API limitations';
+                    break;
+            }
+            
+            console.log('Switched to approach:', approach);
+        }
+        
+        // Listen for messages from iframes
+        window.addEventListener('message', function(event) {
+            if (event.data && event.data.type === 'test-result') {
+                const statusEl = document.getElementById('status');
+                statusEl.textContent = `[${currentApproach.toUpperCase()}] ${event.data.message}`;
+            }
+        });
+        
+        // Log test results
+        function logTestResult(approach, action, success, details) {
+            console.log(`Test Result - ${approach}:`, {
+                action: action,
+                success: success,
+                details: details,
+                timestamp: new Date().toISOString()
+            });
+        }
+        
+        console.log('PDF Text Selection Test Suite loaded');
+        console.log('Switch between approaches to test different implementations');
+    </script>
+</body>
+</html>
