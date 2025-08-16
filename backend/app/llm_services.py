@@ -496,68 +496,99 @@ class LLMService:
         
         try:
             prompt = f"""
-            Analyze these two documents and find detailed connections, similarities, contradictions, and insights.
-            Focus particularly on identifying SPECIFIC contradictory statements with exact quotes.
+            You are an expert document analyst. Analyze these two documents to find ALL possible connections, similarities, contradictions, and insights.
+            Be VERY THOROUGH and look for even subtle connections. Documents often relate in ways that aren't immediately obvious.
             
             Document 1: "{title1}"
-            Content: {text1[:3000]}
+            Content: {text1[:4000]}
             
             Document 2: "{title2}"
-            Content: {text2[:3000]}
+            Content: {text2[:4000]}
             
             User Context:
             - Persona: {persona}
             - Job to be done: {job}
             
-            CRITICAL INSTRUCTIONS FOR CONTRADICTIONS:
-            - Only report contradictions if you can find EXACT quotes that directly contradict each other
-            - Look for statements where Document 1 says X and Document 2 says NOT X about the same topic
-            - Include the specific topic being contradicted
-            - Provide clear, specific quotes, not summaries or paraphrases
+            ANALYSIS INSTRUCTIONS:
+            1. Look for ANY connections - even if they seem minor or indirect
+            2. Find similarities in concepts, approaches, terminology, or themes
+            3. Identify contradictions - look for conflicting statements, different approaches, or opposing viewpoints
+            4. Consider complementary relationships where documents build on each other
+            5. Look for overlapping topics, shared keywords, or related concepts
+            6. Consider how the documents might be useful together for the user's role
             
-            Examples of valid contradictions:
-            - Doc1: "The weather in Madrid is humid" vs Doc2: "Madrid has a dry climate"
-            - Doc1: "Method A is recommended" vs Doc2: "Method A should be avoided"
-            - Doc1: "The study shows 85% success rate" vs Doc2: "Success rates were only 45%"
+            CRITICAL: Even if documents are in different domains, look for:
+            - Similar methodologies or approaches
+            - Shared principles or concepts
+            - Complementary perspectives on related topics
+            - Common themes (like leadership, innovation, problem-solving, etc.)
+            - Transferable insights between fields
             
-            Return a JSON response with:
+            For CONTRADICTIONS, look for:
+            - Different recommendations for similar situations
+            - Conflicting data or statistics
+            - Opposing viewpoints on the same topic
+            - Different methodologies for achieving similar goals
+            - Contradictory conclusions or findings
+            
+            For SIMILARITIES, look for:
+            - Similar concepts explained differently
+            - Overlapping terminology or jargon
+            - Common themes or principles
+            - Similar examples or case studies
+            - Parallel structures or frameworks
+            
+            Return a JSON response with detailed analysis:
             {{
-                "has_connection": boolean,
+                "has_connection": boolean (be generous - most documents have some connection),
                 "connection_type": "complementary|contradictory|similar|related",
-                "relevance_score": float (0-1),
-                "explanation": "overall connection summary",
+                "relevance_score": float (0-1, be generous with scores above 0.3),
+                "explanation": "detailed explanation of how documents connect",
                 "similarities": [
                     {{
-                        "doc1_quote": "exact quote from document 1",
-                        "doc2_quote": "similar quote from document 2",
-                        "similarity_type": "identical|paraphrased|concept_match",
-                        "explanation": "why these are similar"
+                        "doc1_quote": "specific quote or concept from {title1}",
+                        "doc2_quote": "similar quote or concept from {title2}",
+                        "similarity_type": "identical|paraphrased|concept_match|thematic",
+                        "explanation": "detailed explanation of why these are similar"
                     }}
                 ],
                 "contradictions": [
                     {{
                         "topic": "specific topic being contradicted",
-                        "doc1_quote": "exact contradicting statement from {title1}",
-                        "doc2_quote": "exact contradicting statement from {title2}",
-                        "contradiction_type": "direct|methodological|conclusion|factual",
+                        "doc1_quote": "exact statement from {title1}",
+                        "doc2_quote": "contradicting statement from {title2}",
+                        "contradiction_type": "direct|methodological|conclusion|factual|philosophical",
                         "severity": "low|medium|high",
-                        "explanation": "clear explanation of how these statements contradict each other"
+                        "explanation": "clear explanation of the contradiction and its significance"
                     }}
                 ],
                 "complementary_insights": [
                     {{
                         "insight": "how documents complement each other",
-                        "doc1_support": "supporting evidence from doc 1",
-                        "doc2_support": "supporting evidence from doc 2"
+                        "doc1_support": "supporting evidence from {title1}",
+                        "doc2_support": "supporting evidence from {title2}"
                     }}
                 ],
-                "key_sections": ["section1", "section2"],
+                "key_sections": ["shared themes", "overlapping topics"],
                 "has_contradiction": boolean,
-                "overall_contradiction": "description if any",
-                "severity": "low|medium|high"
+                "overall_contradiction": "description if any major contradictions exist",
+                "severity": "low|medium|high",
+                "transferable_concepts": [
+                    {{
+                        "concept": "concept that transfers between documents",
+                        "doc1_context": "how it appears in {title1}",
+                        "doc2_context": "how it appears in {title2}",
+                        "relevance_to_user": "why this matters for {persona} doing {job}"
+                    }}
+                ]
             }}
             
-            ONLY include contradictions if you have specific, exact quotes that clearly contradict each other.
+            IMPORTANT: 
+            - Be thorough and generous in finding connections
+            - Most documents have at least some thematic or conceptual connections
+            - Look beyond surface-level topics to underlying principles
+            - Consider how concepts might transfer between different domains
+            - If you find even minor connections, report them with appropriate relevance scores
             """
             
             response = await asyncio.to_thread(
@@ -590,22 +621,36 @@ class LLMService:
                         if "explanation" in similarity:
                             similarity["explanation"] = self._clean_json_artifacts(similarity["explanation"])
                 
+                # Ensure we have at least some connection if the analysis found any
+                if not result.get("has_connection", False):
+                    # Check if there are actually similarities or other connections found
+                    if (result.get("similarities") or result.get("complementary_insights") or 
+                        result.get("transferable_concepts") or result.get("relevance_score", 0) > 0.2):
+                        result["has_connection"] = True
+                        if not result.get("explanation"):
+                            result["explanation"] = "Documents share common themes or concepts relevant to your role."
+                
                 return result
             except:
-                # Fallback if JSON parsing fails
-                has_connection = "connection" in response.text.lower() or "related" in response.text.lower()
+                # Fallback if JSON parsing fails - be more generous in finding connections
+                response_text = response.text.lower()
+                has_connection = any(word in response_text for word in [
+                    "similar", "connection", "related", "both", "common", "share", 
+                    "comparable", "parallel", "overlap", "theme", "concept"
+                ])
                 return {
                     "has_connection": has_connection,
                     "connection_type": "related",
-                    "relevance_score": 0.5,
-                    "explanation": self._clean_json_artifacts(response.text[:200]),
+                    "relevance_score": 0.4 if has_connection else 0.1,
+                    "explanation": self._clean_json_artifacts(response.text[:300]),
                     "similarities": [],
                     "contradictions": [],
                     "complementary_insights": [],
                     "key_sections": [],
-                    "has_contradiction": "contradict" in response.text.lower(),
+                    "has_contradiction": "contradict" in response_text,
                     "overall_contradiction": "",
-                    "severity": "low"
+                    "severity": "low",
+                    "transferable_concepts": []
                 }
                 
         except Exception as e:
@@ -694,47 +739,58 @@ class LLMService:
         
         try:
             prompt = f"""
-            As an expert analyst, provide strategic insights for the following text, considering the user's specific role and objectives.
+            As an expert analyst, provide strategic insights SPECIFICALLY based on the following PDF document content. 
+            DO NOT provide generic advice - focus ONLY on what's actually written in this specific document.
             
-            Text to analyze:
+            DOCUMENT CONTENT TO ANALYZE:
             {text}
             
             User Context:
-            - Persona: {persona}
+            - Role/Persona: {persona}
             - Job to be done: {job}
             {f"- Document context: {document_context}" if document_context else ""}
             
-            Provide strategic insights in these categories:
-            1. **Key Opportunities**: What opportunities does this text reveal for the user's role?
-            2. **Critical Decisions**: What decisions should the user consider based on this information?
-            3. **Risk Assessment**: What risks or challenges are implied by this content?
-            4. **Action Items**: What specific actions should the user take?
-            5. **Knowledge Gaps**: What additional information would be valuable?
-            6. **Strategic Context**: How does this fit into the bigger picture for their job?
+            CRITICAL INSTRUCTIONS:
+            1. Base ALL insights ONLY on the specific content provided above
+            2. Quote specific phrases or concepts from the document when possible
+            3. Connect the document's specific information to the user's role and objectives
+            4. Do NOT add general knowledge not found in the document
+            5. If the document doesn't contain enough information for a category, return fewer items rather than generic advice
+            
+            Analyze the SPECIFIC document content and provide strategic insights in these categories:
+            
+            1. **Key Opportunities**: What specific opportunities does THIS DOCUMENT reveal for the user's role? Reference exact content.
+            2. **Critical Decisions**: What specific decisions should the user consider based on THIS DOCUMENT'S information?
+            3. **Risk Assessment**: What specific risks or challenges are mentioned or implied in THIS DOCUMENT?
+            4. **Action Items**: What specific actions should the user take based on what's written in THIS DOCUMENT?
+            5. **Knowledge Gaps**: What additional information would be valuable based on what THIS DOCUMENT discusses?
+            6. **Strategic Context**: How does THIS DOCUMENT'S specific content fit into the bigger picture for their job?
             
             Return as JSON:
             {{
                 "opportunities": [
-                    {{"insight": "description", "priority": "high|medium|low", "timeframe": "immediate|short-term|long-term"}}
+                    {{"insight": "specific opportunity based on document content with quotes", "priority": "high|medium|low", "timeframe": "immediate|short-term|long-term"}}
                 ],
                 "critical_decisions": [
-                    {{"decision": "description", "factors": ["factor1", "factor2"], "urgency": "high|medium|low"}}
+                    {{"decision": "specific decision based on document content", "factors": ["factor1 from document", "factor2 from document"], "urgency": "high|medium|low"}}
                 ],
                 "risks": [
-                    {{"risk": "description", "impact": "high|medium|low", "mitigation": "suggested approach"}}
+                    {{"risk": "specific risk mentioned or implied in document", "impact": "high|medium|low", "mitigation": "approach based on document content"}}
                 ],
                 "action_items": [
-                    {{"action": "description", "priority": "high|medium|low", "effort": "low|medium|high"}}
+                    {{"action": "specific action based on document content", "priority": "high|medium|low", "effort": "low|medium|high"}}
                 ],
                 "knowledge_gaps": [
-                    {{"gap": "description", "importance": "high|medium|low", "source_suggestions": ["suggestion1", "suggestion2"]}}
+                    {{"gap": "specific gap identified from document content", "importance": "high|medium|low", "source_suggestions": ["specific sources mentioned in document or logically related"]}}
                 ],
                 "strategic_context": {{
-                    "relevance_to_role": "explanation",
-                    "business_impact": "explanation",
-                    "competitive_advantage": "explanation"
+                    "relevance_to_role": "how THIS DOCUMENT'S content specifically relates to the {persona} role",
+                    "business_impact": "business impact based on THIS DOCUMENT'S specific content",
+                    "competitive_advantage": "competitive advantage opportunities from THIS DOCUMENT'S content"
                 }}
             }}
+            
+            Remember: Only use information that's actually in the document. Quote specific phrases when possible.
             """
             
             response = await asyncio.to_thread(
