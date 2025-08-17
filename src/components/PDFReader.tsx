@@ -3,19 +3,18 @@ import { Button } from '@/components/ui/button';
 import { DocumentOutline } from './DocumentOutline';
 import { EnhancedLeftPanel } from './EnhancedLeftPanel';
 import { FloatingTools } from './FloatingTools';
-import { AdobePDFViewer, FallbackPDFViewer } from './AdobePDFViewer';
+import { CustomPDFViewer } from './CustomPDFViewer';
 import { CrossConnectionsPanel } from './CrossConnectionsPanel';
 import { StrategicInsightsPanel } from './StrategicInsightsPanel';
 import { EnhancedStrategicPanel } from './EnhancedStrategicPanel';
 import { InsightsPanel } from './InsightsPanel';
 
-// Hybrid PDF Viewer component that tries Adobe first, then falls back to iframe
-function HybridPDFViewer({ 
+// Custom PDF Viewer wrapper component
+function CustomPDFViewerWrapper({ 
   documentUrl, 
   documentName, 
   onPageChange, 
   onTextSelection, 
-  clientId,
   highlights,
   currentPage,
   goToSection
@@ -24,54 +23,20 @@ function HybridPDFViewer({
   documentName: string;
   onPageChange?: (page: number) => void;
   onTextSelection?: (text: string, page: number) => void;
-  clientId?: string;
   highlights?: Highlight[];
   currentPage?: number;
   goToSection?: { page: number; section?: string } | null;
 }) {
-  const [useAdobeViewer, setUseAdobeViewer] = useState(true);
-  const [adobeFailed, setAdobeFailed] = useState(false);
-
-  const handleAdobeError = () => {
-    console.log("Adobe PDF viewer failed, falling back to iframe viewer");
-    setAdobeFailed(true);
-    setUseAdobeViewer(false);
-  };
-
-  if (!useAdobeViewer || adobeFailed) {
-    return <FallbackPDFViewer 
-      documentUrl={documentUrl} 
-      documentName={documentName}
-      highlights={highlights}
-      currentPage={currentPage}
-      goToSection={goToSection}
-    />;
-  }
-
   return (
-    <div className="h-full relative">
-      <AdobePDFViewer
-        documentUrl={documentUrl}
-        documentName={documentName}
-        onPageChange={onPageChange}
-        onTextSelection={onTextSelection}
-        clientId={clientId}
-        highlights={highlights}
-        currentHighlightPage={currentPage}
-        goToSection={goToSection}
-      />
-      {/* Fallback button */}
-      <div className="absolute top-4 right-4 z-10">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setUseAdobeViewer(false)}
-          className="bg-background/90 backdrop-blur-sm"
-        >
-          Use Simple Viewer
-        </Button>
-      </div>
-    </div>
+    <CustomPDFViewer
+      documentUrl={documentUrl}
+      documentName={documentName}
+      onPageChange={onPageChange}
+      onTextSelection={onTextSelection}
+      highlights={highlights}
+      currentHighlightPage={currentPage}
+      goToSection={goToSection}
+    />
   );
 }
 
@@ -680,12 +645,11 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
         {/* Main PDF Viewer */}
         <main className="flex-1 relative">
           {currentDocument ? (
-            <HybridPDFViewer
+            <CustomPDFViewerWrapper
               documentUrl={currentDocument.url}
               documentName={currentDocument.name}
               onPageChange={setCurrentPage}
               onTextSelection={handleTextSelection}
-              clientId={import.meta.env.VITE_ADOBE_CLIENT_ID}
               highlights={highlights}
               currentPage={currentPage}
               goToSection={null} // Will be updated when section navigation is triggered
