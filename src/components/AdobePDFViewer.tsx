@@ -5,6 +5,8 @@ import { useToast } from '@/hooks/use-toast';
 import { apiService } from '@/lib/api';
 import { pdfHighlighter } from '@/lib/pdfHighlighter';
 import { Highlight } from './PDFReader';
+import { ReactPDFViewer } from './ReactPDFViewer';
+import { FallbackPDFViewer } from './FallbackPDFViewer';
 
 declare global {
   interface Window {
@@ -1668,6 +1670,89 @@ export function FallbackPDFViewer({
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+// New Hybrid PDF Viewer Component
+export function HybridPDFViewer({
+  documentUrl,
+  documentName,
+  onPageChange,
+  onTextSelection,
+  highlights = [],
+  currentHighlightPage,
+  goToSection,
+  onHighlight
+}: AdobePDFViewerProps) {
+  const [viewerType, setViewerType] = useState<'react-pdf' | 'fallback' | 'loading'>('loading');
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Try React-PDF first
+    setViewerType('react-pdf');
+  }, []);
+
+  const handleReactPDFError = (error: Error) => {
+    console.log("React-PDF failed, falling back to iframe viewer:", error.message);
+    setError(error.message);
+    setViewerType('fallback');
+  };
+
+  if (viewerType === 'loading') {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-900 text-white">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+        <span className="ml-2">Initializing PDF viewer...</span>
+      </div>
+    );
+  }
+
+  if (viewerType === 'fallback') {
+    return (
+      <FallbackPDFViewer
+        documentUrl={documentUrl}
+        documentName={documentName}
+        onPageChange={onPageChange}
+        onTextSelection={onTextSelection}
+        highlights={highlights}
+        currentHighlightPage={currentHighlightPage}
+        goToSection={goToSection}
+        onHighlight={onHighlight}
+      />
+    );
+  }
+
+  return (
+    <div className="relative h-full">
+             <ReactPDFViewer
+         documentUrl={documentUrl}
+         documentName={documentName}
+         onPageChange={onPageChange}
+         onTextSelection={onTextSelection}
+         highlights={highlights}
+         currentHighlightPage={currentHighlightPage}
+         goToSection={goToSection}
+         onHighlight={onHighlight}
+         onError={handleReactPDFError}
+       />
+      
+      {/* Error boundary - if React-PDF fails, show fallback option */}
+      {error && (
+        <div className="absolute top-4 right-4 bg-yellow-900 border border-yellow-600 rounded-lg p-3 max-w-sm">
+          <p className="text-yellow-100 text-sm mb-2">
+            Advanced PDF viewer encountered an issue
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => setViewerType('fallback')}
+            className="text-yellow-100 border-yellow-600 hover:bg-yellow-800"
+          >
+            Use Fallback Viewer
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
