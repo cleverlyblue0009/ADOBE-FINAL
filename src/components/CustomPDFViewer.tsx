@@ -13,7 +13,9 @@ import {
   Download,
   Search,
   Loader2,
-  Copy
+  Copy,
+  Brain,
+  Sparkles
 } from 'lucide-react';
 
 // Configure PDF.js worker - Use the worker file from public directory
@@ -22,6 +24,10 @@ pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 // Import types and utilities
 import { Highlight } from './PDFReader';
 import { customPdfHighlighter } from '@/lib/customPdfHighlighter';
+import { enhancedPdfHighlighter, EnhancedHighlight } from '@/lib/enhancedPdfHighlighter';
+import { pdfProcessor } from '@/lib/pdfProcessor';
+import { HoverTooltipSystem, useHoverTooltipSystem } from './HoverTooltipSystem';
+import { AIInsightsModal } from './AIInsightsModal';
 
 interface CustomPDFViewerProps {
   documentUrl: string;
@@ -31,6 +37,8 @@ interface CustomPDFViewerProps {
   highlights?: Highlight[];
   currentHighlightPage?: number;
   goToSection?: { page: number; section?: string } | null;
+  enableSmartHighlighting?: boolean;
+  enableHoverTooltips?: boolean;
 }
 
 interface ContextMenuState {
@@ -165,7 +173,9 @@ export function CustomPDFViewer({
   onTextSelection,
   highlights = [],
   currentHighlightPage = 1,
-  goToSection
+  goToSection,
+  enableSmartHighlighting = true,
+  enableHoverTooltips = true
 }: CustomPDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -193,7 +203,14 @@ export function CustomPDFViewer({
   });
   const [loading, setLoading] = useState<LoadingState>({ type: null, active: false });
 
+  // Enhanced features state
+  const [enhancedHighlights, setEnhancedHighlights] = useState<EnhancedHighlight[]>([]);
+  const [isAIInsightsModalOpen, setIsAIInsightsModalOpen] = useState(false);
+  const [pageContent, setPageContent] = useState<Map<number, string>>(new Map());
+  const [isGeneratingHighlights, setIsGeneratingHighlights] = useState(false);
+
   const containerRef = useRef<HTMLDivElement>(null);
+  const { currentPageElement } = useHoverTooltipSystem(enableHoverTooltips);
 
   // Handle document load success
   const onDocumentLoadSuccess = useCallback(({ numPages }: { numPages: number }) => {
@@ -487,6 +504,87 @@ export function CustomPDFViewer({
     }
   };
 
+  // Generate smart highlights
+  const generateSmartHighlights = async () => {
+    if (!enableSmartHighlighting) return;
+    
+    setIsGeneratingHighlights(true);
+    try {
+      const pageElement = document.querySelector(`[data-page-number="${currentPage}"]`) as HTMLElement;
+      if (!pageElement) return;
+
+      // Extract text content from the current page
+      const textLayer = pageElement.querySelector('.react-pdf__Page__textContent') as HTMLElement;
+      if (!textLayer) return;
+
+      const textContent = textLayer.textContent || '';
+      if (textContent.length < 50) return; // Skip pages with minimal content
+
+      // Generate intelligent highlights
+      const smartHighlights = await enhancedPdfHighlighter.generateIntelligentHighlights(textContent, currentPage);
+      
+      // Merge with existing highlights
+      setEnhancedHighlights(prev => {
+        const existingIds = new Set(prev.filter(h => h.page !== currentPage).map(h => h.id));
+        const filteredPrev = prev.filter(h => h.page !== currentPage);
+        return [...filteredPrev, ...smartHighlights.filter(h => !existingIds.has(h.id))];
+      });
+
+      // Store page content for AI insights
+      setPageContent(prev => new Map(prev).set(currentPage, textContent));
+
+      toast({
+        title: "Smart Highlights Generated",
+        description: `Generated ${smartHighlights.length} intelligent highlights for page ${currentPage}`,
+      });
+
+    } catch (error) {
+      console.error('Error generating smart highlights:', error);
+      toast({
+        title: "Highlight Generation Failed",
+        description: "Unable to generate smart highlights. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingHighlights(false);
+    }
+  };
+
+  // Download highlighted PDF
+  const downloadHighlightedPDF = async () => {
+    try {
+      setLoading({ type: null, active: true });
+      
+      const blob = await pdfProcessor.addHighlightsToPdf(
+        documentUrl,
+        enhancedHighlights,
+        documentName
+      );
+      
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${documentName.replace('.pdf', '')}-highlighted.pdf`;
+      link.click();
+      URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Download Started",
+        description: "Highlighted PDF download has started",
+      });
+
+    } catch (error) {
+      console.error('Error downloading highlighted PDF:', error);
+      toast({
+        title: "Download Failed",
+        description: "Failed to generate highlighted PDF. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading({ type: null, active: false });
+    }
+  };
+
   // Download function
   const downloadPDF = () => {
     const link = document.createElement('a');
@@ -497,6 +595,19 @@ export function CustomPDFViewer({
     toast({
       title: "Download Started",
       description: "PDF download has started",
+    });
+  };
+
+  // Open AI Insights Modal
+  const openAIInsightsModal = () => {
+    setIsAIInsightsModalOpen(true);
+  };
+
+  // Handle term click from hover tooltip
+  const handleTermClick = (term: string) => {
+    toast({
+      title: "Term Selected",
+      description: `You clicked on: ${term}. This could trigger additional learning resources.`,
     });
   };
 
@@ -545,10 +656,33 @@ export function CustomPDFViewer({
     }
   }, [highlights, currentPage]);
 
+  // Apply enhanced highlights when they change
+  useEffect(() => {
+    if (enhancedHighlights.length > 0 && enableSmartHighlighting) {
+      const pageElement = document.querySelector(`[data-page-number="${currentPage}"]`) as HTMLElement;
+      if (pageElement) {
+        enhancedPdfHighlighter.applyEnhancedHighlights(enhancedHighlights, currentPage, pageElement);
+      }
+    }
+  }, [enhancedHighlights, currentPage, enableSmartHighlighting]);
+
+  // Auto-generate smart highlights when page changes
+  useEffect(() => {
+    if (enableSmartHighlighting && currentPage > 0) {
+      // Small delay to ensure page is fully rendered
+      const timer = setTimeout(() => {
+        generateSmartHighlights();
+      }, 1000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [currentPage, enableSmartHighlighting]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       customPdfHighlighter.removeAllHighlights();
+      enhancedPdfHighlighter.removeAllHighlights();
     };
   }, []);
 
@@ -677,13 +811,44 @@ export function CustomPDFViewer({
                 <Maximize2 className="h-4 w-4" />
               </Button>
 
+              {/* Smart Highlights */}
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={downloadPDF}
-                aria-label="Download document"
+                onClick={generateSmartHighlights}
+                disabled={isGeneratingHighlights || !enableSmartHighlighting}
+                aria-label="Generate smart highlights"
+                className="relative"
+              >
+                <Sparkles className={`h-4 w-4 ${isGeneratingHighlights ? 'animate-pulse' : ''}`} />
+                {enhancedHighlights.filter(h => h.page === currentPage).length > 0 && (
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full"></div>
+                )}
+              </Button>
+
+              {/* AI Insights */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={openAIInsightsModal}
+                aria-label="Open AI insights"
+              >
+                <Brain className="h-4 w-4" />
+              </Button>
+
+              {/* Download Highlighted PDF */}
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={downloadHighlightedPDF}
+                disabled={enhancedHighlights.length === 0}
+                aria-label="Download highlighted PDF"
+                className="relative"
               >
                 <Download className="h-4 w-4" />
+                {enhancedHighlights.length > 0 && (
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-green-400 rounded-full"></div>
+                )}
               </Button>
             </div>
           </div>
@@ -761,11 +926,35 @@ export function CustomPDFViewer({
           <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 flex items-center gap-4">
             <Loader2 className="h-6 w-6 animate-spin text-brand-primary" />
             <span className="text-white">
-              {loading.type === 'simplify' ? 'Simplifying text...' : 'Generating insights...'}
+              {loading.type === 'simplify' ? 'Simplifying text...' : 
+               loading.type === 'insights' ? 'Generating insights...' : 'Processing...'}
             </span>
           </div>
         </div>
       )}
+
+      {/* Hover Tooltip System */}
+      {enableHoverTooltips && (
+        <HoverTooltipSystem
+          pageElement={currentPageElement}
+          isEnabled={enableHoverTooltips}
+          onTermClick={handleTermClick}
+        />
+      )}
+
+      {/* AI Insights Modal */}
+      <AIInsightsModal
+        isOpen={isAIInsightsModalOpen}
+        onClose={() => setIsAIInsightsModalOpen(false)}
+        documentName={documentName}
+        documentContent={Array.from(pageContent.values()).join('\n\n')}
+        currentPage={currentPage}
+        totalPages={numPages}
+        onNavigateToPage={(page) => {
+          handlePageChange(page);
+          setIsAIInsightsModalOpen(false);
+        }}
+      />
     </>
   );
 }

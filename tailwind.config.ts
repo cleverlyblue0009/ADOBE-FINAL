@@ -44,6 +44,7 @@ export default {
 				'highlight-primary': 'hsl(var(--highlight-primary))',
 				'highlight-secondary': 'hsl(var(--highlight-secondary))',
 				'highlight-tertiary': 'hsl(var(--highlight-tertiary))',
+				'highlight-quaternary': 'hsl(var(--highlight-quaternary))',
 				
 				/* Accessibility Colors */
 				'focus-ring': 'hsl(var(--focus-ring))',
