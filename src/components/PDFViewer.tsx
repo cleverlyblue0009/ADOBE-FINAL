@@ -37,9 +37,9 @@ export function PDFViewer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [selectedText, setSelectedText] = useState('');
 
-  // Mock PDF rendering - in real implementation, would use Adobe PDF Embed API
+  // Mock PDF rendering - in real implementation, would use PDF.js
   useEffect(() => {
-    // Initialize Adobe PDF Embed API here
+    // Initialize PDF.js here
     console.log('Loading PDF:', document.url);
   }, [document.url]);
 
@@ -491,7 +491,7 @@ export function PDFViewer({
                 <h2 className="text-xl font-semibold mb-4">Chapter {currentPage - 1}</h2>
                 <p className="text-sm leading-relaxed mb-4">
                   This section would contain the actual content from page {currentPage} of the research paper. 
-                  In a real implementation, this content would be rendered by the Adobe PDF Embed API with 
+                  In a real implementation, this content would be rendered by the PDF.js library with 
                   full fidelity to the original document formatting.
                 </p>
                 <p className="text-sm leading-relaxed">

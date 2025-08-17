@@ -266,9 +266,9 @@ export class PDFHighlighter {
   private getPDFContainer(): HTMLElement | null {
     // Try multiple selectors to find the PDF container
     const selectors = [
-      '#adobe-dc-view',
-      '.adobe-dc-view',
-      '#adobe-pdf-viewer',
+      '#custom-pdf-viewer',
+      '.custom-pdf-viewer',
+      '.react-pdf__Document',
       '.pdf-viewer-container',
       '#pdf-content',
       'iframe',
