@@ -3,77 +3,13 @@ import { Button } from '@/components/ui/button';
 import { DocumentOutline } from './DocumentOutline';
 import { EnhancedLeftPanel } from './EnhancedLeftPanel';
 import { FloatingTools } from './FloatingTools';
-import { AdobePDFViewer, FallbackPDFViewer } from './AdobePDFViewer';
+import { AdobePDFViewer, FallbackPDFViewer, HybridPDFViewer } from './AdobePDFViewer';
 import { CrossConnectionsPanel } from './CrossConnectionsPanel';
 import { StrategicInsightsPanel } from './StrategicInsightsPanel';
 import { EnhancedStrategicPanel } from './EnhancedStrategicPanel';
 import { InsightsPanel } from './InsightsPanel';
 
-// Hybrid PDF Viewer component that tries Adobe first, then falls back to iframe
-function HybridPDFViewer({ 
-  documentUrl, 
-  documentName, 
-  onPageChange, 
-  onTextSelection, 
-  clientId,
-  highlights,
-  currentPage,
-  goToSection
-}: {
-  documentUrl: string;
-  documentName: string;
-  onPageChange?: (page: number) => void;
-  onTextSelection?: (text: string, page: number) => void;
-  clientId?: string;
-  highlights?: Highlight[];
-  currentPage?: number;
-  goToSection?: { page: number; section?: string } | null;
-}) {
-  const [useAdobeViewer, setUseAdobeViewer] = useState(true);
-  const [adobeFailed, setAdobeFailed] = useState(false);
-
-  const handleAdobeError = () => {
-    console.log("Adobe PDF viewer failed, falling back to iframe viewer");
-    setAdobeFailed(true);
-    setUseAdobeViewer(false);
-  };
-
-  if (!useAdobeViewer || adobeFailed) {
-    return <FallbackPDFViewer 
-      documentUrl={documentUrl} 
-      documentName={documentName}
-      highlights={highlights}
-      currentPage={currentPage}
-      goToSection={goToSection}
-    />;
-  }
-
-  return (
-    <div className="h-full relative">
-      <AdobePDFViewer
-        documentUrl={documentUrl}
-        documentName={documentName}
-        onPageChange={onPageChange}
-        onTextSelection={onTextSelection}
-        clientId={clientId}
-        highlights={highlights}
-        currentHighlightPage={currentPage}
-        goToSection={goToSection}
-      />
-      {/* Fallback button */}
-      <div className="absolute top-4 right-4 z-10">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setUseAdobeViewer(false)}
-          className="bg-background/90 backdrop-blur-sm"
-        >
-          Use Simple Viewer
-        </Button>
-      </div>
-    </div>
-  );
-}
+// Note: HybridPDFViewer is now imported from AdobePDFViewer.tsx and uses React-PDF with fallback
 
 import { ThemeToggle } from './ThemeToggle';
 import { AccessibilityPanel } from './AccessibilityPanel';
@@ -685,10 +621,10 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               documentName={currentDocument.name}
               onPageChange={setCurrentPage}
               onTextSelection={handleTextSelection}
-              clientId={import.meta.env.VITE_ADOBE_CLIENT_ID}
               highlights={highlights}
-              currentPage={currentPage}
+              currentHighlightPage={currentPage}
               goToSection={null} // Will be updated when section navigation is triggered
+              onHighlight={addHighlight}
             />
           ) : (
             <div className="flex items-center justify-center h-full">

@@ -1,6 +1,10 @@
 /* Import OpenDyslexic font for dyslexia support */
 @import url('https://fonts.googleapis.com/css2?family=OpenDyslexic:wght@400;700&display=swap');
 
+/* Import react-pdf styles */
+@import 'react-pdf/dist/Page/AnnotationLayer.css';
+@import 'react-pdf/dist/Page/TextLayer.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
