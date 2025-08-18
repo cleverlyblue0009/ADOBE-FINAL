@@ -4,6 +4,7 @@ import { DocumentOutline } from './DocumentOutline';
 import { EnhancedLeftPanel } from './EnhancedLeftPanel';
 import { FloatingTools } from './FloatingTools';
 import { CustomPDFViewer } from './CustomPDFViewer';
+import { EnhancedPDFViewer } from './EnhancedPDFViewer';
 import { CrossConnectionsPanel } from './CrossConnectionsPanel';
 import { StrategicInsightsPanel } from './StrategicInsightsPanel';
 import { EnhancedStrategicPanel } from './EnhancedStrategicPanel';
@@ -84,7 +85,7 @@ export interface Highlight {
   id: string;
   text: string;
   page: number;
-  color: 'primary' | 'secondary' | 'tertiary';
+  color: 'primary' | 'secondary' | 'tertiary' | 'quaternary';
   relevanceScore: number;
   explanation: string;
 }
@@ -642,17 +643,19 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
           </aside>
         )}
 
-        {/* Main PDF Viewer */}
+        {/* Main PDF Viewer - Enhanced */}
         <main className="flex-1 relative">
           {currentDocument ? (
-            <CustomPDFViewerWrapper
+            <EnhancedPDFViewer
               documentUrl={currentDocument.url}
               documentName={currentDocument.name}
               onPageChange={setCurrentPage}
               onTextSelection={handleTextSelection}
               highlights={highlights}
-              currentPage={currentPage}
+              currentHighlightPage={currentPage}
               goToSection={null} // Will be updated when section navigation is triggered
+              persona={persona}
+              jobToBeDone={jobToBeDone}
             />
           ) : (
             <div className="flex items-center justify-center h-full">
