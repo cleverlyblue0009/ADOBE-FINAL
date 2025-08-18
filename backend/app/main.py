@@ -15,6 +15,7 @@ from .pdf_analyzer import analyze_pdf, extract_full_text
 from .document_intelligence import process_documents_intelligence, find_related_sections
 from .llm_services import LLMService
 from .tts_service import TTSService
+from .content_analyzer import ContentAnalyzer
 
 app = FastAPI(title="DocuSense API", version="1.0.0")
 
@@ -74,9 +75,15 @@ class TermDefinitionRequest(BaseModel):
     term: str
     context: str
 
+class PageFactRequest(BaseModel):
+    document_id: str
+    page_number: int
+    page_text: str
+
 # Initialize services
 llm_service = LLMService()
 tts_service = TTSService()
+content_analyzer = ContentAnalyzer()
 
 @app.on_event("startup")
 async def startup_event():
@@ -132,6 +139,9 @@ async def upload_pdfs(
                 "file_path": file_path,
                 "analysis": analysis
             }
+            
+            # Analyze content for external facts (async, don't wait)
+            asyncio.create_task(analyze_document_content_async(doc_id, file_path))
             
             uploaded_docs.append(doc_info)
             
@@ -1017,3 +1027,89 @@ async def health_check():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+# Helper function for async content analysis
+async def analyze_document_content_async(doc_id: str, file_path: str):
+    """Analyze document content for external facts in the background."""
+    try:
+        print(f"Starting content analysis for document {doc_id}")
+        analysis_result = await content_analyzer.analyze_document_content(doc_id, file_path)
+        
+        # Store the analysis results in the document store
+        if doc_id in documents_store:
+            documents_store[doc_id]["content_analysis"] = analysis_result
+            print(f"Content analysis completed for {doc_id}: {analysis_result[\"analysis_metadata\"]}")
+        
+    except Exception as e:
+        print(f"Error in background content analysis for {doc_id}: {e}")
+
+# New API endpoints for external facts
+@app.get("/documents/{doc_id}/facts")
+async def get_document_facts(doc_id: str):
+    """Get all external facts for a document."""
+    if doc_id not in documents_store:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    facts = content_analyzer.get_all_document_facts(doc_id)
+    summary = content_analyzer.get_document_fact_summary(doc_id)
+    
+    return {
+        "document_id": doc_id,
+        "page_facts": facts,
+        "summary": summary
+    }
+
+@app.get("/documents/{doc_id}/facts/page/{page_number}")
+async def get_page_facts(doc_id: str, page_number: int):
+    """Get external facts for a specific page."""
+    if doc_id not in documents_store:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    facts = content_analyzer.get_facts_for_page(doc_id, page_number)
+    has_facts = content_analyzer.has_facts_for_page(doc_id, page_number)
+    
+    return {
+        "document_id": doc_id,
+        "page_number": page_number,
+        "facts": facts,
+        "has_facts": has_facts
+    }
+
+@app.post("/documents/generate-page-fact")
+async def generate_page_fact(request: PageFactRequest):
+    """Generate an external fact for a specific page on-demand."""
+    if request.document_id not in documents_store:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    try:
+        fact = await content_analyzer.generate_fact_for_current_page(
+            request.document_id, 
+            request.page_number, 
+            request.page_text
+        )
+        
+        return {
+            "document_id": request.document_id,
+            "page_number": request.page_number,
+            "fact": fact,
+            "generated": fact is not None
+        }
+        
+    except Exception as e:
+        print(f"Error generating page fact: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate page fact")
+
+@app.get("/documents/{doc_id}/content-analysis")
+async def get_content_analysis(doc_id: str):
+    """Get content analysis results for a document."""
+    if doc_id not in documents_store:
+        raise HTTPException(status_code=404, detail="Document not found")
+    
+    doc_data = documents_store[doc_id]
+    content_analysis = doc_data.get("content_analysis", {})
+    
+    return {
+        "document_id": doc_id,
+        "analysis": content_analysis
+    }
+
