@@ -27,14 +27,14 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    include: ['pdfjs-dist']
+    include: ['react-pdf']
   },
   assetsInclude: ['**/*.worker.js', '**/*.worker.min.js', '**/*.worker.mjs', '**/*.worker.min.mjs'],
   build: {
     rollupOptions: {
       output: {
         manualChunks: {
-          'pdfjs': ['pdfjs-dist']
+          'react-pdf': ['react-pdf']
         }
       }
     }
