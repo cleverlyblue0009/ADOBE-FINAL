@@ -10,6 +10,7 @@ import { StrategicInsightsPanel } from './StrategicInsightsPanel';
 import { EnhancedStrategicPanel } from './EnhancedStrategicPanel';
 import { InsightsPanel } from './InsightsPanel';
 import { EnhancedInsightsPanel } from './EnhancedInsightsPanel';
+import { EnhancedAIInsightsPanel } from './EnhancedAIInsightsPanel';
 
 // Custom PDF Viewer wrapper component
 function CustomPDFViewerWrapper({ 
@@ -726,7 +727,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
             <div className="flex-1 overflow-hidden min-w-0">
               {activeRightPanel === 'insights' && (
                 <div className="min-w-0 overflow-hidden h-full">
-                  <EnhancedInsightsPanel 
+                  <EnhancedAIInsightsPanel 
                     documentIds={documents?.map(d => d.id) || []}
                     documentId={currentDocument?.id}
                     persona={persona}
