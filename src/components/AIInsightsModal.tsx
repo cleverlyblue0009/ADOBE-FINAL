@@ -400,13 +400,14 @@ export function AIInsightsModal({
                             </div>
                           );
                         })}
-
-                        {getInsightsByType(type).length === 0 && (
+                        {getInsightsByType(type).length === 0 && (() => {
+                          const EmptyIcon = getInsightIcon(type);
+                          return (
                           <div className="text-center py-12 text-text-tertiary">
-                            <Icon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                            <p>No {type.replace('-', ' ')} insights available</p>
-                          </div>
-                        )}
+                          <EmptyIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                          <p>No {type.replace('-', ' ')} insights available</p>
+                          </div> );
+                        })()}
                       </div>
                     </ScrollArea>
                   </TabsContent>

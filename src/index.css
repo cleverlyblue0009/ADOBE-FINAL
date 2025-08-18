@@ -1,13 +1,11 @@
 /* Import OpenDyslexic font for dyslexia support */
 @import url('https://fonts.googleapis.com/css2?family=OpenDyslexic:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=OpenDyslexic:wght@400;700&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* PDF.js styles */
-@import 'react-pdf/dist/esm/Page/AnnotationLayer.css';
-@import 'react-pdf/dist/esm/Page/TextLayer.css';
 
 /* PDF Reader Design System - Minimalist & Accessible */
 
