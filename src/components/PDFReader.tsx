@@ -595,7 +595,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
         {/* Left Sidebar - Enhanced Navigation */}
         {leftSidebarOpen && (
           <aside 
-            className="bg-surface-elevated/50 border-r border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm relative min-w-0"
+            className="fixed left-0 top-0 h-full bg-surface-elevated/95 border-r border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm z-30 shadow-xl"
             style={{ width: `${leftSidebarWidth}px`, maxWidth: `${leftSidebarWidth}px` }}
           >
             <div className="flex-1 overflow-hidden flex flex-col min-w-0">
