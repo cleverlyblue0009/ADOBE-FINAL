@@ -1131,3 +1131,250 @@ class LLMService:
         except Exception as e:
             print(f"Error finding connections: {e}")
             return "Unable to find connections at this time. Please try again later."
+
+    async def generate_document_snippet(self, text: str, persona: str, job_to_be_done: str, document_context: str = None) -> dict:
+        """Generate a concise snippet summarizing the entire document."""
+        try:
+            prompt = f"""
+            As an expert analyst, create a concise document snippet for a {persona} who needs to {job_to_be_done}.
+            
+            Document content:
+            {text[:2000]}
+            
+            Instructions:
+            1. Create a 2-3 sentence summary that captures the essence of the entire document
+            2. Extract 3-5 key points that are most relevant to the persona's job
+            3. Focus on actionable insights and important information
+            4. Make it specific to the persona's needs and objectives
+            
+            Return your response as JSON with this structure:
+            {{
+                "snippet": "Brief 2-3 sentence summary",
+                "key_points": ["point 1", "point 2", "point 3", ...]
+            }}
+            """
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content,
+                prompt
+            )
+            
+            return self._parse_json_response(response.text.strip(), {
+                "snippet": "Document analysis summary",
+                "key_points": ["Key insight from the document"]
+            })
+            
+        except Exception as e:
+            print(f"Error generating document snippet: {e}")
+            return {
+                "snippet": "Unable to generate snippet at this time.",
+                "key_points": []
+            }
+
+    async def generate_key_insights(self, text: str, persona: str, job_to_be_done: str, document_context: str = None) -> list:
+        """Generate key insights from the document content."""
+        try:
+            prompt = f"""
+            As an expert analyst, extract key insights from this document for a {persona} who needs to {job_to_be_done}.
+            
+            Document content:
+            {text[:2000]}
+            
+            Instructions:
+            1. Identify 5-8 most important insights present across the document
+            2. Focus on information that directly supports the persona's objectives
+            3. Prioritize insights by importance (high, medium, low)
+            4. Include page references when possible
+            5. Make insights actionable and specific
+            
+            Return your response as JSON with this structure:
+            {{
+                "insights": [
+                    {{
+                        "insight": "Specific insight statement",
+                        "importance": "high|medium|low",
+                        "page_reference": 1
+                    }},
+                    ...
+                ]
+            }}
+            """
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content,
+                prompt
+            )
+            
+            parsed_response = self._parse_json_response(response.text.strip(), {
+                "insights": [
+                    {
+                        "insight": "Sample insight",
+                        "importance": "high",
+                        "page_reference": 1
+                    }
+                ]
+            })
+            
+            return parsed_response.get("insights", [])
+            
+        except Exception as e:
+            print(f"Error generating key insights: {e}")
+            return []
+
+    async def generate_thoughtful_questions(self, text: str, persona: str, job_to_be_done: str, document_context: str = None, prompt_instruction: str = "") -> list:
+        """Generate thoughtful, interactive questions for deeper analysis."""
+        try:
+            prompt = f"""
+            {prompt_instruction}
+            
+            As an expert analyst, create thoughtful questions about this content for a {persona} who needs to {job_to_be_done}.
+            
+            Document content:
+            {text[:2000]}
+            
+            Instructions:
+            1. Generate 4-6 really thoughtful questions that encourage deep thinking
+            2. Make questions interactive and designed for LLM engagement
+            3. Include different types: analytical, strategic, practical, critical
+            4. Provide 2-3 follow-up prompts for each question
+            5. Focus on questions that help achieve the job to be done
+            
+            Return your response as JSON with this structure:
+            {{
+                "questions": [
+                    {{
+                        "question": "Thoughtful question text",
+                        "type": "analytical|strategic|practical|critical",
+                        "follow_up_prompts": ["prompt 1", "prompt 2", "prompt 3"]
+                    }},
+                    ...
+                ]
+            }}
+            """
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content,
+                prompt
+            )
+            
+            parsed_response = self._parse_json_response(response.text.strip(), {
+                "questions": [
+                    {
+                        "question": "Sample question",
+                        "type": "analytical",
+                        "follow_up_prompts": ["Follow-up prompt"]
+                    }
+                ]
+            })
+            
+            return parsed_response.get("questions", [])
+            
+        except Exception as e:
+            print(f"Error generating thoughtful questions: {e}")
+            return []
+
+    async def generate_related_connections(self, text: str, document_ids: list, persona: str, job_to_be_done: str) -> dict:
+        """Generate related connections including document sections and external links."""
+        try:
+            prompt = f"""
+            As an expert analyst, find related connections for a {persona} who needs to {job_to_be_done}.
+            
+            Current content:
+            {text[:1500]}
+            
+            Instructions:
+            1. Identify connections to other document sections (simulate based on content themes)
+            2. Suggest relevant external links and resources from the internet
+            3. Focus on connections that support the persona's objectives
+            4. Provide explanations for relevance
+            
+            Return your response as JSON with this structure:
+            {{
+                "document_connections": [
+                    {{
+                        "document_title": "Related Document Title",
+                        "section_title": "Section Name",
+                        "page_number": 5,
+                        "connection_type": "complementary|contradictory|supporting",
+                        "relevance_explanation": "Why this is relevant"
+                    }},
+                    ...
+                ],
+                "external_links": [
+                    {{
+                        "title": "Resource Title",
+                        "url": "https://example.com",
+                        "description": "What this resource provides",
+                        "relevance_score": 0.9
+                    }},
+                    ...
+                ]
+            }}
+            """
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content,
+                prompt
+            )
+            
+            return self._parse_json_response(response.text.strip(), {
+                "document_connections": [],
+                "external_links": []
+            })
+            
+        except Exception as e:
+            print(f"Error generating related connections: {e}")
+            return {
+                "document_connections": [],
+                "external_links": []
+            }
+
+    async def generate_did_you_know_facts(self, text: str, persona: str, job_to_be_done: str) -> list:
+        """Generate interesting facts from the internet related to the content."""
+        try:
+            prompt = f"""
+            As an expert researcher, find fascinating facts related to this content for a {persona} who needs to {job_to_be_done}.
+            
+            Content context:
+            {text[:1500]}
+            
+            Instructions:
+            1. Generate 4-6 fascinating facts from internet knowledge related to the content
+            2. Include different types: research findings, statistics, historical facts, trending information
+            3. Make facts relevant to the persona's interests and job objectives
+            4. Explain why each fact is relevant
+            5. Focus on surprising, educational, or actionable information
+            
+            Return your response as JSON with this structure:
+            {{
+                "facts": [
+                    {{
+                        "fact": "Fascinating fact statement",
+                        "source_type": "research|statistic|historical|trending",
+                        "relevance_explanation": "Why this fact matters to the persona"
+                    }},
+                    ...
+                ]
+            }}
+            """
+            
+            response = await asyncio.to_thread(
+                self.model.generate_content,
+                prompt
+            )
+            
+            parsed_response = self._parse_json_response(response.text.strip(), {
+                "facts": [
+                    {
+                        "fact": "Sample fact",
+                        "source_type": "research",
+                        "relevance_explanation": "Sample relevance"
+                    }
+                ]
+            })
+            
+            return parsed_response.get("facts", [])
+            
+        except Exception as e:
+            print(f"Error generating did you know facts: {e}")
+            return []

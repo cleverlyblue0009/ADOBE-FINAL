@@ -846,6 +846,36 @@ class FindConnectionsRequest(BaseModel):
     text: str
     document_id: str
 
+class DocumentSnippetRequest(BaseModel):
+    text: str
+    persona: str
+    job_to_be_done: str
+    document_context: Optional[str] = None
+
+class KeyInsightsRequest(BaseModel):
+    text: str
+    persona: str
+    job_to_be_done: str
+    document_context: Optional[str] = None
+
+class ThoughtfulQuestionsRequest(BaseModel):
+    text: str
+    persona: str
+    job_to_be_done: str
+    document_context: Optional[str] = None
+    prompt_instruction: str
+
+class RelatedConnectionsRequest(BaseModel):
+    text: str
+    document_ids: List[str]
+    persona: str
+    job_to_be_done: str
+
+class DidYouKnowFactsRequest(BaseModel):
+    text: str
+    persona: str
+    job_to_be_done: str
+
 @app.post("/define-terms")
 async def define_terms(request: DefineTermsRequest):
     """Define terms found in the selected text."""
@@ -880,6 +910,96 @@ async def find_connections(request: FindConnectionsRequest):
     except Exception as e:
         print(f"Error finding connections: {e}")
         raise HTTPException(status_code=500, detail="Failed to find connections")
+
+@app.post("/document-snippet")
+async def generate_document_snippet(request: DocumentSnippetRequest):
+    """Generate a concise snippet summarizing the entire document."""
+    if not llm_service.is_available():
+        raise HTTPException(status_code=503, detail="LLM service unavailable")
+    
+    try:
+        snippet_data = await llm_service.generate_document_snippet(
+            request.text, 
+            request.persona, 
+            request.job_to_be_done, 
+            request.document_context
+        )
+        return snippet_data
+    except Exception as e:
+        print(f"Error generating document snippet: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate document snippet")
+
+@app.post("/key-insights")
+async def generate_key_insights(request: KeyInsightsRequest):
+    """Generate key insights from the document content."""
+    if not llm_service.is_available():
+        raise HTTPException(status_code=503, detail="LLM service unavailable")
+    
+    try:
+        insights = await llm_service.generate_key_insights(
+            request.text, 
+            request.persona, 
+            request.job_to_be_done, 
+            request.document_context
+        )
+        return {"key_insights": insights}
+    except Exception as e:
+        print(f"Error generating key insights: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate key insights")
+
+@app.post("/thoughtful-questions")
+async def generate_thoughtful_questions(request: ThoughtfulQuestionsRequest):
+    """Generate thoughtful, interactive questions for deeper analysis."""
+    if not llm_service.is_available():
+        raise HTTPException(status_code=503, detail="LLM service unavailable")
+    
+    try:
+        questions = await llm_service.generate_thoughtful_questions(
+            request.text, 
+            request.persona, 
+            request.job_to_be_done, 
+            request.document_context,
+            request.prompt_instruction
+        )
+        return {"questions": questions}
+    except Exception as e:
+        print(f"Error generating thoughtful questions: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate thoughtful questions")
+
+@app.post("/related-connections")
+async def generate_related_connections(request: RelatedConnectionsRequest):
+    """Generate related connections including document sections and external links."""
+    if not llm_service.is_available():
+        raise HTTPException(status_code=503, detail="LLM service unavailable")
+    
+    try:
+        connections = await llm_service.generate_related_connections(
+            request.text, 
+            request.document_ids, 
+            request.persona, 
+            request.job_to_be_done
+        )
+        return connections
+    except Exception as e:
+        print(f"Error generating related connections: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate related connections")
+
+@app.post("/did-you-know-facts")
+async def generate_did_you_know_facts(request: DidYouKnowFactsRequest):
+    """Generate interesting facts from the internet related to the content."""
+    if not llm_service.is_available():
+        raise HTTPException(status_code=503, detail="LLM service unavailable")
+    
+    try:
+        facts = await llm_service.generate_did_you_know_facts(
+            request.text, 
+            request.persona, 
+            request.job_to_be_done
+        )
+        return {"facts": facts}
+    except Exception as e:
+        print(f"Error generating did you know facts: {e}")
+        raise HTTPException(status_code=500, detail="Failed to generate did you know facts")
 
 @app.get("/health")
 async def health_check():

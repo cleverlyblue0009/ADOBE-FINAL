@@ -715,4 +715,151 @@ export interface MultiDocumentInsights {
   };
 }
 
+  async generateDocumentSnippet(
+    text: string,
+    persona: string,
+    jobToBeDone: string,
+    documentContext?: string
+  ): Promise<{ snippet: string; key_points: string[] }> {
+    const response = await fetch(`${this.baseUrl}/document-snippet`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        persona,
+        job_to_be_done: jobToBeDone,
+        document_context: documentContext,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate document snippet: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async generateKeyInsights(
+    text: string,
+    persona: string,
+    jobToBeDone: string,
+    documentContext?: string
+  ): Promise<Array<{ insight: string; importance: 'high' | 'medium' | 'low'; page_reference?: number }>> {
+    const response = await fetch(`${this.baseUrl}/key-insights`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        persona,
+        job_to_be_done: jobToBeDone,
+        document_context: documentContext,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate key insights: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.key_insights;
+  }
+
+  async generateThoughtfulQuestions(
+    text: string,
+    persona: string,
+    jobToBeDone: string,
+    documentContext?: string
+  ): Promise<Array<{ question: string; type: 'analytical' | 'strategic' | 'practical' | 'critical'; follow_up_prompts: string[] }>> {
+    const response = await fetch(`${this.baseUrl}/thoughtful-questions`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        persona,
+        job_to_be_done: jobToBeDone,
+        document_context: documentContext,
+        prompt_instruction: "Generate really thoughtful questions that encourage deep thinking and user interaction. These questions should be designed for an LLM to engage with and provide meaningful responses."
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate thoughtful questions: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.questions;
+  }
+
+  async generateRelatedConnections(
+    text: string,
+    documentIds: string[],
+    persona: string,
+    jobToBeDone: string
+  ): Promise<{
+    document_connections: Array<{
+      document_title: string;
+      section_title: string;
+      page_number: number;
+      connection_type: string;
+      relevance_explanation: string;
+    }>;
+    external_links: Array<{
+      title: string;
+      url: string;
+      description: string;
+      relevance_score: number;
+    }>;
+  }> {
+    const response = await fetch(`${this.baseUrl}/related-connections`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        document_ids: documentIds,
+        persona,
+        job_to_be_done: jobToBeDone,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate related connections: ${response.statusText}`);
+    }
+
+    return response.json();
+  }
+
+  async generateDidYouKnowFacts(
+    text: string,
+    persona: string,
+    jobToBeDone: string
+  ): Promise<Array<{ fact: string; source_type: 'research' | 'statistic' | 'historical' | 'trending'; relevance_explanation: string }>> {
+    const response = await fetch(`${this.baseUrl}/did-you-know-facts`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        text,
+        persona,
+        job_to_be_done: jobToBeDone,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Failed to generate did you know facts: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    return data.facts;
+  }
+}
+
 export const apiService = new ApiService();
