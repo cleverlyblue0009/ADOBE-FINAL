@@ -29,6 +29,7 @@ import { HoverTooltip, useHoverTooltips } from './HoverTooltip';
 import { DownloadManager } from './DownloadManager';
 import { AIInsightsModal } from './AIInsightsModal';
 import { EnhancedContextMenu } from './EnhancedContextMenu';
+import { EnhancedTextSelectionMenu } from './EnhancedTextSelectionMenu';
 import { TodoistStylePopup } from './TodoistStylePopup';
 import { Highlight } from './PDFReader';
 import { customPdfHighlighter } from '@/lib/customPdfHighlighter';
@@ -609,16 +610,14 @@ export function EnhancedPDFViewer({
         onTermLookup={handleTermLookup}
       />
 
-      {/* Enhanced Context Menu */}
-      <EnhancedContextMenu
+      {/* Enhanced Text Selection Menu */}
+      <EnhancedTextSelectionMenu
         selectedText={contextMenuState.selectedText}
         position={contextMenuState.position}
-        pageNumber={contextMenuState.pageNumber}
-        onClose={handleContextMenuClose}
+        pageContext={pageTexts.get(contextMenuState.pageNumber) || ''}
+        documentId={documentUrl}
         onHighlight={handleHighlight}
-        onOpenAIInsights={(text) => handleOpenPopup('insights', text)}
-        onOpenSimplify={(text) => handleOpenPopup('simplify', text)}
-        onOpenTranslate={(text) => handleOpenPopup('translate', text)}
+        onClose={handleContextMenuClose}
       />
 
       {/* Todoist Style Popups */}
