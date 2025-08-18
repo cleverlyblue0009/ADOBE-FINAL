@@ -324,15 +324,15 @@ export function EnhancedLeftPanel({
           )}
           {!hasChildren && <div className="w-4 flex-shrink-0" />}
           
-          <div className="flex-1 min-w-0 overflow-hidden">
+          <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between gap-2">
-              <span className={`text-sm leading-tight break-words ${
+              <span className={`text-sm leading-tight break-words hyphens-auto ${
                 depth === 0 ? 'font-medium' : 
                 depth === 1 ? 'font-normal' : 'text-gray-600'
               } ${isGeneratedItem ? 'italic text-gray-600' : ''}`}>
                 {item.title}
               </span>
-              <Badge variant="outline" className="text-xs flex-shrink-0">
+              <Badge variant="outline" className="text-xs flex-shrink-0 ml-1">
                 {item.page}
               </Badge>
             </div>
@@ -364,7 +364,7 @@ export function EnhancedLeftPanel({
       <div className="flex-shrink-0 p-4 border-b border-border-subtle">
         <div className="flex items-center gap-2 mb-4">
           <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />
-          <h3 className="font-semibold text-text-primary truncate">Navigation</h3>
+          <h3 className="font-semibold text-text-primary">Navigation</h3>
         </div>
 
         {/* Current Session Info */}
@@ -374,12 +374,12 @@ export function EnhancedLeftPanel({
               <div className="flex items-center gap-2 mb-2">
                 <span className="text-lg flex-shrink-0">{getPersonaIcon(persona)}</span>
                 <div className="flex-1 min-w-0 overflow-hidden">
-                  <p className="text-sm font-medium capitalize truncate">{persona} Mode</p>
-                  <p className="text-xs text-gray-600 truncate">{jobToBeDone}</p>
+                  <p className="text-sm font-medium capitalize break-words">{persona} Mode</p>
+                  <p className="text-xs text-gray-600 break-words leading-tight">{jobToBeDone}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-gray-500">
-                <span className="truncate">Page {readingSession.currentPage} of {readingSession.totalPages}</span>
+                <span className="break-words">Page {readingSession.currentPage} of {readingSession.totalPages}</span>
                 <span className="flex-shrink-0 ml-2">{readingSession.progress}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
@@ -437,7 +437,7 @@ export function EnhancedLeftPanel({
                       title={action.description}
                     >
                       <Icon className="h-4 w-4 flex-shrink-0" />
-                      <span className="text-xs text-center leading-tight break-words">{action.label}</span>
+                      <span className="text-xs text-center leading-tight break-words hyphens-auto">{action.label}</span>
                     </Button>
                   );
                 })}
@@ -585,11 +585,11 @@ export function EnhancedLeftPanel({
                       onClick={() => handleDocumentChange(doc)}
                       className="w-full justify-start h-auto p-2"
                     >
-                      <div className="flex-1 text-left min-w-0 overflow-hidden">
-                        <div className="text-sm font-medium truncate">
+                      <div className="flex-1 text-left min-w-0">
+                        <div className="text-sm font-medium break-words leading-tight">
                           {doc.name}
                         </div>
-                        <div className="text-xs text-gray-500 truncate">
+                        <div className="text-xs text-gray-500 break-words">
                           {doc.outline?.length || 0} sections
                         </div>
                       </div>

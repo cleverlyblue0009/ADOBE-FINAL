@@ -67,7 +67,7 @@ export function EnhancedHighlightFlashcards({
       learningTip: generateLearningTip(highlight, persona, jobToBeDone),
       relatedConcepts: generateRelatedConcepts(highlight.text),
       difficulty: getDifficultyLevel(highlight.text),
-      studyProgress: Math.floor(Math.random() * 100) // Mock progress
+      studyProgress: Math.min(Math.round(highlight.relevanceScore * 100), 95) // Based on relevance score
     }));
     
     setFlashcards(enhancedFlashcards);
@@ -82,14 +82,27 @@ export function EnhancedHighlightFlashcards({
   };
 
   const generateLearningTip = (highlight: Highlight, persona?: string, jobToBeDone?: string): string => {
-    const tips = [
-      `As a ${persona || 'professional'}, focus on how this applies to ${jobToBeDone || 'your objectives'}`,
-      'Try to connect this concept with your existing knowledge',
-      'Consider the practical implications of this information',
-      'Think about how you might explain this to a colleague',
-      'Identify the key action items from this passage'
-    ];
-    return tips[Math.floor(Math.random() * tips.length)];
+    const text = highlight.text.toLowerCase();
+    const keyWords = text.split(' ').filter(word => word.length > 4);
+    
+    // Generate contextual tips based on highlight content and persona
+    if (text.includes('important') || text.includes('key') || text.includes('critical')) {
+      return `This appears to be a critical concept for ${persona || 'professionals'} working on ${jobToBeDone || 'similar objectives'}. Consider how it impacts your current approach.`;
+    }
+    
+    if (text.includes('process') || text.includes('method') || text.includes('approach')) {
+      return `This process-related information could be directly applicable to your ${jobToBeDone || 'work'}. Think about implementation steps.`;
+    }
+    
+    if (text.includes('data') || text.includes('research') || text.includes('study')) {
+      return `As a ${persona || 'professional'}, consider how this evidence supports or challenges your current understanding.`;
+    }
+    
+    if (keyWords.length > 0) {
+      return `Focus on how the concept of "${keyWords[0]}" relates to your role as ${persona || 'a professional'} and your ${jobToBeDone || 'objectives'}.`;
+    }
+    
+    return `Consider the practical implications of this information for your work as ${persona || 'a professional'} focused on ${jobToBeDone || 'your goals'}.`;
   };
 
   const generateRelatedConcepts = (text: string): string[] => {
@@ -249,7 +262,8 @@ export function EnhancedHighlightFlashcards({
 
       {/* Flashcard Display */}
       {studyMode && currentCard ? (
-        <div className="flex-1 p-4">
+        <ScrollArea className="flex-1">
+          <div className="p-4">
           {/* Navigation */}
           <div className="flex items-center justify-between mb-4">
             <Button
@@ -369,7 +383,8 @@ export function EnhancedHighlightFlashcards({
               <Trash2 className="h-4 w-4" />
             </Button>
           </div>
-        </div>
+          </div>
+        </ScrollArea>
       ) : (
         /* List View */
         <ScrollArea className="flex-1">

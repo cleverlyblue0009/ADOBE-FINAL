@@ -89,49 +89,39 @@ export function EnhancedTextSelectionMenu({
     setIsTyping(true);
     
     try {
-      // Simulate AI processing delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Try to use API service first
+      let generatedInsights: AIInsight[] = [];
       
-      const mockInsights: AIInsight[] = [
-        {
-          id: 'insight-1',
-          type: 'summary',
-          title: 'Document Summary',
-          content: `This passage discusses key concepts related to ${selectedText.split(' ').slice(0, 3).join(' ')}. The content provides essential information that supports the main thesis and offers valuable insights for understanding the broader context.`,
-          relevanceScore: 0.95,
-          tags: ['analysis', 'key-point'],
-          pageReferences: [1, 2]
-        },
-        {
-          id: 'insight-2',
-          type: 'key-takeaway',
-          title: 'Key Insight',
-          content: `The primary takeaway emphasizes the importance of ${selectedText.split(' ').slice(1, 4).join(' ')}. This insight is particularly relevant for decision-making and strategic planning processes.`,
-          relevanceScore: 0.88,
-          tags: ['important', 'takeaway'],
-          pageReferences: [1]
-        },
-        {
-          id: 'insight-3',
-          type: 'question',
-          title: 'Critical Question',
-          content: `How does this information align with your current objectives? Consider: What are the implications of ${selectedText.split(' ').slice(0, 4).join(' ')} for your work? How might this affect your decision-making process?`,
-          relevanceScore: 0.82,
-          tags: ['question', 'reflection'],
-          pageReferences: [1]
-        },
-        {
-          id: 'insight-4',
-          type: 'action-item',
-          title: 'Recommended Action',
-          content: `Based on this analysis, consider implementing strategies that leverage these insights. Review related documentation and cross-reference with your current objectives.`,
-          relevanceScore: 0.79,
-          tags: ['action', 'next-steps'],
-          pageReferences: [1]
+      try {
+        const response = await apiService.generateInsights(selectedText, {
+          context: pageContext,
+          documentId
+        });
+        
+        if (response && response.length > 0) {
+          generatedInsights = response.map((insight: any, index: number) => ({
+            id: `api-${index}`,
+            type: insight.type || 'summary',
+            title: insight.title || `Insight ${index + 1}`,
+            content: insight.content || insight.text || '',
+            relevanceScore: insight.relevance || 0.8,
+            tags: insight.tags || ['analysis'],
+            pageReferences: insight.pageReferences || [1]
+          }));
         }
-      ];
+      } catch (apiError) {
+        console.log('API unavailable, generating contextual insights');
+      }
       
-      setInsights(mockInsights);
+      // If API failed, generate intelligent insights from selected text
+      if (generatedInsights.length === 0) {
+        generatedInsights = generateContextualInsights(selectedText, pageContext);
+      }
+      
+      // Simulate typing effect for better UX
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      setInsights(generatedInsights);
       setIsTyping(false);
       
     } catch (error) {
@@ -145,6 +135,94 @@ export function EnhancedTextSelectionMenu({
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Generate contextual insights from selected text
+  const generateContextualInsights = (text: string, context?: string): AIInsight[] => {
+    const words = text.toLowerCase().split(/\s+/);
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 5);
+    const keyTerms = extractKeyTerms(text);
+    const insights: AIInsight[] = [];
+    
+    // Summary insight
+    insights.push({
+      id: 'summary-1',
+      type: 'summary',
+      title: 'Text Analysis',
+      content: `This ${words.length}-word passage focuses on ${keyTerms.slice(0, 2).join(' and ')}. ${sentences.length > 1 ? 'It contains multiple key points that' : 'The content'} provides important information for understanding the topic.`,
+      relevanceScore: 0.9,
+      tags: ['summary', 'analysis'],
+      pageReferences: [1]
+    });
+
+    // Key takeaway from the text
+    if (sentences.length > 0) {
+      const mainSentence = sentences.reduce((longest, current) => 
+        current.length > longest.length ? current : longest
+      );
+      
+      insights.push({
+        id: 'takeaway-1',
+        type: 'key-takeaway',
+        title: 'Primary Insight',
+        content: `${mainSentence.trim()}${mainSentence.trim().endsWith('.') ? '' : '.'} This represents a key concept that deserves attention and consideration.`,
+        relevanceScore: 0.85,
+        tags: ['key-point', 'important'],
+        pageReferences: [1]
+      });
+    }
+
+    // Generate a relevant question
+    const questionStarters = [
+      'How does this information relate to',
+      'What are the implications of',
+      'How might you apply',
+      'What additional context is needed for'
+    ];
+    
+    const randomStarter = questionStarters[Math.floor(Math.random() * questionStarters.length)];
+    insights.push({
+      id: 'question-1',
+      type: 'question',
+      title: 'Reflection Point',
+      content: `${randomStarter} ${keyTerms[0] || 'this concept'}? Consider how this information fits into your broader understanding and current objectives.`,
+      relevanceScore: 0.8,
+      tags: ['question', 'reflection'],
+      pageReferences: [1]
+    });
+
+    // Action item
+    insights.push({
+      id: 'action-1',
+      type: 'action-item',
+      title: 'Next Steps',
+      content: `Consider researching more about ${keyTerms.slice(0, 2).join(' and ')}. Look for additional sources that expand on these concepts and note how they relate to your current work.`,
+      relevanceScore: 0.75,
+      tags: ['action', 'follow-up'],
+      pageReferences: [1]
+    });
+
+    return insights;
+  };
+
+  // Extract key terms from text
+  const extractKeyTerms = (text: string): string[] => {
+    const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those']);
+    
+    const words = text.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 2 && !commonWords.has(word));
+    
+    const wordFreq = words.reduce((freq, word) => {
+      freq[word] = (freq[word] || 0) + 1;
+      return freq;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(wordFreq)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
+      .map(([word]) => word);
   };
 
   const handleCopy = async () => {
