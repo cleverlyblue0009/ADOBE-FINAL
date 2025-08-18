@@ -85,7 +85,7 @@ export interface Highlight {
   id: string;
   text: string;
   page: number;
-  color: 'primary' | 'secondary' | 'tertiary' | 'quaternary';
+  color: 'primary' | 'secondary' | 'tertiary' | 'quaternary' | 'yellow' | 'green' | 'blue' | 'pink';
   relevanceScore: number;
   explanation: string;
 }
@@ -656,6 +656,10 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               goToSection={null} // Will be updated when section navigation is triggered
               persona={persona}
               jobToBeDone={jobToBeDone}
+              onOpenSidebar={(panelType) => {
+                setActiveRightPanel(panelType);
+                setRightPanelOpen(true);
+              }}
             />
           ) : (
             <div className="flex items-center justify-center h-full">
