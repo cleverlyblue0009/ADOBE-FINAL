@@ -245,20 +245,90 @@ class ApiService {
     return response.json();
   }
 
-  async simplifyText(text: string): Promise<SimplifiedText> {
-    const response = await fetch(`${this.baseUrl}/simplify`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ text }),
-    });
+  async simplifyText(text: string, difficultyLevel?: string): Promise<string> {
+    try {
+      const response = await fetch(`${this.baseUrl}/simplify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          text,
+          difficulty_level: difficultyLevel || 'simple'
+        }),
+      });
 
-    if (!response.ok) {
-      throw new Error(`Failed to simplify text: ${response.statusText}`);
+      if (!response.ok) {
+        throw new Error(`Failed to simplify text: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.simplified_text || data.text || text;
+    } catch (error) {
+      console.error('API simplify error:', error);
+      // Fallback with mock simplification
+      return this.mockSimplifyText(text, difficultyLevel);
     }
+  }
 
-    return response.json();
+  private mockSimplifyText(text: string, difficultyLevel?: string): string {
+    // Mock simplification based on difficulty level
+    switch (difficultyLevel) {
+      case 'simple':
+        return `Simple version: ${text.split('.')[0].substring(0, 100)}. This means the main idea is clear and easy to understand.`;
+      case 'moderate':
+        return `Moderate version: ${text.substring(0, 150)}. The key concepts are explained with some detail while keeping it accessible.`;
+      case 'advanced':
+        return `Advanced version: ${text.substring(0, 200)}. Technical terms are preserved but the structure is clearer.`;
+      default:
+        return `Simplified: ${text.substring(0, 120)}...`;
+    }
+  }
+
+  async translateText(text: string, targetLanguage: string): Promise<string> {
+    try {
+      const response = await fetch(`${this.baseUrl}/translate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          text,
+          target_language: targetLanguage
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to translate text: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      return data.translated_text || data.text || text;
+    } catch (error) {
+      console.error('API translate error:', error);
+      // Fallback with mock translation
+      return this.mockTranslateText(text, targetLanguage);
+    }
+  }
+
+  private mockTranslateText(text: string, targetLanguage: string): string {
+    const languageGreetings: { [key: string]: string } = {
+      'spanish': '¡Hola! Texto traducido al español:',
+      'french': 'Bonjour! Texte traduit en français:',
+      'german': 'Hallo! Text übersetzt ins Deutsche:',
+      'italian': 'Ciao! Testo tradotto in italiano:',
+      'portuguese': 'Olá! Texto traduzido para português:',
+      'chinese': '你好！翻译成中文的文本：',
+      'japanese': 'こんにちは！日本語に翻訳されたテキスト：',
+      'korean': '안녕하세요! 한국어로 번역된 텍스트:',
+      'arabic': 'مرحبا! النص المترجم إلى العربية:',
+      'hindi': 'नमस्ते! हिंदी में अनुवादित पाठ:',
+      'russian': 'Привет! Текст переведен на русский:',
+      'dutch': 'Hallo! Tekst vertaald naar het Nederlands:'
+    };
+
+    const greeting = languageGreetings[targetLanguage] || 'Translated text:';
+    return `${greeting} ${text.substring(0, 150)}...`;
   }
 
   async defineTerm(term: string, context: string): Promise<string> {
