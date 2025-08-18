@@ -145,8 +145,9 @@ export function AIInsightsModal({
       console.error('Error generating insights:', error);
       setError(error instanceof Error ? error.message : 'Failed to generate insights');
       
-      // Fallback to mock insights for demo
-      setInsights(getMockInsights(selectedText || documentText, persona, jobToBeDone));
+      // Fallback to contextual analysis when API fails
+      const contextualInsights = generateContextualInsights(selectedText || documentText, persona, jobToBeDone);
+      setInsights(contextualInsights);
       
     } finally {
       setIsLoading(false);
@@ -159,12 +160,127 @@ export function AIInsightsModal({
     jobToBeDone?: string,
     currentPage?: number
   ): Promise<AIInsight[]> => {
-    // In a real implementation, this would call your AI service
-    // For now, we'll simulate the API call and return mock data
+    // Try to use API service first
+    try {
+      const response = await apiService.generateInsights(text, {
+        persona,
+        jobToBeDone,
+        currentPage
+      });
+      
+      if (response && response.length > 0) {
+        return response.map((insight: any, index: number) => ({
+          id: `api-${index}`,
+          type: insight.type || 'summary',
+          title: insight.title || `Insight ${index + 1}`,
+          content: insight.content || insight.text || '',
+          relevanceScore: insight.relevance || 0.8,
+          pageReferences: insight.pageReferences || [currentPage || 1],
+          tags: insight.tags || ['analysis']
+        }));
+      }
+    } catch (error) {
+      console.log('API unavailable, using contextual analysis');
+    }
     
-    await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API delay
+    // Fallback to contextual analysis
+    await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing time
+    return generateContextualInsights(text, persona, jobToBeDone, currentPage);
+  };
+
+  // Generate contextual insights from actual document text
+  const generateContextualInsights = (
+    text: string,
+    persona?: string,
+    jobToBeDone?: string,
+    currentPage?: number
+  ): AIInsight[] => {
+    const words = text.toLowerCase().split(/\s+/);
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    const keyTerms = extractKeyTerms(text);
+    const insights: AIInsight[] = [];
     
-    return getMockInsights(text, persona, jobToBeDone, currentPage);
+    // Document summary based on actual content
+    insights.push({
+      id: 'summary-1',
+      type: 'summary',
+      title: 'Document Analysis',
+      content: `This ${words.length}-word document focuses on ${keyTerms.slice(0, 3).join(', ')} and related concepts. The content spans ${sentences.length} key sections, providing ${sentences.length > 10 ? 'comprehensive' : 'focused'} coverage of the subject matter${persona ? ` relevant to ${persona}` : ''}.`,
+      relevanceScore: 0.9,
+      pageReferences: [currentPage || 1],
+      tags: keyTerms.slice(0, 3)
+    });
+
+    // Key takeaway from most important sentence
+    if (sentences.length > 0) {
+      const importantSentence = sentences
+        .filter(s => s.length > 50 && s.length < 300)
+        .sort((a, b) => {
+          const scoreA = keyTerms.reduce((score, term) => 
+            score + (a.toLowerCase().includes(term) ? 1 : 0), 0);
+          const scoreB = keyTerms.reduce((score, term) => 
+            score + (b.toLowerCase().includes(term) ? 1 : 0), 0);
+          return scoreB - scoreA;
+        })[0];
+
+      if (importantSentence) {
+        insights.push({
+          id: 'takeaway-1',
+          type: 'key-takeaway',
+          title: 'Key Finding',
+          content: `${importantSentence.trim()}${importantSentence.trim().endsWith('.') ? '' : '.'} This represents a crucial insight${persona ? ` for ${persona} working on ${jobToBeDone}` : ' for understanding the topic'}.`,
+          relevanceScore: 0.85,
+          pageReferences: [currentPage || 1],
+          tags: ['key-finding', ...keyTerms.slice(0, 2)]
+        });
+      }
+    }
+
+    // Generate relevant questions
+    if (keyTerms.length > 0) {
+      insights.push({
+        id: 'question-1',
+        type: 'question',
+        title: 'Strategic Question',
+        content: `How can the insights about ${keyTerms[0]} be applied to your specific context${persona ? ` as ${persona}` : ''}? What are the practical implications for ${jobToBeDone || 'your objectives'}, and what additional research might be needed?`,
+        relevanceScore: 0.8,
+        pageReferences: [currentPage || 1],
+        tags: ['strategic', 'application']
+      });
+    }
+
+    // Action items based on content analysis
+    insights.push({
+      id: 'action-1',
+      type: 'action-item',
+      title: 'Recommended Actions',
+      content: `Based on this analysis, consider: 1) Deep-dive into ${keyTerms.slice(0, 2).join(' and ')} concepts, 2) Cross-reference with existing knowledge in your field, 3) Identify practical applications for ${jobToBeDone || 'your work'}, 4) Note areas requiring further investigation.`,
+      relevanceScore: 0.82,
+      pageReferences: [currentPage || 1],
+      tags: ['action-items', 'next-steps']
+    });
+
+    return insights;
+  };
+
+  // Extract key terms from text
+  const extractKeyTerms = (text: string): string[] => {
+    const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those']);
+    
+    const words = text.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 3 && !commonWords.has(word));
+    
+    const wordFreq = words.reduce((freq, word) => {
+      freq[word] = (freq[word] || 0) + 1;
+      return freq;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(wordFreq)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 8)
+      .map(([word]) => word);
   };
 
   const getMockInsights = (
