@@ -9,7 +9,8 @@ import {
   Copy,
   Loader2,
   X,
-  Highlighter
+  Highlighter,
+  Languages
 } from 'lucide-react';
 import { apiService } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
@@ -65,7 +66,7 @@ export function TextSelectionMenu({
     };
   }, [onClose]);
 
-  const handleAIAction = async (action: 'simplify' | 'insights' | 'define' | 'connections') => {
+  const handleAIAction = async (action: 'simplify' | 'insights' | 'define' | 'connections' | 'translate') => {
     if (!selectedText.trim()) return;
     
     setIsLoading(true);
@@ -94,6 +95,11 @@ export function TextSelectionMenu({
           result = await apiService.findConnections(selectedText, documentId || '');
           title = '🔗 Related Connections';
           type = 'connection';
+          break;
+        case 'translate':
+          result = await apiService.translateText(selectedText, 'spanish'); // Default to Spanish
+          title = '🌍 Translated Text';
+          type = 'connection'; // Reuse connection type for now
           break;
         default:
           throw new Error('Unknown action');
@@ -177,64 +183,78 @@ export function TextSelectionMenu({
         <div className="p-2">
           {/* Main Actions Row */}
           <div className="flex items-center gap-1 mb-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleAIAction('simplify')}
-              disabled={isLoading}
-              className="gap-2 hover:bg-indigo-600/20 text-indigo-300 hover:text-indigo-200"
-              title="Simplify Text"
-            >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Brain className="h-4 w-4" />}
-              <span className="text-xs">Simplify</span>
-            </Button>
+            <div className="grid grid-cols-3 gap-1">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleAIAction('simplify')}
+                disabled={isLoading}
+                className="flex flex-col gap-1 h-auto p-2 hover:bg-indigo-600/20 text-indigo-300 hover:text-indigo-200"
+                title="Simplify Text"
+              >
+                {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Brain className="h-3 w-3" />}
+                <span className="text-xs">Simplify</span>
+              </Button>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleAIAction('insights')}
-              disabled={isLoading}
-              className="gap-2 hover:bg-purple-600/20 text-purple-300 hover:text-purple-200"
-              title="Generate Insights"
-            >
-              <Lightbulb className="h-4 w-4" />
-              <span className="text-xs">Insights</span>
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleAIAction('insights')}
+                disabled={isLoading}
+                className="flex flex-col gap-1 h-auto p-2 hover:bg-purple-600/20 text-purple-300 hover:text-purple-200"
+                title="Generate Insights"
+              >
+                <Lightbulb className="h-3 w-3" />
+                <span className="text-xs">Insights</span>
+              </Button>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleAIAction('define')}
-              disabled={isLoading}
-              className="gap-2 hover:bg-cyan-600/20 text-cyan-300 hover:text-cyan-200"
-              title="Define Terms"
-            >
-              <BookOpen className="h-4 w-4" />
-              <span className="text-xs">Define</span>
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleAIAction('define')}
+                disabled={isLoading}
+                className="flex flex-col gap-1 h-auto p-2 hover:bg-cyan-600/20 text-cyan-300 hover:text-cyan-200"
+                title="Define Terms"
+              >
+                <BookOpen className="h-3 w-3" />
+                <span className="text-xs">Define</span>
+              </Button>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => handleAIAction('connections')}
-              disabled={isLoading}
-              className="gap-2 hover:bg-green-600/20 text-green-300 hover:text-green-200"
-              title="Find Connections"
-            >
-              <Link className="h-4 w-4" />
-              <span className="text-xs">Connect</span>
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleAIAction('connections')}
+                disabled={isLoading}
+                className="flex flex-col gap-1 h-auto p-2 hover:bg-green-600/20 text-green-300 hover:text-green-200"
+                title="Find Connections"
+              >
+                <Link className="h-3 w-3" />
+                <span className="text-xs">Connect</span>
+              </Button>
 
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={handleCopy}
-              className="gap-2 hover:bg-gray-600/20 text-gray-300 hover:text-gray-200"
-              title="Copy Text"
-            >
-              <Copy className="h-4 w-4" />
-              <span className="text-xs">Copy</span>
-            </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleCopy}
+                className="flex flex-col gap-1 h-auto p-2 hover:bg-gray-600/20 text-gray-300 hover:text-gray-200"
+                title="Copy Text"
+              >
+                <Copy className="h-3 w-3" />
+                <span className="text-xs">Copy</span>
+              </Button>
+
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => handleAIAction('translate')}
+                disabled={isLoading}
+                className="flex flex-col gap-1 h-auto p-2 hover:bg-orange-600/20 text-orange-300 hover:text-orange-200"
+                title="Translate Text"
+              >
+                <Languages className="h-3 w-3" />
+                <span className="text-xs">Translate</span>
+              </Button>
+            </div>
           </div>
 
           {/* Highlight Section */}

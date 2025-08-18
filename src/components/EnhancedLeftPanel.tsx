@@ -288,7 +288,7 @@ export function EnhancedLeftPanel({
   const renderOutlineItem = (item: OutlineItem, depth: number = 0) => {
     const hasChildren = item.children && item.children.length > 0;
     const isExpanded = expandedOutlineItems.has(item.id);
-    const paddingLeft = depth * 16 + 8;
+    const paddingLeft = Math.min(depth * 12 + 8, 40); // Limit max padding
     const isActive = Math.abs(currentPage - item.page) <= 1;
     const isGeneratedItem = item.id.startsWith('page-') || item.id.startsWith('section-') || item.id.startsWith('chapter-');
 
@@ -296,7 +296,7 @@ export function EnhancedLeftPanel({
       <div key={item.id} className="w-full">
         <div 
           className={`
-            flex items-center gap-2 py-2 px-2 rounded cursor-pointer transition-colors
+            flex items-start gap-2 py-2 px-2 rounded cursor-pointer transition-colors
             ${isActive 
               ? 'bg-blue-50 border-l-2 border-l-blue-500 text-blue-900' 
               : 'hover:bg-gray-50 dark:hover:bg-gray-800'
@@ -310,7 +310,7 @@ export function EnhancedLeftPanel({
             <Button
               variant="ghost"
               size="sm"
-              className="h-4 w-4 p-0"
+              className="h-4 w-4 p-0 flex-shrink-0 mt-0.5"
               onClick={(e) => {
                 e.stopPropagation();
                 toggleOutlineItem(item.id);
@@ -322,17 +322,17 @@ export function EnhancedLeftPanel({
               }
             </Button>
           )}
-          {!hasChildren && <div className="w-4" />}
+          {!hasChildren && <div className="w-4 flex-shrink-0" />}
           
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center justify-between">
-              <span className={`text-sm truncate ${
+          <div className="flex-1 min-w-0 overflow-hidden">
+            <div className="flex items-start justify-between gap-2">
+              <span className={`text-sm leading-tight break-words ${
                 depth === 0 ? 'font-medium' : 
                 depth === 1 ? 'font-normal' : 'text-gray-600'
               } ${isGeneratedItem ? 'italic text-gray-600' : ''}`}>
                 {item.title}
               </span>
-              <Badge variant="outline" className="text-xs ml-2">
+              <Badge variant="outline" className="text-xs flex-shrink-0">
                 {item.page}
               </Badge>
             </div>
@@ -340,7 +340,7 @@ export function EnhancedLeftPanel({
         </div>
         
         {hasChildren && isExpanded && (
-          <div className="ml-2">
+          <div className="overflow-hidden">
             {item.children!.map(child => renderOutlineItem(child, depth + 1))}
           </div>
         )}
@@ -359,12 +359,12 @@ export function EnhancedLeftPanel({
   };
 
   return (
-    <div className="flex flex-col h-full bg-background border-r border-border-subtle">
+    <div className="flex flex-col h-full bg-background border-r border-border-subtle w-80 min-w-80 max-w-80 overflow-hidden">
       {/* Header */}
       <div className="flex-shrink-0 p-4 border-b border-border-subtle">
         <div className="flex items-center gap-2 mb-4">
-          <FileText className="h-5 w-5 text-blue-600" />
-          <h3 className="font-semibold text-text-primary">Navigation</h3>
+          <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />
+          <h3 className="font-semibold text-text-primary truncate">Navigation</h3>
         </div>
 
         {/* Current Session Info */}
@@ -372,15 +372,15 @@ export function EnhancedLeftPanel({
           <Card className="mb-4">
             <CardContent className="p-3">
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">{getPersonaIcon(persona)}</span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium capitalize">{persona} Mode</p>
+                <span className="text-lg flex-shrink-0">{getPersonaIcon(persona)}</span>
+                <div className="flex-1 min-w-0 overflow-hidden">
+                  <p className="text-sm font-medium capitalize truncate">{persona} Mode</p>
                   <p className="text-xs text-gray-600 truncate">{jobToBeDone}</p>
                 </div>
               </div>
               <div className="flex items-center justify-between text-xs text-gray-500">
-                <span>Page {readingSession.currentPage} of {readingSession.totalPages}</span>
-                <span>{readingSession.progress}%</span>
+                <span className="truncate">Page {readingSession.currentPage} of {readingSession.totalPages}</span>
+                <span className="flex-shrink-0 ml-2">{readingSession.progress}%</span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-1.5 mt-2">
                 <div 
@@ -404,8 +404,8 @@ export function EnhancedLeftPanel({
         </div>
       </div>
 
-      <ScrollArea className="flex-1">
-        <div className="p-4 space-y-4">
+      <ScrollArea className="flex-1 overflow-hidden">
+        <div className="p-4 space-y-4 min-w-0">
           {/* Quick Actions */}
           <Collapsible 
             open={expandedSections.has('actions')}
@@ -433,11 +433,11 @@ export function EnhancedLeftPanel({
                       variant="outline"
                       size="sm"
                       onClick={action.action}
-                      className="flex flex-col gap-1 h-auto p-3"
+                      className="flex flex-col gap-1 h-auto p-3 min-w-0"
                       title={action.description}
                     >
-                      <Icon className="h-4 w-4" />
-                      <span className="text-xs">{action.label}</span>
+                      <Icon className="h-4 w-4 flex-shrink-0" />
+                      <span className="text-xs text-center leading-tight break-words">{action.label}</span>
                     </Button>
                   );
                 })}
@@ -585,16 +585,16 @@ export function EnhancedLeftPanel({
                       onClick={() => handleDocumentChange(doc)}
                       className="w-full justify-start h-auto p-2"
                     >
-                      <div className="flex-1 text-left">
+                      <div className="flex-1 text-left min-w-0 overflow-hidden">
                         <div className="text-sm font-medium truncate">
                           {doc.name}
                         </div>
-                        <div className="text-xs text-gray-500">
+                        <div className="text-xs text-gray-500 truncate">
                           {doc.outline?.length || 0} sections
                         </div>
                       </div>
                       {currentDocument?.id === doc.id && (
-                        <ArrowRight className="h-3 w-3 ml-2" />
+                        <ArrowRight className="h-3 w-3 ml-2 flex-shrink-0" />
                       )}
                     </Button>
                   ))}
