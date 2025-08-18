@@ -84,7 +84,7 @@ export interface Highlight {
   id: string;
   text: string;
   page: number;
-  color: 'primary' | 'secondary' | 'tertiary';
+  color: 'primary' | 'secondary' | 'tertiary' | 'quaternary';
   relevanceScore: number;
   explanation: string;
 }

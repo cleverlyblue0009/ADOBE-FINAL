@@ -49,6 +49,11 @@ export class CustomPdfHighlighter {
         border: 1px solid rgba(59, 130, 246, 0.6);
       }
       
+      .custom-pdf-highlight.quaternary {
+        background-color: rgba(251, 146, 60, 0.4);
+        border: 1px solid rgba(249, 115, 22, 0.6);
+      }
+      
       .custom-pdf-highlight:hover {
         opacity: 0.8;
         pointer-events: auto;
@@ -290,7 +295,7 @@ export class CustomPdfHighlighter {
   }
 
   // Create highlight from current selection
-  createHighlightFromSelection(color: 'primary' | 'secondary' | 'tertiary' = 'primary'): Highlight | null {
+  createHighlightFromSelection(color: 'primary' | 'secondary' | 'tertiary' | 'quaternary' = 'primary'): Highlight | null {
     const selection = this.getTextSelection();
     if (!selection || selection.text.length < 5) return null;
     
