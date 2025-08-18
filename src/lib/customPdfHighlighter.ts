@@ -28,36 +28,79 @@ export class CustomPdfHighlighter {
       .custom-pdf-highlight {
         position: absolute;
         pointer-events: none;
-        mix-blend-mode: multiply;
-        border-radius: 2px;
-        transition: opacity 0.2s ease-in-out;
+        border-radius: 3px;
+        transition: all 0.2s ease-in-out;
         z-index: 10;
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
       }
       
       .custom-pdf-highlight.primary {
-        background-color: rgba(254, 240, 138, 0.4);
-        border: 1px solid rgba(251, 191, 36, 0.6);
+        background-color: rgba(254, 240, 138, 0.6);
+        border: 1px solid rgba(251, 191, 36, 0.8);
+        box-shadow: 0 0 12px rgba(255, 255, 0, 0.3);
       }
       
       .custom-pdf-highlight.secondary {
-        background-color: rgba(134, 239, 172, 0.4);
-        border: 1px solid rgba(34, 197, 94, 0.6);
+        background-color: rgba(134, 239, 172, 0.6);
+        border: 1px solid rgba(34, 197, 94, 0.8);
+        box-shadow: 0 0 12px rgba(0, 255, 0, 0.3);
       }
       
       .custom-pdf-highlight.tertiary {
-        background-color: rgba(147, 197, 253, 0.4);
-        border: 1px solid rgba(59, 130, 246, 0.6);
+        background-color: rgba(147, 197, 253, 0.6);
+        border: 1px solid rgba(59, 130, 246, 0.8);
+        box-shadow: 0 0 12px rgba(0, 150, 255, 0.3);
       }
       
       .custom-pdf-highlight.quaternary {
-        background-color: rgba(251, 146, 60, 0.4);
-        border: 1px solid rgba(249, 115, 22, 0.6);
+        background-color: rgba(251, 146, 60, 0.6);
+        border: 1px solid rgba(249, 115, 22, 0.8);
+        box-shadow: 0 0 12px rgba(255, 165, 0, 0.3);
+      }
+      
+      /* Fluorescent highlight colors */
+      .custom-pdf-highlight.yellow {
+        background-color: rgba(255, 255, 0, 0.5);
+        border: 2px solid rgba(255, 255, 0, 0.8);
+        box-shadow: 0 0 15px rgba(255, 255, 0, 0.4);
+        animation: fluorescent-glow 2s ease-in-out infinite alternate;
+      }
+      
+      .custom-pdf-highlight.green {
+        background-color: rgba(0, 255, 0, 0.4);
+        border: 2px solid rgba(0, 255, 0, 0.8);
+        box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
+        animation: fluorescent-glow 2s ease-in-out infinite alternate;
+      }
+      
+      .custom-pdf-highlight.blue {
+        background-color: rgba(0, 150, 255, 0.4);
+        border: 2px solid rgba(0, 150, 255, 0.8);
+        box-shadow: 0 0 15px rgba(0, 150, 255, 0.4);
+        animation: fluorescent-glow 2s ease-in-out infinite alternate;
+      }
+      
+      .custom-pdf-highlight.pink {
+        background-color: rgba(255, 20, 147, 0.4);
+        border: 2px solid rgba(255, 20, 147, 0.8);
+        box-shadow: 0 0 15px rgba(255, 20, 147, 0.4);
+        animation: fluorescent-glow 2s ease-in-out infinite alternate;
+      }
+      
+      @keyframes fluorescent-glow {
+        0% {
+          box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
+        }
+        100% {
+          box-shadow: 0 0 25px rgba(255, 255, 255, 0.6);
+        }
       }
       
       .custom-pdf-highlight:hover {
-        opacity: 0.8;
+        opacity: 0.9;
         pointer-events: auto;
         cursor: pointer;
+        transform: scale(1.02);
       }
       
       .pdf-text-layer {
@@ -295,7 +338,7 @@ export class CustomPdfHighlighter {
   }
 
   // Create highlight from current selection
-  createHighlightFromSelection(color: 'primary' | 'secondary' | 'tertiary' = 'primary'): Highlight | null {
+  createHighlightFromSelection(color: 'primary' | 'secondary' | 'tertiary' | 'yellow' | 'green' | 'blue' | 'pink' = 'yellow'): Highlight | null {
     const selection = this.getTextSelection();
     if (!selection || selection.text.length < 5) return null;
     

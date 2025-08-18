@@ -28,6 +28,8 @@ import { TextHighlighter } from './TextHighlighter';
 import { HoverTooltip, useHoverTooltips } from './HoverTooltip';
 import { DownloadManager } from './DownloadManager';
 import { AIInsightsModal } from './AIInsightsModal';
+import { EnhancedContextMenu } from './EnhancedContextMenu';
+import { TodoistStylePopup } from './TodoistStylePopup';
 import { Highlight } from './PDFReader';
 import { customPdfHighlighter } from '@/lib/customPdfHighlighter';
 
@@ -41,6 +43,7 @@ interface EnhancedPDFViewerProps {
   goToSection?: { page: number; section?: string } | null;
   persona?: string;
   jobToBeDone?: string;
+  onOpenSidebar?: (panelType: 'insights' | 'simplifier' | 'highlights') => void;
 }
 
 export function EnhancedPDFViewer({
@@ -52,7 +55,8 @@ export function EnhancedPDFViewer({
   currentHighlightPage = 1,
   goToSection,
   persona,
-  jobToBeDone
+  jobToBeDone,
+  onOpenSidebar
 }: EnhancedPDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -66,6 +70,31 @@ export function EnhancedPDFViewer({
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentHighlights, setCurrentHighlights] = useState<Highlight[]>(highlights);
   const [isAIInsightsOpen, setIsAIInsightsOpen] = useState(false);
+  
+  // Enhanced context menu and popup states
+  const [contextMenuState, setContextMenuState] = useState<{
+    visible: boolean;
+    selectedText: string;
+    position: { x: number; y: number } | null;
+    pageNumber: number;
+  }>({
+    visible: false,
+    selectedText: '',
+    position: null,
+    pageNumber: 1
+  });
+  
+  const [popupState, setPopupState] = useState<{
+    type: 'simplify' | 'insights' | 'translate' | null;
+    isOpen: boolean;
+    selectedText: string;
+    pageNumber: number;
+  }>({
+    type: null,
+    isOpen: false,
+    selectedText: '',
+    pageNumber: 1
+  });
 
   const { toast } = useToast();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -124,6 +153,23 @@ export function EnhancedPDFViewer({
     if (textSelection && textSelection.text.length > 0) {
       console.log('Text selected:', textSelection.text);
       setSelectedText(textSelection.text);
+      
+      // Get selection position for context menu
+      const selection = window.getSelection();
+      const range = selection?.getRangeAt(0);
+      const rect = range?.getBoundingClientRect();
+      
+      if (rect) {
+        setContextMenuState({
+          visible: true,
+          selectedText: textSelection.text,
+          position: {
+            x: rect.left + (rect.width / 2),
+            y: rect.bottom + 10
+          },
+          pageNumber: textSelection.pageNumber
+        });
+      }
       
       // Call the parent's text selection handler
       if (onTextSelection) {
@@ -203,10 +249,20 @@ export function EnhancedPDFViewer({
       setTimeout(handleTextSelection, 50);
     };
 
+    const handleContextMenu = (e: MouseEvent) => {
+      const selection = window.getSelection();
+      if (selection && selection.toString().trim().length > 0) {
+        e.preventDefault();
+        handleTextSelection();
+      }
+    };
+
     document.addEventListener('mouseup', handleMouseUp);
+    document.addEventListener('contextmenu', handleContextMenu);
 
     return () => {
       document.removeEventListener('mouseup', handleMouseUp);
+      document.removeEventListener('contextmenu', handleContextMenu);
     };
   }, [handleTextSelection]);
 
@@ -219,6 +275,83 @@ export function EnhancedPDFViewer({
       }
     }
   }, [currentHighlights, currentPage]);
+
+  // Handle popup opening
+  const handleOpenPopup = useCallback((type: 'simplify' | 'insights' | 'translate', text: string) => {
+    setPopupState({
+      type,
+      isOpen: true,
+      selectedText: text,
+      pageNumber: currentPage
+    });
+    
+    // Auto-open corresponding sidebar tab
+    if (onOpenSidebar) {
+      switch (type) {
+        case 'insights':
+          onOpenSidebar('insights');
+          break;
+        case 'simplify':
+          onOpenSidebar('simplifier');
+          break;
+        // For translate, we could add a new panel or use insights
+        case 'translate':
+          onOpenSidebar('insights');
+          break;
+      }
+    }
+  }, [currentPage, onOpenSidebar]);
+
+  // Handle highlighting with fluorescent colors
+  const handleHighlight = useCallback((color: 'yellow' | 'green' | 'blue' | 'pink') => {
+    const highlight = customPdfHighlighter.createHighlightFromSelection(color);
+    
+    if (highlight) {
+      const newHighlights = [...currentHighlights, highlight];
+      setCurrentHighlights(newHighlights);
+      
+      // Apply the highlight immediately
+      setTimeout(() => {
+        const pageElement = document.querySelector(`[data-page-number="${currentPage}"]`) as HTMLElement;
+        if (pageElement) {
+          customPdfHighlighter.applyHighlights([highlight], currentPage, pageElement);
+        }
+      }, 100);
+      
+      // Clear text selection
+      window.getSelection()?.removeAllRanges();
+      
+      // Auto-open highlights sidebar
+      if (onOpenSidebar) {
+        onOpenSidebar('highlights');
+      }
+      
+      toast({
+        title: "Text Highlighted",
+        description: `Added ${color} highlight: "${highlight.text.substring(0, 30)}${highlight.text.length > 30 ? '...' : ''}"`,
+      });
+    }
+  }, [currentHighlights, currentPage, toast, onOpenSidebar]);
+
+  // Handle context menu close
+  const handleContextMenuClose = useCallback(() => {
+    setContextMenuState({
+      visible: false,
+      selectedText: '',
+      position: null,
+      pageNumber: 1
+    });
+  }, []);
+
+  // Handle popup close
+  const handlePopupClose = useCallback(() => {
+    setPopupState({
+      type: null,
+      isOpen: false,
+      selectedText: '',
+      pageNumber: 1
+    });
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -414,79 +547,56 @@ export function EnhancedPDFViewer({
           </div>
         </div>
 
-        {/* Main Content Area */}
-        <div className="flex flex-1 min-h-0">
-          {/* PDF Display */}
-          <div className="flex-1 overflow-auto relative bg-gray-100">
-            {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
-                <div className="text-center">
-                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-brand-primary" />
-                  <p className="text-sm text-text-secondary">Loading Enhanced PDF Viewer...</p>
-                </div>
-              </div>
-            )}
-
-            <div className="flex justify-center p-4">
-              <div className="relative">
-                <Document
-                  file={documentUrl}
-                  onLoadSuccess={onDocumentLoadSuccess}
-                  onLoadError={onDocumentLoadError}
-                  loading={
-                    <div className="flex items-center justify-center h-96">
-                      <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
-                    </div>
-                  }
-                >
-                  {/* Single Page Display - No Duplicates */}
-                  <Page
-                    pageNumber={currentPage}
-                    scale={zoom}
-                    rotate={rotation}
-                    loading={
-                      <div className="flex items-center justify-center h-96 bg-white border">
-                        <Loader2 className="h-6 w-6 animate-spin text-brand-primary" />
-                      </div>
-                    }
-                    className="shadow-lg"
-                    onRenderSuccess={() => {
-                      // Apply highlights and enable text selection when page renders
-                      setTimeout(() => {
-                        const pageElement = document.querySelector('.react-pdf__Page') as HTMLElement;
-                        if (pageElement) {
-                          pageElement.setAttribute('data-page-number', currentPage.toString());
-                          
-                          if (currentHighlights.length > 0) {
-                            customPdfHighlighter.applyHighlights(currentHighlights, currentPage, pageElement);
-                          }
-                          customPdfHighlighter.enableTextSelection();
-                        }
-                      }, 100);
-                    }}
-                  />
-                </Document>
+        {/* Main Content Area - Full Width PDF Display */}
+        <div className="flex-1 overflow-auto relative bg-gray-100">
+          {isLoading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin mx-auto mb-2 text-brand-primary" />
+                <p className="text-sm text-text-secondary">Loading Enhanced PDF Viewer...</p>
               </div>
             </div>
-          </div>
+          )}
 
-          {/* Smart Highlighting Panel */}
-          <div className="w-80 bg-surface-elevated border-l border-border-subtle overflow-y-auto">
-            <div className="p-4">
-              <div className="flex items-center gap-2 mb-4">
-                <Sparkles className="h-5 w-5 text-brand-primary" />
-                <h3 className="font-semibold text-text-primary">Smart Features</h3>
-              </div>
-              
-              <TextHighlighter
-                documentText={documentText}
-                pageTexts={pageTexts}
-                currentPage={currentPage}
-                persona={persona}
-                jobToBeDone={jobToBeDone}
-                onHighlightsGenerated={handleHighlightsGenerated}
-                existingHighlights={currentHighlights}
-              />
+          <div className="flex justify-center p-4">
+            <div className="relative">
+              <Document
+                file={documentUrl}
+                onLoadSuccess={onDocumentLoadSuccess}
+                onLoadError={onDocumentLoadError}
+                loading={
+                  <div className="flex items-center justify-center h-96">
+                    <Loader2 className="h-8 w-8 animate-spin text-brand-primary" />
+                  </div>
+                }
+              >
+                {/* Single Page Display - No Duplicates */}
+                <Page
+                  pageNumber={currentPage}
+                  scale={zoom}
+                  rotate={rotation}
+                  loading={
+                    <div className="flex items-center justify-center h-96 bg-white border">
+                      <Loader2 className="h-6 w-6 animate-spin text-brand-primary" />
+                    </div>
+                  }
+                  className="shadow-lg"
+                  onRenderSuccess={() => {
+                    // Apply highlights and enable text selection when page renders
+                    setTimeout(() => {
+                      const pageElement = document.querySelector('.react-pdf__Page') as HTMLElement;
+                      if (pageElement) {
+                        pageElement.setAttribute('data-page-number', currentPage.toString());
+                        
+                        if (currentHighlights.length > 0) {
+                          customPdfHighlighter.applyHighlights(currentHighlights, currentPage, pageElement);
+                        }
+                        customPdfHighlighter.enableTextSelection();
+                      }
+                    }, 100);
+                  }}
+                />
+              </Document>
             </div>
           </div>
         </div>
@@ -498,6 +608,30 @@ export function EnhancedPDFViewer({
         documentContext={documentText}
         onTermLookup={handleTermLookup}
       />
+
+      {/* Enhanced Context Menu */}
+      <EnhancedContextMenu
+        selectedText={contextMenuState.selectedText}
+        position={contextMenuState.position}
+        pageNumber={contextMenuState.pageNumber}
+        onClose={handleContextMenuClose}
+        onHighlight={handleHighlight}
+        onOpenAIInsights={(text) => handleOpenPopup('insights', text)}
+        onOpenSimplify={(text) => handleOpenPopup('simplify', text)}
+        onOpenTranslate={(text) => handleOpenPopup('translate', text)}
+      />
+
+      {/* Todoist Style Popups */}
+      {popupState.type && (
+        <TodoistStylePopup
+          isOpen={popupState.isOpen}
+          onClose={handlePopupClose}
+          type={popupState.type}
+          selectedText={popupState.selectedText}
+          pageNumber={popupState.pageNumber}
+          onOpenSidebar={onOpenSidebar}
+        />
+      )}
 
       {/* AI Insights Modal */}
       <AIInsightsModal
