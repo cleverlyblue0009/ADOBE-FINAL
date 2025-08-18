@@ -34,20 +34,62 @@ export default function PDFDemo() {
     });
   };
 
-  // Custom AI insights function (you can replace this with actual API calls)
+  // AI insights function that analyzes actual document text
   const handleAIInsightRequest = async (text: string): Promise<string> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Simulate processing delay
+    await new Promise(resolve => setTimeout(resolve, 800));
     
-    // Mock AI insights based on text content
-    const insights = [
-      `This text discusses key concepts related to "${text.substring(0, 30)}...". The main points suggest that this information is relevant for understanding the broader context of the document.`,
-      `Analysis of "${text.substring(0, 20)}..." reveals important insights about the subject matter. This passage likely contains crucial information for comprehension.`,
-      `The selected text "${text.substring(0, 25)}..." appears to be significant. It may contain definitions, explanations, or key arguments that support the document's main thesis.`,
-      `This excerpt "${text.substring(0, 30)}..." provides valuable context. Consider how this information relates to other parts of the document and your overall understanding.`
-    ];
+    // Generate contextual insights from the actual text content
+    const words = text.toLowerCase().split(/\s+/);
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+    const keyTerms = extractKeyTerms(text);
     
-    return insights[Math.floor(Math.random() * insights.length)];
+    // Analyze text complexity and content type
+    const wordCount = words.length;
+    const avgWordsPerSentence = sentences.length > 0 ? wordCount / sentences.length : 0;
+    const complexity = avgWordsPerSentence > 20 ? 'complex' : avgWordsPerSentence > 12 ? 'moderate' : 'simple';
+    
+    // Generate contextual insight based on content analysis
+    if (keyTerms.length > 0) {
+      const mainConcept = keyTerms[0];
+      const supportingConcepts = keyTerms.slice(1, 3).join(' and ');
+      
+      if (text.toLowerCase().includes('research') || text.toLowerCase().includes('study')) {
+        return `This ${complexity} passage presents research findings about ${mainConcept}${supportingConcepts ? ` and ${supportingConcepts}` : ''}. The content provides evidence-based insights that could inform decision-making and further investigation.`;
+      }
+      
+      if (text.toLowerCase().includes('method') || text.toLowerCase().includes('process')) {
+        return `This text outlines a ${complexity} methodology related to ${mainConcept}. Understanding this process${supportingConcepts ? ` and its relationship to ${supportingConcepts}` : ''} is crucial for practical implementation.`;
+      }
+      
+      if (text.toLowerCase().includes('analysis') || text.toLowerCase().includes('conclusion')) {
+        return `This analytical passage examines ${mainConcept}${supportingConcepts ? ` in relation to ${supportingConcepts}` : ''}. The insights presented here synthesize key findings and suggest important implications for the field.`;
+      }
+      
+      return `This ${wordCount}-word excerpt focuses on ${mainConcept}${supportingConcepts ? `, ${supportingConcepts}` : ''}. The ${complexity} language and ${sentences.length} key points suggest this is ${sentences.length > 3 ? 'a comprehensive overview' : 'a focused explanation'} that merits careful consideration.`;
+    }
+    
+    return `This ${complexity} passage contains ${sentences.length} key points across ${wordCount} words. The content provides important context that contributes to understanding the document's main themes and objectives.`;
+  };
+
+  // Extract key terms from text for contextual analysis
+  const extractKeyTerms = (text: string): string[] => {
+    const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those']);
+    
+    const words = text.toLowerCase()
+      .replace(/[^\w\s]/g, ' ')
+      .split(/\s+/)
+      .filter(word => word.length > 3 && !commonWords.has(word));
+    
+    const wordFreq = words.reduce((freq, word) => {
+      freq[word] = (freq[word] || 0) + 1;
+      return freq;
+    }, {} as Record<string, number>);
+    
+    return Object.entries(wordFreq)
+      .sort(([,a], [,b]) => b - a)
+      .slice(0, 5)
+      .map(([word]) => word);
   };
 
   // Export highlights
