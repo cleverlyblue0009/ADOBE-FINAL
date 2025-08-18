@@ -76,6 +76,45 @@
     box-shadow: 0 2px 8px var(--pdf-shadow-color) !important;
   }
 
+  /* PDF.js Text Layer Styles */
+  .textLayer {
+    position: absolute;
+    left: 0;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    overflow: hidden;
+    opacity: 0.2;
+    line-height: 1.0;
+    user-select: text;
+    pointer-events: auto;
+  }
+
+  .textLayer span,
+  .textLayer br {
+    color: transparent;
+    position: absolute;
+    white-space: pre;
+    cursor: text;
+    transform-origin: 0% 0%;
+  }
+
+  .textLayer .highlight {
+    opacity: 1;
+    background-color: rgba(255, 255, 0, 0.3);
+    border-radius: 2px;
+    padding: 0 2px;
+  }
+
+  /* Selection highlight */
+  .textLayer ::selection {
+    background: rgba(0, 123, 255, 0.3);
+  }
+
+  .textLayer ::-moz-selection {
+    background: rgba(0, 123, 255, 0.3);
+  }
+
   /* Enhanced Animations */
   .animate-fade-in {
     animation: fadeIn 0.5s var(--ease-out-expo) forwards;
