@@ -9,6 +9,7 @@ import { CrossConnectionsPanel } from './CrossConnectionsPanel';
 import { StrategicInsightsPanel } from './StrategicInsightsPanel';
 import { EnhancedStrategicPanel } from './EnhancedStrategicPanel';
 import { InsightsPanel } from './InsightsPanel';
+import { EnhancedInsightsPanel } from './EnhancedInsightsPanel';
 
 // Custom PDF Viewer wrapper component
 function CustomPDFViewerWrapper({ 
@@ -45,6 +46,7 @@ import { ThemeToggle } from './ThemeToggle';
 import { AccessibilityPanel } from './AccessibilityPanel';
 import { PodcastPanel } from './PodcastPanel';
 import { HighlightPanel } from './HighlightPanel';
+import { EnhancedHighlightFlashcards } from './EnhancedHighlightFlashcards';
 import { TextSimplifier } from './TextSimplifier';
 import { CopyDownloadPanel } from './CopyDownloadPanel';
 import { ReadingAnalyticsPanel } from './ReadingAnalyticsPanel';
@@ -644,7 +646,12 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
         )}
 
         {/* Main PDF Viewer - Enhanced */}
-        <main className="flex-1 relative">
+        <main 
+          className="flex-1 relative transition-all duration-300"
+          style={{ 
+            marginLeft: leftSidebarOpen ? `${leftSidebarWidth}px` : '0px' 
+          }}
+        >
           {currentDocument ? (
             <EnhancedPDFViewer
               documentUrl={currentDocument.url}
@@ -719,7 +726,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
             <div className="flex-1 overflow-hidden min-w-0">
               {activeRightPanel === 'insights' && (
                 <div className="min-w-0 overflow-hidden h-full">
-                  <InsightsPanel 
+                  <EnhancedInsightsPanel 
                     documentIds={documents?.map(d => d.id) || []}
                     documentId={currentDocument?.id}
                     persona={persona}
@@ -856,15 +863,13 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
 
               {activeRightPanel === 'highlights' && (
                 <div className="min-w-0 overflow-hidden h-full">
-                  <HighlightPanel 
+                  <EnhancedHighlightFlashcards
                     highlights={highlights}
                     onHighlightClick={(highlight) => {
                       // Navigate to the highlight page
                       setCurrentPage(highlight.page);
                       
-                      // The highlight will be automatically shown through the HybridPDFViewer
-                      // which receives the highlights prop and applies them on page change
-                      
+                      // The highlight will be automatically shown through the PDF viewer
                       toast({
                         title: "Navigated to Highlight",
                         description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
@@ -878,6 +883,17 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                         description: "The highlight has been successfully removed.",
                       });
                     }}
+                    onGenerateMore={() => {
+                      // Generate more intelligent highlights
+                      generateIntelligenceHighlights();
+                      toast({
+                        title: "Generating Smart Highlights",
+                        description: "AI is analyzing the document for important passages...",
+                      });
+                    }}
+                    currentPage={currentPage}
+                    persona={persona}
+                    jobToBeDone={jobToBeDone}
                   />
                 </div>
               )}
