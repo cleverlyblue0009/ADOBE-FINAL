@@ -1378,3 +1378,34 @@ class LLMService:
         except Exception as e:
             print(f"Error generating did you know facts: {e}")
             return []
+
+    def _parse_json_response(self, response_text: str, fallback_data: dict) -> dict:
+        """Parse JSON response with fallback handling."""
+        try:
+            import json
+            # Clean the response text
+            cleaned_text = response_text.strip()
+            if cleaned_text.startswith('```json'):
+                cleaned_text = cleaned_text[7:]
+            if cleaned_text.endswith('```'):
+                cleaned_text = cleaned_text[:-3]
+            cleaned_text = cleaned_text.strip()
+            
+            result = json.loads(cleaned_text)
+            
+            # Clean JSON artifacts from all string fields recursively
+            def clean_nested_dict(obj):
+                if isinstance(obj, dict):
+                    return {k: clean_nested_dict(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [clean_nested_dict(item) for item in obj]
+                elif isinstance(obj, str):
+                    return self._clean_json_artifacts(obj)
+                else:
+                    return obj
+            
+            return clean_nested_dict(result)
+            
+        except Exception as e:
+            print(f"Error parsing JSON response: {e}")
+            return fallback_data
