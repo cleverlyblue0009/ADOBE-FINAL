@@ -16,6 +16,7 @@ import { EnhancedAIInsightsPanel } from './EnhancedAIInsightsPanel';
 function CustomPDFViewerWrapper({ 
   documentUrl, 
   documentName, 
+  documentId,
   onPageChange, 
   onTextSelection, 
   highlights,
@@ -24,6 +25,7 @@ function CustomPDFViewerWrapper({
 }: {
   documentUrl: string;
   documentName: string;
+  documentId?: string;
   onPageChange?: (page: number) => void;
   onTextSelection?: (text: string, page: number) => void;
   highlights?: Highlight[];
@@ -34,6 +36,7 @@ function CustomPDFViewerWrapper({
     <CustomPDFViewer
       documentUrl={documentUrl}
       documentName={documentName}
+      documentId={documentId}
       onPageChange={onPageChange}
       onTextSelection={onTextSelection}
       highlights={highlights}

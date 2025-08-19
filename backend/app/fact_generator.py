@@ -105,7 +105,7 @@ class ExternalFactGenerator:
                 "category": "science|history|technology|nature|culture|other"
             }}
             
-            Make the fact engaging and start with "Did you know that..."
+            Make the fact engaging and start with "Did you know that..." but ensure the fact text is natural and readable, not in JSON format when displayed.
             """
             
             response = await asyncio.to_thread(

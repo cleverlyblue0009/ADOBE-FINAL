@@ -860,6 +860,42 @@ export interface MultiDocumentInsights {
     const data = await response.json();
     return data.facts;
   }
+
+  // External fact methods for the Did You Know popup
+  async getDocumentFacts(documentId: string): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/documents/${documentId}/facts`);
+    if (!response.ok) {
+      throw new Error('Failed to get document facts');
+    }
+    return response.json();
+  }
+
+  async getPageFacts(documentId: string, pageNumber: number): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/documents/${documentId}/facts/page/${pageNumber}`);
+    if (!response.ok) {
+      throw new Error('Failed to get page facts');
+    }
+    return response.json();
+  }
+
+  async generatePageFact(documentId: string, pageNumber: number, pageText: string): Promise<any> {
+    const response = await fetch(`${this.baseUrl}/documents/generate-page-fact`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        document_id: documentId,
+        page_number: pageNumber,
+        page_text: pageText
+      })
+    });
+    
+    if (!response.ok) {
+      throw new Error('Failed to generate page fact');
+    }
+    return response.json();
+  }
 }
 
 export const apiService = new ApiService();
