@@ -112,6 +112,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [currentPage, setCurrentPage] = useState(1);
   const [zoom, setZoom] = useState(1.0);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
+  const [aiHighlightsVisible, setAiHighlightsVisible] = useState(false); // New state for AI highlights visibility
   const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'strategic' | 'connections' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | 'highlights' | 'analytics' | 'bookmarks' | null>('highlights');
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentInsights, setCurrentInsights] = useState<Array<{ type: string; content: string }>>([]);
@@ -429,6 +430,10 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
           return [...prev, ...newHighlights];
         });
         
+        // Enable AI highlights visibility and show flashcards
+        setAiHighlightsVisible(true);
+        setActiveRightPanel('highlights');
+        
         toast({
           title: "AI Analysis Complete",
           description: `Generated ${intelligenceHighlights.length} intelligent highlights based on document analysis.`,
@@ -484,6 +489,10 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
       return [...prev, ...newHighlights];
     });
     
+    // Enable AI highlights visibility and show flashcards
+    setAiHighlightsVisible(true);
+    setActiveRightPanel('highlights');
+    
     toast({
       title: "Smart Highlights Generated",
       description: `Generated ${fallbackHighlights.length} highlights based on document structure and your role.`,
@@ -536,15 +545,28 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
             </Button>
             
             <Button
-              variant="ghost"
+              variant={aiHighlightsVisible ? "default" : "ghost"}
               size="sm"
-              onClick={generateIntelligenceHighlights}
+              onClick={() => {
+                if (aiHighlightsVisible) {
+                  // Toggle off AI highlights
+                  setAiHighlightsVisible(false);
+                  toast({
+                    title: "AI Highlights Hidden",
+                    description: "AI highlights are no longer visible on the PDF"
+                  });
+                } else {
+                  // Generate and show AI highlights
+                  generateIntelligenceHighlights();
+                }
+              }}
               disabled={!documents || !persona || !jobToBeDone}
-              className="gap-2 hover:bg-surface-hover"
-              aria-label="Generate AI highlights"
+              className={`gap-2 ${aiHighlightsVisible ? 'bg-brand-primary text-white hover:bg-brand-primary/90' : 'hover:bg-surface-hover'}`}
+              aria-label={aiHighlightsVisible ? "Hide AI highlights" : "Generate AI highlights"}
             >
               <Highlighter className="h-4 w-4" />
               AI Highlights
+              {aiHighlightsVisible && <span className="text-xs opacity-80">ON</span>}
             </Button>
             
             <Button
@@ -669,6 +691,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               onPageChange={setCurrentPage}
               onTextSelection={handleTextSelection}
               highlights={highlights}
+              aiHighlightsVisible={aiHighlightsVisible}
               currentHighlightPage={currentPage}
               goToSection={null} // Will be updated when section navigation is triggered
               persona={persona}

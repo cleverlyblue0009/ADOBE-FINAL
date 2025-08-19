@@ -42,6 +42,7 @@ interface EnhancedPDFViewerProps {
   onPageChange?: (page: number) => void;
   onTextSelection?: (text: string, page: number) => void;
   highlights?: Highlight[];
+  aiHighlightsVisible?: boolean;
   currentHighlightPage?: number;
   goToSection?: { page: number; section?: string } | null;
   persona?: string;
@@ -56,6 +57,7 @@ export function EnhancedPDFViewer({
   onPageChange,
   onTextSelection,
   highlights = [],
+  aiHighlightsVisible = false,
   currentHighlightPage = 1,
   goToSection,
   persona,
@@ -663,8 +665,12 @@ export function EnhancedPDFViewer({
                       if (pageElement) {
                         pageElement.setAttribute('data-page-number', currentPage.toString());
                         
-                        if (currentHighlights.length > 0) {
+                        // Only apply highlights if AI highlights are visible
+                        if (aiHighlightsVisible && currentHighlights.length > 0) {
                           customPdfHighlighter.applyHighlights(currentHighlights, currentPage, pageElement);
+                        } else {
+                          // Clear existing highlights when not visible
+                          customPdfHighlighter.removeHighlights(currentPage);
                         }
                         customPdfHighlighter.enableTextSelection();
                       }
