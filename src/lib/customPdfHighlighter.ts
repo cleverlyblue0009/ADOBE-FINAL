@@ -28,51 +28,51 @@ export class CustomPdfHighlighter {
       .custom-pdf-highlight {
         position: absolute;
         pointer-events: none;
-        border-radius: 2px;
+        border-radius: 1px;
         transition: opacity 0.2s ease-in-out;
         z-index: 10;
-        mix-blend-mode: multiply;
+        box-sizing: border-box;
       }
       
       .custom-pdf-highlight.primary {
-        background-color: rgba(255, 235, 59, 0.35);
-        border: 1px solid rgba(255, 235, 59, 0.6);
+        background-color: rgba(255, 255, 0, 0.3);
+        border: none;
       }
       
       .custom-pdf-highlight.secondary {
-        background-color: rgba(76, 175, 80, 0.35);
-        border: 1px solid rgba(76, 175, 80, 0.6);
+        background-color: rgba(0, 255, 0, 0.25);
+        border: none;
       }
       
       .custom-pdf-highlight.tertiary {
-        background-color: rgba(33, 150, 243, 0.35);
-        border: 1px solid rgba(33, 150, 243, 0.6);
+        background-color: rgba(0, 150, 255, 0.25);
+        border: none;
       }
       
       .custom-pdf-highlight.quaternary {
-        background-color: rgba(255, 152, 0, 0.35);
-        border: 1px solid rgba(255, 152, 0, 0.6);
+        background-color: rgba(255, 165, 0, 0.3);
+        border: none;
       }
       
       /* Standard highlight colors like real PDF highlighters */
       .custom-pdf-highlight.yellow {
-        background-color: rgba(255, 235, 59, 0.4);
-        border: 1px solid rgba(255, 235, 59, 0.7);
+        background-color: rgba(255, 255, 0, 0.3);
+        border: none;
       }
       
       .custom-pdf-highlight.green {
-        background-color: rgba(76, 175, 80, 0.4);
-        border: 1px solid rgba(76, 175, 80, 0.7);
+        background-color: rgba(0, 255, 0, 0.25);
+        border: none;
       }
       
       .custom-pdf-highlight.blue {
-        background-color: rgba(33, 150, 243, 0.4);
-        border: 1px solid rgba(33, 150, 243, 0.7);
+        background-color: rgba(0, 150, 255, 0.25);
+        border: none;
       }
       
       .custom-pdf-highlight.pink {
-        background-color: rgba(233, 30, 99, 0.4);
-        border: 1px solid rgba(233, 30, 99, 0.7);
+        background-color: rgba(255, 20, 147, 0.3);
+        border: none;
       }
       
       .custom-pdf-highlight:hover {
@@ -311,16 +311,17 @@ export class CustomPdfHighlighter {
       highlightElement.id = `highlight-${highlight.id}-${index}`;
       highlightElement.title = `${highlight.explanation} (${Math.round(highlight.relevanceScore * 100)}% relevant)`;
       
-      // Ensure minimum dimensions for visibility
-      const width = Math.max(position.boundingBox.width, 100);
-      const height = Math.max(position.boundingBox.height, 16);
+      // Use actual text dimensions with minimal padding
+      const width = Math.max(position.boundingBox.width, 20);
+      const height = Math.max(position.boundingBox.height, 12);
       
-      // Position the highlight
+      // Position the highlight with slight padding for better visual alignment
+      const padding = 2;
       highlightElement.style.cssText = `
-        left: ${position.boundingBox.x}px;
-        top: ${position.boundingBox.y}px;
-        width: ${width}px;
-        height: ${height}px;
+        left: ${position.boundingBox.x - padding}px;
+        top: ${position.boundingBox.y - padding/2}px;
+        width: ${width + padding * 2}px;
+        height: ${height + padding}px;
         z-index: 1000;
       `;
       
