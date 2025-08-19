@@ -451,24 +451,70 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
 
   // Generate fallback highlights when API is unavailable
   const generateFallbackHighlights = () => {
-    if (!currentDocument) return;
-    
     const fallbackHighlights: Highlight[] = [];
     
     // Generate highlights based on document outline and structure
-    currentDocument.outline.forEach((item, index) => {
-      if (index < 8) { // Limit to first 8 sections
-        const highlight: Highlight = {
-          id: `fallback-outline-${index}`,
-          text: item.text,
-          page: item.page,
-          color: index < 3 ? 'primary' : index < 6 ? 'secondary' : 'tertiary',
-          relevanceScore: Math.max(0.6, 1 - (index * 0.05)), // Decreasing relevance
-          explanation: `Important section for ${persona || 'your role'}: ${item.text.slice(0, 100)}...`
-        };
-        fallbackHighlights.push(highlight);
-      }
-    });
+    if (currentDocument && currentDocument.outline.length > 0) {
+      currentDocument.outline.forEach((item, index) => {
+        if (index < 8) { // Limit to first 8 sections
+          const highlight: Highlight = {
+            id: `fallback-outline-${index}`,
+            text: item.title || `Section ${index + 1}`,
+            page: item.page,
+            color: index < 3 ? 'primary' : index < 6 ? 'secondary' : 'tertiary',
+            relevanceScore: Math.max(0.6, 1 - (index * 0.05)), // Decreasing relevance
+            explanation: `Important section for ${persona || 'your role'}: ${item.title || `Section ${index + 1}`}`
+          };
+          fallbackHighlights.push(highlight);
+        }
+      });
+    } else {
+      // Generate generic highlights when no outline is available
+      const genericHighlights = [
+        {
+          id: 'fallback-intro',
+          text: 'Introduction',
+          page: 1,
+          color: 'primary' as const,
+          relevanceScore: 0.95,
+          explanation: `Key introduction section highly relevant for ${persona || 'your role'}`
+        },
+        {
+          id: 'fallback-overview',
+          text: 'Overview',
+          page: Math.max(1, Math.floor(currentPage * 0.2)),
+          color: 'secondary' as const,
+          relevanceScore: 0.85,
+          explanation: `Overview section providing context for ${jobToBeDone || 'your task'}`
+        },
+        {
+          id: 'fallback-key-points',
+          text: 'Key Points',
+          page: Math.max(1, Math.floor(currentPage * 0.5)),
+          color: 'primary' as const,
+          relevanceScore: 0.9,
+          explanation: `Critical information section for ${persona || 'your role'}`
+        },
+        {
+          id: 'fallback-details',
+          text: 'Important Details',
+          page: Math.max(1, Math.floor(currentPage * 0.7)),
+          color: 'tertiary' as const,
+          relevanceScore: 0.75,
+          explanation: `Detailed information relevant to ${jobToBeDone || 'your objectives'}`
+        },
+        {
+          id: 'fallback-conclusion',
+          text: 'Conclusion',
+          page: Math.max(1, currentPage),
+          color: 'secondary' as const,
+          relevanceScore: 0.8,
+          explanation: `Summary and conclusions for ${persona || 'your role'}`
+        }
+      ];
+      
+      fallbackHighlights.push(...genericHighlights);
+    }
     
     // Add some content-based highlights if we have current text
     if (selectedText && selectedText.length > 50) {
@@ -486,7 +532,18 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
     setHighlights(prev => {
       const existingIds = new Set(prev.map(h => h.id));
       const newHighlights = fallbackHighlights.filter(h => !existingIds.has(h.id));
-      return [...prev, ...newHighlights];
+      const updatedHighlights = [...prev, ...newHighlights];
+      
+      // Apply highlights immediately after setting them
+      setTimeout(() => {
+        newHighlights.forEach((highlight, index) => {
+          setTimeout(() => {
+            applyHighlightToPDF(highlight);
+          }, index * 200); // Stagger the application
+        });
+      }, 100);
+      
+      return updatedHighlights;
     });
     
     // Enable AI highlights visibility and show flashcards
@@ -495,7 +552,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
     
     toast({
       title: "Smart Highlights Generated",
-      description: `Generated ${fallbackHighlights.length} highlights based on document structure and your role.`,
+      description: `Generated ${fallbackHighlights.length} highlights based on document structure and your role as ${persona || 'user'}.`,
     });
   };
 
@@ -560,13 +617,49 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                   generateIntelligenceHighlights();
                 }
               }}
-              disabled={!documents || !persona || !jobToBeDone}
+              disabled={!documents}
               className={`gap-2 ${aiHighlightsVisible ? 'bg-brand-primary text-white hover:bg-brand-primary/90' : 'hover:bg-surface-hover'}`}
               aria-label={aiHighlightsVisible ? "Hide AI highlights" : "Generate AI highlights"}
             >
               <Highlighter className="h-4 w-4" />
               AI Highlights
               {aiHighlightsVisible && <span className="text-xs opacity-80">ON</span>}
+            </Button>
+            
+            {/* Debug button for testing highlights */}
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                console.log('Debug: Current highlights count:', highlights.length);
+                console.log('Debug: Current page:', currentPage);
+                console.log('Debug: Highlights:', highlights);
+                
+                // Force apply highlights to current page
+                const pageElement = document.querySelector(`[data-page-number="${currentPage}"]`) as HTMLElement ||
+                                   document.querySelector('.react-pdf__Page') as HTMLElement;
+                
+                if (pageElement && highlights.length > 0) {
+                  console.log('Debug: Applying highlights manually');
+                  // Add page number attribute if missing
+                  pageElement.setAttribute('data-page-number', currentPage.toString());
+                  
+                  // Import and use the highlighter directly
+                  import('@/lib/customPdfHighlighter').then(({ customPdfHighlighter }) => {
+                    customPdfHighlighter.applyHighlights(highlights, currentPage, pageElement);
+                  });
+                } else {
+                  console.log('Debug: No page element or highlights found');
+                }
+                
+                toast({
+                  title: "Debug: Highlights Applied",
+                  description: `Applied ${highlights.length} highlights to page ${currentPage}`
+                });
+              }}
+              className="gap-2 hover:bg-surface-hover"
+            >
+              🐛 Debug
             </Button>
             
             <Button

@@ -587,10 +587,24 @@ export function CustomPDFViewer({
 
   // Apply highlights when they change
   useEffect(() => {
+    console.log(`CustomPDFViewer: Highlights changed, count: ${highlights.length}, currentPage: ${currentPage}`);
+    
     if (highlights.length > 0) {
       const pageElement = document.querySelector(`[data-page-number="${currentPage}"]`) as HTMLElement;
+      console.log(`CustomPDFViewer: Page element found:`, !!pageElement);
+      
       if (pageElement) {
+        console.log(`CustomPDFViewer: Applying ${highlights.length} highlights to page ${currentPage}`);
         customPdfHighlighter.applyHighlights(highlights, currentPage, pageElement);
+      } else {
+        // Try alternative selectors
+        const altPageElement = document.querySelector('.react-pdf__Page') as HTMLElement;
+        console.log(`CustomPDFViewer: Alternative page element found:`, !!altPageElement);
+        
+        if (altPageElement) {
+          altPageElement.setAttribute('data-page-number', currentPage.toString());
+          customPdfHighlighter.applyHighlights(highlights, currentPage, altPageElement);
+        }
       }
     }
   }, [highlights, currentPage]);
