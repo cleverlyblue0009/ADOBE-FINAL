@@ -9,6 +9,6 @@ python-dotenv
 aiofiles
 requests
 azure-cognitiveservices-speech
-google-generativeai
+huggingface-hub
 pydantic
 typing-extensions
