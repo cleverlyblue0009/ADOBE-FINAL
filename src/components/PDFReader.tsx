@@ -117,7 +117,18 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [zoom, setZoom] = useState(1.0);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [aiHighlightsVisible, setAiHighlightsVisible] = useState(false); // New state for AI highlights visibility
+  const [goToSection, setGoToSection] = useState<{ page: number; section?: string } | null>(null);
   const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'strategic' | 'connections' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | 'highlights' | 'analytics' | 'bookmarks' | null>('highlights');
+
+  // Reset goToSection after it's been processed to prevent continuous navigation
+  useEffect(() => {
+    if (goToSection) {
+      const timer = setTimeout(() => {
+        setGoToSection(null);
+      }, 100); // Small delay to ensure the PDF viewer processes the navigation
+      return () => clearTimeout(timer);
+    }
+  }, [goToSection]);
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentInsights, setCurrentInsights] = useState<Array<{ type: string; content: string }>>([]);
   const [relatedSections, setRelatedSections] = useState<RelatedSection[]>([]);
@@ -730,7 +741,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                 onPageNavigate={setCurrentPage}
                 onSectionNavigate={(page, section) => {
                   setCurrentPage(page);
-                  // TODO: Implement section navigation with goToLocation
+                  setGoToSection({ page, section });
                   toast({
                     title: "Navigating to Section",
                     description: `${section} - Page ${page}`,
@@ -780,7 +791,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               highlights={highlights}
               aiHighlightsVisible={aiHighlightsVisible}
               currentHighlightPage={currentPage}
-              goToSection={null} // Will be updated when section navigation is triggered
+              goToSection={goToSection}
               persona={persona}
               jobToBeDone={jobToBeDone}
               onOpenSidebar={(panelType) => {
@@ -876,7 +887,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                     onPageNavigate={setCurrentPage}
                     onSectionNavigate={(page, section) => {
                       setCurrentPage(page);
-                      // TODO: Implement section navigation with goToLocation
+                      setGoToSection({ page, section });
                       toast({
                         title: "Navigating to Section",
                         description: `Going to page ${page} - ${section}`,
