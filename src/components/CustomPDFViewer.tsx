@@ -13,17 +13,16 @@ import {
   Download,
   Search,
   Loader2,
-  Copy
+  Copy,
+  Lightbulb
 } from 'lucide-react';
 import { DidYouKnowPopup, useDidYouKnowPopup, AlternativeDidYouKnowPopup } from './DidYouKnowPopup';
 
 // Configure PDF.js worker - Use the worker file from public directory
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 
-// Import types and utilities
+// Import types
 import { Highlight } from './PDFReader';
-import { customPdfHighlighter } from '@/lib/customPdfHighlighter';
-import { textbookHighlighter, TextLayerHighlight, TextbookHighlighter } from '@/lib/textbookHighlighter';
 
 interface CustomPDFViewerProps {
   documentUrl: string;
@@ -34,133 +33,12 @@ interface CustomPDFViewerProps {
   highlights?: Highlight[];
   currentHighlightPage?: number;
   goToSection?: { page: number; section?: string } | null;
-  onHighlightsChange?: (highlights: TextLayerHighlight[]) => void;
+  onHighlightsChange?: (highlights: any[]) => void;
 }
 
-interface ContextMenuState {
-  visible: boolean;
-  selectedText: string;
-  position: { x: number; y: number; width: number; height: number } | null;
-  pageNumber: number;
-  options: Array<{
-    icon: string;
-    label: string;
-    action: () => void;
-  }>;
-}
 
-interface AiPopupState {
-  visible: boolean;
-  type: 'simplify' | 'insights';
-  originalText: string;
-  result: string;
-  title: string;
-}
 
-interface LoadingState {
-  type: 'simplify' | 'insights' | null;
-  active: boolean;
-}
 
-// Context Menu Component
-function ContextMenu({ contextMenu, onClose }: { contextMenu: ContextMenuState; onClose: () => void }) {
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (contextMenu.visible && menuRef.current) {
-      menuRef.current.focus();
-    }
-  }, [contextMenu.visible]);
-
-  if (!contextMenu.visible) return null;
-
-  return (
-    <>
-      {/* Invisible backdrop to catch clicks */}
-      <div 
-        className="fixed inset-0 z-40"
-        onClick={onClose}
-        onContextMenu={(e) => e.preventDefault()}
-      />
-      
-      {/* Custom AI-powered context menu */}
-      <div 
-        ref={menuRef}
-        className="fixed z-50 bg-gray-900 border border-gray-700 rounded-lg shadow-2xl py-1 min-w-56 animate-in fade-in-0 zoom-in-95"
-        style={{
-          left: `${contextMenu.position?.x || 0}px`,
-          top: `${contextMenu.position?.y || 0}px`,
-          transform: 'translate(-50%, 0)'
-        }}
-        onContextMenu={(e) => e.preventDefault()}
-      >
-        {/* Selected text preview */}
-        <div className="px-4 py-2 text-xs text-gray-400 border-b border-gray-700 max-w-64">
-          <div className="truncate font-medium">"{contextMenu.selectedText}"</div>
-        </div>
-        
-        {/* AI-powered menu options */}
-        {contextMenu.options?.map((option, index) => (
-          <button
-            key={index}
-            className="w-full text-left px-4 py-3 hover:bg-gray-800 text-sm text-white flex items-center gap-3 transition-all duration-200"
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              option.action();
-            }}
-          >
-            <span className="text-base">{option.icon}</span>
-            <span className="font-medium">{option.label}</span>
-          </button>
-        ))}
-      </div>
-    </>
-  );
-}
-
-// AI Popup Component
-function AiPopup({ aiPopup, onClose }: { aiPopup: AiPopupState; onClose: () => void }) {
-  if (!aiPopup.visible) return null;
-  
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-gray-900 border border-gray-700 rounded-xl max-w-2xl w-full max-h-[80vh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          <h3 className="text-lg font-semibold text-white">{aiPopup.title}</h3>
-          <button 
-            onClick={onClose}
-            className="text-gray-400 hover:text-white text-xl"
-          >
-            ×
-          </button>
-        </div>
-        
-        {/* Content */}
-        <div className="p-4 overflow-y-auto max-h-96">
-          {/* Original text */}
-          <div className="mb-4">
-            <h4 className="text-sm font-medium text-gray-400 mb-2">Original Text:</h4>
-            <div className="bg-gray-800 rounded-lg p-3 text-sm text-gray-300">
-              {aiPopup.originalText}
-            </div>
-          </div>
-          
-          {/* AI Result */}
-          <div>
-            <h4 className="text-sm font-medium text-gray-400 mb-2">
-              {aiPopup.type === 'simplify' ? 'Simplified:' : 'Insights:'}
-            </h4>
-            <div className="bg-blue-900/30 border border-blue-700/50 rounded-lg p-3 text-sm text-white">
-              {aiPopup.result}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export function CustomPDFViewer({ 
   documentUrl, 
@@ -174,7 +52,6 @@ export function CustomPDFViewer({
   onHighlightsChange
 }: CustomPDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
-  const [textbookHighlights, setTextbookHighlights] = useState<TextLayerHighlight[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [zoom, setZoom] = useState<number>(1.0);
   const [rotation, setRotation] = useState<number>(0);
@@ -189,22 +66,7 @@ export function CustomPDFViewer({
   // State for tracking page text for insights
   const [pageTexts, setPageTexts] = useState<Map<number, string>>(new Map());
 
-  // Context menu and AI popup states
-  const [contextMenu, setContextMenu] = useState<ContextMenuState>({
-    visible: false,
-    selectedText: '',
-    position: null,
-    pageNumber: 1,
-    options: []
-  });
-  const [aiPopup, setAiPopup] = useState<AiPopupState>({
-    visible: false,
-    type: 'simplify',
-    originalText: '',
-    result: '',
-    title: ''
-  });
-  const [loading, setLoading] = useState<LoadingState>({ type: null, active: false });
+
 
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -214,11 +76,6 @@ export function CustomPDFViewer({
     setIsLoading(false);
     setError(null);
     console.log(`PDF loaded successfully with ${numPages} pages`);
-    
-    // Enable text selection after a short delay
-    setTimeout(() => {
-      customPdfHighlighter.enableTextSelection();
-    }, 500);
   }, []);
 
   // Handle document load error
@@ -250,21 +107,12 @@ export function CustomPDFViewer({
         onPageChange(page);
       }
       
-      // Apply highlights to the new page after a short delay
-      setTimeout(() => {
-        const pageElement = document.querySelector(`[data-page-number="${page}"]`) as HTMLElement;
-        if (pageElement && highlights.length > 0) {
-          customPdfHighlighter.applyHighlights(highlights, page, pageElement);
-        }
-        customPdfHighlighter.enableTextSelection();
-      }, 300);
-      
       // Check for interesting facts on this page
       if (documentId) {
         checkForPageFacts(documentId, page);
       }
     }
-  }, [numPages, onPageChange, highlights, documentId]);
+  }, [numPages, onPageChange, documentId]);
 
   // Function to check for facts on the current page
   const checkForPageFacts = async (docId: string, pageNum: number) => {
@@ -290,12 +138,24 @@ export function CustomPDFViewer({
   // Function to extract text from current page
   const getPageText = (pageNum: number): string => {
     try {
-      const pageElement = document.querySelector(`[data-page-number="${pageNum}"]`) as HTMLElement;
+      // First try to get from stored page texts
+      const storedText = pageTexts.get(pageNum);
+      if (storedText) {
+        return storedText;
+      }
+      
+      // Try to extract from DOM
+      const pageElement = document.querySelector(`[data-page-number="${pageNum}"]`) as HTMLElement ||
+                         document.querySelector('.react-pdf__Page') as HTMLElement;
       if (pageElement) {
-        // Extract text content from the page
+        // Try text layer first, then fallback to general text content
         const textLayer = pageElement.querySelector('.react-pdf__Page__textContent');
-        if (textLayer) {
-          return textLayer.textContent || '';
+        const textContent = textLayer?.textContent || pageElement.textContent || '';
+        
+        // Store for future use
+        if (textContent.trim().length > 0) {
+          pageTexts.set(pageNum, textContent);
+          return textContent;
         }
       }
       return '';
@@ -305,202 +165,34 @@ export function CustomPDFViewer({
     }
   };
 
-  // Handle text selection
+  // Handle text selection (simplified - no context menu for highlighting)
   const handleTextSelection = useCallback(() => {
-    const textSelection = customPdfHighlighter.getTextSelection();
+    const selection = window.getSelection();
+    const selectedText = selection?.toString().trim();
     
-    if (textSelection && textSelection.text.length > 0) {
-      console.log('Text selected:', textSelection.text);
+    if (selectedText && selectedText.length > 0) {
+      console.log('Text selected:', selectedText);
+      
+      // Store page text for Did You Know functionality
+      pageTexts.set(currentPage, selectedText);
       
       // Call the parent's text selection handler
       if (onTextSelection) {
-        onTextSelection(textSelection.text, textSelection.pageNumber);
-      }
-      
-      // Get selection position for context menu
-      const selection = window.getSelection();
-      const range = selection?.getRangeAt(0);
-      const rect = range?.getBoundingClientRect();
-      
-      if (rect) {
-        // Show custom context menu
-        showContextMenu({
-          text: textSelection.text,
-          position: {
-            x: rect.left + (rect.width / 2),
-            y: rect.bottom + 10,
-            width: rect.width,
-            height: rect.height
-          },
-          pageNumber: textSelection.pageNumber
-        });
+        onTextSelection(selectedText, currentPage);
       }
     }
-  }, [onTextSelection]);
+  }, [onTextSelection, currentPage, pageTexts]);
 
-  // Show context menu
-  const showContextMenu = ({ text, position, pageNumber }: { 
-    text: string; 
-    position: { x: number; y: number; width: number; height: number }; 
-    pageNumber: number 
-  }) => {
-    setContextMenu({
-      visible: true,
-      selectedText: text,
-      position: position,
-      pageNumber: pageNumber,
-      options: [
-        {
-          icon: "🔆",
-          label: "Highlight",
-          action: () => highlightText(text, position, pageNumber)
-        },
-        {
-          icon: "🧠",
-          label: "Simplify with AI",
-          action: () => simplifyText(text)
-        },
-        {
-          icon: "💡",
-          label: "Generate Insights",
-          action: () => generateInsights(text)
-        },
-        {
-          icon: "📋",
-          label: "Copy Text",
-          action: () => {
-            navigator.clipboard.writeText(text);
-            setContextMenu({ visible: false, selectedText: '', position: null, pageNumber: 1, options: [] });
-            toast({
-              title: "Copied",
-              description: "Text copied to clipboard",
-            });
-          }
-        }
-      ]
+  // Copy text functionality (simplified)
+  const copyText = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast({
+      title: "Copied",
+      description: "Text copied to clipboard",
     });
   };
 
-  // Highlight text
-  const highlightText = async (text: string, position: { x: number; y: number; width: number; height: number }, pageNumber: number) => {
-    try {
-      console.log("Highlighting:", text);
-      
-      // Create highlight from the selected text
-      const highlight = customPdfHighlighter.createHighlightFromSelection('primary');
-      
-      if (highlight) {
-        // Apply the highlight immediately
-        const pageElement = document.querySelector(`[data-page-number="${pageNumber}"]`) as HTMLElement;
-        if (pageElement) {
-          customPdfHighlighter.applyHighlights([highlight], pageNumber, pageElement);
-        }
-        
-        // Call parent's highlight handler if available
-        if (onTextSelection) {
-          onTextSelection(text, pageNumber);
-        }
-      }
-      
-      // Close context menu
-      setContextMenu({ visible: false, selectedText: '', position: null, pageNumber: 1, options: [] });
-      
-      // Clear text selection
-      window.getSelection()?.removeAllRanges();
-      
-      // Visual feedback
-      toast({
-        title: "Text Highlighted",
-        description: `Added highlight: "${text.substring(0, 30)}${text.length > 30 ? '...' : ''}"`,
-      });
-      
-    } catch (error) {
-      console.error("Error adding highlight:", error);
-      toast({
-        title: "Highlight Error",
-        description: "Failed to add highlight. Please try again.",
-        variant: "destructive"
-      });
-    }
-  };
 
-  // Simplify text with AI
-  const simplifyText = async (selectedText: string) => {
-    setLoading({ type: "simplify", active: true });
-    setContextMenu({ visible: false, selectedText: '', position: null, pageNumber: 1, options: [] });
-    
-    try {
-      const response = await fetch('/api/simplify-text', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: selectedText })
-      });
-      
-      if (!response.ok) throw new Error('Failed to simplify text');
-      
-      const result = await response.json();
-      
-      setAiPopup({
-        visible: true,
-        type: "simplify",
-        originalText: selectedText,
-        result: result.simplified_text || result.simplified || "Text simplified successfully",
-        title: "Simplified Text"
-      });
-      
-    } catch (error) {
-      console.error("Error:", error);
-      toast({
-        title: "Simplification Failed",
-        description: "Failed to simplify text. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading({ type: "simplify", active: false });
-    }
-  };
-
-  // Generate insights with AI
-  const generateInsights = async (selectedText: string) => {
-    setLoading({ type: "insights", active: true });
-    setContextMenu({ visible: false, selectedText: '', position: null, pageNumber: 1, options: [] });
-    
-    try {
-      const response = await fetch('/api/generate-insights', {
-        method: 'POST', 
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          text: selectedText,
-          context: "PDF document analysis",
-          persona: "student"
-        })
-      });
-      
-      if (!response.ok) throw new Error('Failed to generate insights');
-      
-      const result = await response.json();
-      
-      setAiPopup({
-        visible: true,
-        type: "insights", 
-        originalText: selectedText,
-        result: Array.isArray(result.insights) 
-          ? result.insights.map((insight: any) => insight.content || insight).join('\n\n')
-          : result.insights || "Insights generated successfully",
-        title: "AI Insights"
-      });
-      
-    } catch (error) {
-      console.error("Error:", error);
-      toast({
-        title: "Insights Failed",
-        description: "Failed to generate insights. Please try again.",
-        variant: "destructive"
-      });
-    } finally {
-      setLoading({ type: "insights", active: false });
-    }
-  };
 
   // Navigation functions
   const goToPreviousPage = () => {
@@ -578,95 +270,14 @@ export function CustomPDFViewer({
       setTimeout(handleTextSelection, 50); // Small delay to ensure selection is captured
     };
 
-    const handleContextMenu = (e: MouseEvent) => {
-      e.preventDefault();
-      handleTextSelection();
-    };
-
     document.addEventListener('mouseup', handleMouseUp);
-    document.addEventListener('contextmenu', handleContextMenu);
 
     return () => {
       document.removeEventListener('mouseup', handleMouseUp);
-      document.removeEventListener('contextmenu', handleContextMenu);
     };
   }, [handleTextSelection]);
 
-  // Apply highlights when they change
-  useEffect(() => {
-    console.log(`CustomPDFViewer: Highlights changed, count: ${highlights.length}, currentPage: ${currentPage}`);
-    
-    if (highlights.length > 0) {
-      const pageElement = document.querySelector(`[data-page-number="${currentPage}"]`) as HTMLElement;
-      console.log(`CustomPDFViewer: Page element found:`, !!pageElement);
-      
-      if (pageElement) {
-        console.log(`CustomPDFViewer: Applying ${highlights.length} highlights to page ${currentPage}`);
-        customPdfHighlighter.applyHighlights(highlights, currentPage, pageElement);
-      } else {
-        // Try alternative selectors
-        const altPageElement = document.querySelector('.react-pdf__Page') as HTMLElement;
-        console.log(`CustomPDFViewer: Alternative page element found:`, !!altPageElement);
-        
-        if (altPageElement) {
-          altPageElement.setAttribute('data-page-number', currentPage.toString());
-          customPdfHighlighter.applyHighlights(highlights, currentPage, altPageElement);
-        }
-      }
-    }
-  }, [highlights, currentPage]);
 
-  // Convert legacy highlights to textbook highlights
-  useEffect(() => {
-    if (highlights.length > 0) {
-      const converted = highlights.map(h => 
-        TextbookHighlighter.fromLegacyHighlight(h)
-      ) as TextLayerHighlight[];
-      setTextbookHighlights(converted);
-    }
-  }, [highlights]);
-
-  // Apply textbook highlights to current page
-  useEffect(() => {
-    if (textbookHighlights.length > 0) {
-      setTimeout(() => {
-        textbookHighlighter.applyHighlightsToPage(currentPage, textbookHighlights);
-      }, 500); // Wait for page to render
-    }
-  }, [currentPage, textbookHighlights]);
-
-  // Listen for highlight clicks to generate flashcards
-  useEffect(() => {
-    const handleHighlightClick = (event: CustomEvent) => {
-      const highlight = event.detail as TextLayerHighlight;
-      console.log('Generating flashcard for highlight:', highlight);
-      // Dispatch event to parent component for flashcard generation
-      window.dispatchEvent(new CustomEvent('generateFlashcard', {
-        detail: highlight
-      }));
-    };
-
-    window.addEventListener('highlightClicked', handleHighlightClick as EventListener);
-    
-    return () => {
-      window.removeEventListener('highlightClicked', handleHighlightClick as EventListener);
-    };
-  }, []);
-
-  // Notify parent of highlight changes
-  useEffect(() => {
-    if (onHighlightsChange) {
-      onHighlightsChange(textbookHighlights);
-    }
-  }, [textbookHighlights, onHighlightsChange]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      customPdfHighlighter.removeAllHighlights();
-      textbookHighlighter.clearHighlights();
-    };
-  }, []);
 
   if (error) {
     return (
@@ -839,27 +450,21 @@ export function CustomPDFViewer({
                   }
                   className="shadow-lg"
                   onRenderSuccess={() => {
-                    // Apply highlights and enable text selection when page renders
+                    // Store page text for Did You Know functionality
                     setTimeout(() => {
                       const pageElement = document.querySelector('.react-pdf__Page') as HTMLElement;
                       if (pageElement) {
                         pageElement.setAttribute('data-page-number', currentPage.toString());
                         
-                        // Apply legacy overlay highlights
-                        if (highlights.length > 0) {
-                          customPdfHighlighter.applyHighlights(highlights, currentPage, pageElement);
+                        // Extract and store page text for facts generation
+                        const textLayer = pageElement.querySelector('.react-pdf__Page__textContent');
+                        const textContent = textLayer?.textContent || pageElement.textContent || '';
+                        if (textContent.trim().length > 0) {
+                          pageTexts.set(currentPage, textContent);
+                          console.log(`Stored text for page ${currentPage}: ${textContent.length} characters`);
                         }
-                        
-                        // Apply textbook-style highlights to text layer
-                        if (textbookHighlights.length > 0) {
-                          setTimeout(() => {
-                            textbookHighlighter.applyHighlightsToPage(currentPage, textbookHighlights);
-                          }, 200); // Additional delay for text layer to be ready
-                        }
-                        
-                        customPdfHighlighter.enableTextSelection();
                       }
-                    }, 100);
+                    }, 500); // Increased delay to ensure text layer is ready
                   }}
                 />
                               </Document>
@@ -868,29 +473,7 @@ export function CustomPDFViewer({
         </div>
       </div>
 
-      {/* Context Menu */}
-      <ContextMenu
-        contextMenu={contextMenu}
-        onClose={() => setContextMenu({ visible: false, selectedText: '', position: null, pageNumber: 1, options: [] })}
-      />
 
-      {/* AI Popup */}
-      <AiPopup
-        aiPopup={aiPopup}
-        onClose={() => setAiPopup({ visible: false, type: 'simplify', originalText: '', result: '', title: '' })}
-      />
-
-      {/* Loading overlay for AI operations */}
-      {loading.active && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-40">
-          <div className="bg-gray-900 border border-gray-700 rounded-lg p-6 flex items-center gap-4">
-            <Loader2 className="h-6 w-6 animate-spin text-brand-primary" />
-            <span className="text-white">
-              {loading.type === 'simplify' ? 'Simplifying text...' : 'Generating insights...'}
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Did You Know Popup */}
       {isFactPopupOpen && (
@@ -909,6 +492,26 @@ export function CustomPDFViewer({
           className="h-12 w-12 rounded-full shadow-lg transition-all duration-300 hover:scale-110 bg-gradient-to-r from-yellow-400 via-orange-400 to-pink-400 animate-pulse shadow-yellow-400/50"
           onClick={() => {
             const currentPageText = pageTexts.get(currentPage) || '';
+            if (!currentPageText) {
+              // Try to extract text from current page
+              const pageElement = document.querySelector('.react-pdf__Page');
+              if (pageElement) {
+                const extractedText = pageElement.textContent || '';
+                if (extractedText.trim().length > 0) {
+                  pageTexts.set(currentPage, extractedText);
+                  showFactPopup(documentId || documentName, currentPage, extractedText);
+                  return;
+                }
+              }
+              
+              toast({
+                title: "No content found",
+                description: "Unable to find text content for this page. Try selecting some text first.",
+                variant: "destructive"
+              });
+              return;
+            }
+            
             showFactPopup(documentId || documentName, currentPage, currentPageText);
           }}
           title="Did You Know? - Click for interesting facts about this page"
