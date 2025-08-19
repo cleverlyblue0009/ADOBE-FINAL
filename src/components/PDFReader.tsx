@@ -613,8 +613,33 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                     description: "AI highlights are no longer visible on the PDF"
                   });
                 } else {
-                  // Generate and show AI highlights
-                  generateIntelligenceHighlights();
+                  // Generate and show AI highlights, but also force apply existing highlights
+                  console.log('AI Highlights: Current highlights count:', highlights.length);
+                  console.log('AI Highlights: Current page:', currentPage);
+                  
+                  // Force apply highlights to current page
+                  const pageElement = document.querySelector(`[data-page-number="${currentPage}"]`) as HTMLElement ||
+                                     document.querySelector('.react-pdf__Page') as HTMLElement;
+                  
+                  if (pageElement && highlights.length > 0) {
+                    console.log('AI Highlights: Applying highlights manually');
+                    // Add page number attribute if missing
+                    pageElement.setAttribute('data-page-number', currentPage.toString());
+                    
+                    // Import and use the highlighter directly
+                    import('@/lib/customPdfHighlighter').then(({ customPdfHighlighter }) => {
+                      customPdfHighlighter.applyHighlights(highlights, currentPage, pageElement);
+                    });
+                    
+                    setAiHighlightsVisible(true);
+                    toast({
+                      title: "AI Highlights Applied",
+                      description: `Applied ${highlights.length} highlights to page ${currentPage}`
+                    });
+                  } else {
+                    // Generate new highlights
+                    generateIntelligenceHighlights();
+                  }
                 }
               }}
               disabled={!documents}
@@ -624,42 +649,6 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               <Highlighter className="h-4 w-4" />
               AI Highlights
               {aiHighlightsVisible && <span className="text-xs opacity-80">ON</span>}
-            </Button>
-            
-            {/* Debug button for testing highlights */}
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                console.log('Debug: Current highlights count:', highlights.length);
-                console.log('Debug: Current page:', currentPage);
-                console.log('Debug: Highlights:', highlights);
-                
-                // Force apply highlights to current page
-                const pageElement = document.querySelector(`[data-page-number="${currentPage}"]`) as HTMLElement ||
-                                   document.querySelector('.react-pdf__Page') as HTMLElement;
-                
-                if (pageElement && highlights.length > 0) {
-                  console.log('Debug: Applying highlights manually');
-                  // Add page number attribute if missing
-                  pageElement.setAttribute('data-page-number', currentPage.toString());
-                  
-                  // Import and use the highlighter directly
-                  import('@/lib/customPdfHighlighter').then(({ customPdfHighlighter }) => {
-                    customPdfHighlighter.applyHighlights(highlights, currentPage, pageElement);
-                  });
-                } else {
-                  console.log('Debug: No page element or highlights found');
-                }
-                
-                toast({
-                  title: "Debug: Highlights Applied",
-                  description: `Applied ${highlights.length} highlights to page ${currentPage}`
-                });
-              }}
-              className="gap-2 hover:bg-surface-hover"
-            >
-              🐛 Debug
             </Button>
             
             <Button
