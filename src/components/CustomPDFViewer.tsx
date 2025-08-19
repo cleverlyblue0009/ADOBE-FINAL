@@ -15,7 +15,7 @@ import {
   Loader2,
   Copy
 } from 'lucide-react';
-import { DidYouKnowPopup, useDidYouKnowPopup } from './DidYouKnowPopup';
+import { DidYouKnowPopup, useDidYouKnowPopup, AlternativeDidYouKnowPopup } from './DidYouKnowPopup';
 
 // Configure PDF.js worker - Use the worker file from public directory
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
@@ -184,7 +184,10 @@ export function CustomPDFViewer({
   const { toast } = useToast();
   
   // Did You Know popup hook
-  const { isOpen: isFactPopupOpen, currentPage: factCurrentPage, showPopup: showFactPopup, hidePopup: hideFactPopup } = useDidYouKnowPopup();
+  const { isOpen: isFactPopupOpen, currentPage: factCurrentPage, facts: didYouKnowFacts, showPopup: showFactPopup, hidePopup: hideFactPopup } = useDidYouKnowPopup();
+  
+  // State for tracking page text for insights
+  const [pageTexts, setPageTexts] = useState<Map<number, string>>(new Map());
 
   // Context menu and AI popup states
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
@@ -890,20 +893,30 @@ export function CustomPDFViewer({
       )}
 
       {/* Did You Know Popup */}
-      <DidYouKnowPopup
-        isOpen={isFactPopupOpen}
-        onClose={hideFactPopup}
-        documentId={factCurrentPage?.documentId || ''}
-        pageNumber={factCurrentPage?.pageNumber || 0}
-        pageText={factCurrentPage?.pageText}
-        onFactGenerated={(fact) => {
-          console.log('New fact generated:', fact);
-          toast({
-            title: "Interesting Fact Generated!",
-            description: "A new fascinating fact has been discovered for this page.",
-          });
-        }}
-      />
+      {isFactPopupOpen && (
+        <DidYouKnowPopup 
+          facts={didYouKnowFacts} 
+          isVisible={true}
+          className="z-60"
+        />
+      )}
+      
+      {/* Floating Did You Know Bulb */}
+      <div className="fixed bottom-6 right-6 z-50">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-12 w-12 rounded-full shadow-lg transition-all duration-300 hover:scale-110 bg-gradient-to-r from-yellow-400 via-orange-400 to-pink-400 animate-pulse shadow-yellow-400/50"
+          onClick={() => {
+            const currentPageText = pageTexts.get(currentPage) || '';
+            showFactPopup(documentId || documentName, currentPage, currentPageText);
+          }}
+          title="Did You Know? - Click for interesting facts about this page"
+        >
+          <Lightbulb className="h-6 w-6 text-white animate-bounce" />
+          <div className="absolute -top-1 -right-1 h-3 w-3 bg-yellow-400 rounded-full animate-ping" />
+        </Button>
+      </div>
     </>
   );
 }
