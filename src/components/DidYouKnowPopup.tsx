@@ -22,6 +22,10 @@ interface ExternalFact {
   topic: string;
   category: string;
   page_number?: number;
+  context?: string;
+  relevance_score?: number;
+  historical_context?: string;
+  connections?: string[];
 }
 
 interface DidYouKnowPopupProps {
@@ -31,6 +35,10 @@ interface DidYouKnowPopupProps {
   pageNumber: number;
   pageText?: string;
   onFactGenerated?: (fact: ExternalFact) => void;
+  persona?: string;
+  jobToBeDone?: string;
+  showPreference?: boolean;
+  onPreferenceChange?: (show: boolean) => void;
 }
 
 export function DidYouKnowPopup({
@@ -39,11 +47,18 @@ export function DidYouKnowPopup({
   documentId,
   pageNumber,
   pageText,
-  onFactGenerated
+  onFactGenerated,
+  persona,
+  jobToBeDone,
+  showPreference = true,
+  onPreferenceChange
 }: DidYouKnowPopupProps) {
-  const [fact, setFact] = useState<ExternalFact | null>(null);
+  const [facts, setFacts] = useState<ExternalFact[]>([]);
+  const [currentFactIndex, setCurrentFactIndex] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showInsightPrompt, setShowInsightPrompt] = useState(true);
+  const [userWantsInsights, setUserWantsInsights] = useState<boolean | null>(null);
 
   // Category emojis and colors
   const categoryConfig = {

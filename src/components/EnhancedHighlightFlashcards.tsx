@@ -36,11 +36,12 @@ interface EnhancedHighlightFlashcardsProps {
 }
 
 interface FlashcardData extends Highlight {
-  category: 'key-insight' | 'important-fact' | 'actionable' | 'question' | 'definition';
+  category: 'fact' | 'definition' | 'date' | 'insight' | 'action' | 'person' | 'technical';
   learningTip?: string;
   relatedConcepts?: string[];
   difficulty: 'easy' | 'medium' | 'hard';
   studyProgress: number; // 0-100
+  contentType?: string;
 }
 
 export function EnhancedHighlightFlashcards({
@@ -63,22 +64,34 @@ export function EnhancedHighlightFlashcards({
   useEffect(() => {
     const enhancedFlashcards: FlashcardData[] = highlights.map((highlight, index) => ({
       ...highlight,
-      category: getCategoryFromRelevance(highlight.relevanceScore),
+      category: getCategoryFromRelevance(highlight.relevanceScore, highlight.color),
       learningTip: generateLearningTip(highlight, persona, jobToBeDone),
       relatedConcepts: generateRelatedConcepts(highlight.text),
       difficulty: getDifficultyLevel(highlight.text),
-      studyProgress: Math.min(Math.round(highlight.relevanceScore * 100), 95) // Based on relevance score
+      studyProgress: Math.min(Math.round(highlight.relevanceScore * 100), 95), // Based on relevance score
+      contentType: highlight.color
     }));
     
     setFlashcards(enhancedFlashcards);
   }, [highlights, persona, jobToBeDone]);
 
-  const getCategoryFromRelevance = (score: number): FlashcardData['category'] => {
-    if (score >= 0.9) return 'key-insight';
-    if (score >= 0.8) return 'important-fact';
-    if (score >= 0.7) return 'actionable';
-    if (score >= 0.6) return 'question';
-    return 'definition';
+  const getCategoryFromRelevance = (score: number, color?: string): FlashcardData['category'] => {
+    // Map colors to categories for better categorization
+    switch (color) {
+      case 'yellow': return 'insight';
+      case 'green': return 'person';
+      case 'blue': return 'date';
+      case 'gold': return 'technical';
+      case 'secondary': return 'definition';
+      case 'tertiary': return 'fact';
+      case 'quaternary': return 'action';
+      default:
+        if (score >= 0.9) return 'insight';
+        if (score >= 0.8) return 'fact';
+        if (score >= 0.7) return 'action';
+        if (score >= 0.6) return 'technical';
+        return 'definition';
+    }
   };
 
   const generateLearningTip = (highlight: Highlight, persona?: string, jobToBeDone?: string): string => {

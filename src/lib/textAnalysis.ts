@@ -3,9 +3,10 @@
 // and provides intelligent highlighting suggestions
 
 export interface ContentType {
-  type: 'key-concept' | 'statistic' | 'definition' | 'action-item' | 'conclusion';
-  color: 'primary' | 'secondary' | 'tertiary' | 'quaternary';
+  type: 'key-concept' | 'statistic' | 'definition' | 'action-item' | 'conclusion' | 'date' | 'name' | 'technical-term';
+  color: 'primary' | 'secondary' | 'tertiary' | 'quaternary' | 'yellow' | 'green' | 'blue' | 'gold';
   priority: number; // 1-10, higher is more important
+  category: 'fact' | 'definition' | 'date' | 'insight' | 'action' | 'person' | 'technical';
 }
 
 export interface AnalyzedText {
@@ -55,6 +56,31 @@ export class TextAnalysisService {
     /\b(?:we can conclude|it can be concluded|the evidence suggests)\b/gi
   ];
 
+  // New patterns for enhanced content detection
+  private datePatterns = [
+    /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b/gi,
+    /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,
+    /\b\d{4}-\d{2}-\d{2}\b/g,
+    /\b(?:in|during|since|from|until|by)\s+\d{4}\b/gi,
+    /\b(?:19|20)\d{2}s?\b/g, // Years like 1990s, 2020
+    /\b(?:early|mid|late)\s+(?:19|20)\d{2}s?\b/gi
+  ];
+
+  private namePatterns = [
+    /\b[A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g, // Full names
+    /\b(?:Dr\.|Prof\.|Mr\.|Ms\.|Mrs\.)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/gi, // Titles with names
+    /\b[A-Z][a-z]+\s+(?:said|stated|argued|claimed|proposed|discovered|invented|founded)\b/gi, // Action-based name detection
+    /\b(?:according to|as stated by|research by|work of|theory of)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/gi
+  ];
+
+  private technicalTermPatterns = [
+    /\b[A-Z]{2,}(?:\s+[A-Z]{2,})*\b/g, // Acronyms
+    /\b\w+(?:-\w+)+\b/g, // Hyphenated technical terms
+    /\b(?:API|SDK|AI|ML|IoT|SaaS|PaaS|IaaS|HTTP|HTTPS|JSON|XML|SQL|NoSQL|REST|GraphQL)\b/gi,
+    /\b\w*(?:ology|ism|tion|sion|ment|ness|ity|ics|ing)\b/g, // Technical suffixes
+    /\b(?:system|framework|methodology|algorithm|protocol|architecture|infrastructure|platform|interface)\b/gi
+  ];
+
   // Keywords that indicate importance in academic/business contexts
   private importanceKeywords = [
     'breakthrough', 'revolutionary', 'significant', 'major', 'critical', 'essential',
@@ -102,7 +128,8 @@ export class TextAnalysisService {
         contentType: {
           type: 'key-concept',
           color: 'primary',
-          priority: this.calculatePriority(sentence, 'key-concept')
+          priority: this.calculatePriority(sentence, 'key-concept'),
+          category: 'insight'
         },
         relevanceScore: this.calculateRelevanceScore(sentence, context),
         explanation: 'Key concept identified - contains important information relevant to understanding the topic',
@@ -116,8 +143,9 @@ export class TextAnalysisService {
         text: sentence,
         contentType: {
           type: 'statistic',
-          color: 'tertiary', // Blue for statistics
-          priority: this.calculatePriority(sentence, 'statistic')
+          color: 'tertiary',
+          priority: this.calculatePriority(sentence, 'statistic'),
+          category: 'fact'
         },
         relevanceScore: this.calculateRelevanceScore(sentence, context),
         explanation: 'Statistical data or quantitative information that supports the main arguments',
@@ -131,8 +159,9 @@ export class TextAnalysisService {
         text: sentence,
         contentType: {
           type: 'definition',
-          color: 'secondary', // Green for definitions
-          priority: this.calculatePriority(sentence, 'definition')
+          color: 'secondary',
+          priority: this.calculatePriority(sentence, 'definition'),
+          category: 'definition'
         },
         relevanceScore: this.calculateRelevanceScore(sentence, context),
         explanation: 'Definition or explanation of important terms and concepts',
@@ -146,8 +175,9 @@ export class TextAnalysisService {
         text: sentence,
         contentType: {
           type: 'action-item',
-          color: 'quaternary', // Orange for action items
-          priority: this.calculatePriority(sentence, 'action-item')
+          color: 'quaternary',
+          priority: this.calculatePriority(sentence, 'action-item'),
+          category: 'action'
         },
         relevanceScore: this.calculateRelevanceScore(sentence, context),
         explanation: 'Action item, recommendation, or step that requires attention',
@@ -161,11 +191,60 @@ export class TextAnalysisService {
         text: sentence,
         contentType: {
           type: 'conclusion',
-          color: 'primary', // Yellow for conclusions
-          priority: this.calculatePriority(sentence, 'conclusion')
+          color: 'primary',
+          priority: this.calculatePriority(sentence, 'conclusion'),
+          category: 'insight'
         },
         relevanceScore: this.calculateRelevanceScore(sentence, context),
         explanation: 'Conclusion or key finding that summarizes important results',
+        keywords: this.extractKeywords(sentence)
+      };
+    }
+
+    // Check for dates
+    if (this.matchesPatterns(sentence, this.datePatterns)) {
+      return {
+        text: sentence,
+        contentType: {
+          type: 'date',
+          color: 'blue',
+          priority: this.calculatePriority(sentence, 'date'),
+          category: 'date'
+        },
+        relevanceScore: this.calculateRelevanceScore(sentence, context),
+        explanation: 'Contains important date or temporal information',
+        keywords: this.extractKeywords(sentence)
+      };
+    }
+
+    // Check for names
+    if (this.matchesPatterns(sentence, this.namePatterns)) {
+      return {
+        text: sentence,
+        contentType: {
+          type: 'name',
+          color: 'green',
+          priority: this.calculatePriority(sentence, 'name'),
+          category: 'person'
+        },
+        relevanceScore: this.calculateRelevanceScore(sentence, context),
+        explanation: 'Contains reference to important person or authority',
+        keywords: this.extractKeywords(sentence)
+      };
+    }
+
+    // Check for technical terms
+    if (this.matchesPatterns(sentence, this.technicalTermPatterns)) {
+      return {
+        text: sentence,
+        contentType: {
+          type: 'technical-term',
+          color: 'gold',
+          priority: this.calculatePriority(sentence, 'technical-term'),
+          category: 'technical'
+        },
+        relevanceScore: this.calculateRelevanceScore(sentence, context),
+        explanation: 'Contains technical terminology that may require understanding',
         keywords: this.extractKeywords(sentence)
       };
     }
@@ -207,6 +286,15 @@ export class TextAnalysisService {
         break;
       case 'conclusion':
         priority += 3;
+        break;
+      case 'date':
+        priority += 1;
+        break;
+      case 'name':
+        priority += 1;
+        break;
+      case 'technical-term':
+        priority += 1;
         break;
     }
 
