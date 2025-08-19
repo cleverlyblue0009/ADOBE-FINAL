@@ -12,6 +12,7 @@ import { InsightsPanel } from './InsightsPanel';
 import { EnhancedInsightsPanel } from './EnhancedInsightsPanel';
 import { EnhancedAIInsightsPanel } from './EnhancedAIInsightsPanel';
 import { TextLayerHighlight } from '@/lib/textbookHighlighter';
+import { Badge } from '@/components/ui/badge';
 
 // Custom PDF Viewer wrapper component
 function CustomPDFViewerWrapper({ 
