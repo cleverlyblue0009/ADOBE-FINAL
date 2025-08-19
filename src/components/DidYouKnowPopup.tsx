@@ -2,294 +2,202 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Lightbulb, X, Sparkles, TrendingUp, BookOpen, Clock } from 'lucide-react';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Lightbulb,
-  X,
-  Sparkles,
-  RefreshCw,
-  Loader2
-} from 'lucide-react';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
-interface ExternalFact {
+interface DidYouKnowFact {
+  id: string;
   fact: string;
-  topic: string;
-  category: string;
-  page_number?: number;
-  context?: string;
-  relevance_score?: number;
-  historical_context?: string;
-  connections?: string[];
+  source_type: 'research' | 'statistic' | 'historical' | 'trending';
+  relevance_explanation: string;
+  tags?: string[];
 }
 
 interface DidYouKnowPopupProps {
-  isOpen: boolean;
-  onClose: () => void;
-  documentId: string;
-  pageNumber: number;
-  pageText?: string;
-  onFactGenerated?: (fact: ExternalFact) => void;
-  persona?: string;
-  jobToBeDone?: string;
-  showPreference?: boolean;
-  onPreferenceChange?: (show: boolean) => void;
+  facts: DidYouKnowFact[];
+  isVisible?: boolean;
+  className?: string;
 }
 
-export function DidYouKnowPopup({
-  isOpen,
-  onClose,
-  documentId,
-  pageNumber,
-  pageText,
-  onFactGenerated,
-  persona,
-  jobToBeDone,
-  showPreference = true,
-  onPreferenceChange
-}: DidYouKnowPopupProps) {
-  const [facts, setFacts] = useState<ExternalFact[]>([]);
+const getSourceTypeIcon = (sourceType: string) => {
+  switch (sourceType) {
+    case 'research': return <BookOpen className="h-4 w-4 text-blue-600" />;
+    case 'statistic': return <TrendingUp className="h-4 w-4 text-green-600" />;
+    case 'historical': return <Clock className="h-4 w-4 text-amber-600" />;
+    case 'trending': return <Sparkles className="h-4 w-4 text-purple-600" />;
+    default: return <Lightbulb className="h-4 w-4 text-gray-600" />;
+  }
+};
+
+const getSourceTypeColor = (sourceType: string) => {
+  switch (sourceType) {
+    case 'research': return 'bg-blue-100 text-blue-800 border-blue-200';
+    case 'statistic': return 'bg-green-100 text-green-800 border-green-200';
+    case 'historical': return 'bg-amber-100 text-amber-800 border-amber-200';
+    case 'trending': return 'bg-purple-100 text-purple-800 border-purple-200';
+    default: return 'bg-gray-100 text-gray-800 border-gray-200';
+  }
+};
+
+export function DidYouKnowPopup({ facts, isVisible = true, className = "" }: DidYouKnowPopupProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const [currentFactIndex, setCurrentFactIndex] = useState(0);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [showInsightPrompt, setShowInsightPrompt] = useState(true);
-  const [userWantsInsights, setUserWantsInsights] = useState<boolean | null>(null);
+  const [isGlowing, setIsGlowing] = useState(true);
 
-  // Category emojis and colors
-  const categoryConfig = {
-    science: { emoji: '🔬', color: 'bg-blue-100 text-blue-800', label: 'Science' },
-    history: { emoji: '📜', color: 'bg-amber-100 text-amber-800', label: 'History' },
-    technology: { emoji: '💻', color: 'bg-purple-100 text-purple-800', label: 'Technology' },
-    nature: { emoji: '🌿', color: 'bg-green-100 text-green-800', label: 'Nature' },
-    culture: { emoji: '🎭', color: 'bg-pink-100 text-pink-800', label: 'Culture' },
-    other: { emoji: '💡', color: 'bg-gray-100 text-gray-800', label: 'General' }
-  };
-
-  // Load existing fact or generate new one when popup opens
+  // Cycle through facts if there are multiple
   useEffect(() => {
-    if (isOpen && documentId && pageNumber !== undefined) {
-      loadOrGenerateFact();
+    if (facts.length > 1) {
+      const interval = setInterval(() => {
+        setCurrentFactIndex((prev) => (prev + 1) % facts.length);
+      }, 5000); // Change fact every 5 seconds when popup is open
+
+      return () => clearInterval(interval);
     }
-  }, [isOpen, documentId, pageNumber]);
+  }, [facts.length, isOpen]);
 
-  const loadOrGenerateFact = async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // First, try to get existing facts for this page
-      const response = await fetch(`/api/documents/${documentId}/facts/page/${pageNumber}`);
-      
-      if (response.ok) {
-        const data = await response.json();
-        
-        if (data.facts && data.facts.length > 0) {
-          setFact(data.facts[0]); // Use the first available fact
-          return;
-        }
-      }
-
-      // If no existing facts, generate a new one
-      if (pageText) {
-        await generateNewFact();
-      } else {
-        setError('No content available to generate facts from');
-      }
-
-    } catch (err) {
-      console.error('Error loading fact:', err);
-      setError('Failed to load interesting facts for this page');
-    } finally {
-      setIsLoading(false);
+  // Stop glowing after popup is opened once
+  useEffect(() => {
+    if (isOpen) {
+      setIsGlowing(false);
     }
-  };
+  }, [isOpen]);
 
-  const generateNewFact = async () => {
-    if (!pageText) {
-      setError('No page content available');
-      return;
-    }
+  if (!isVisible || facts.length === 0) {
+    return null;
+  }
 
-    try {
-      const response = await fetch('/api/documents/generate-page-fact', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          document_id: documentId,
-          page_number: pageNumber,
-          page_text: pageText
-        })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to generate fact');
-      }
-
-      const data = await response.json();
-      
-      if (data.fact) {
-        setFact(data.fact);
-        onFactGenerated?.(data.fact);
-      } else {
-        setError('No interesting facts could be generated for this page');
-      }
-
-    } catch (err) {
-      console.error('Error generating fact:', err);
-      setError('Failed to generate an interesting fact for this page');
-    }
-  };
-
-  const getCategoryConfig = (category: string) => {
-    return categoryConfig[category as keyof typeof categoryConfig] || categoryConfig.other;
-  };
+  const currentFact = facts[currentFactIndex];
 
   return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md mx-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            {/* Glowing bulb animation */}
-            <div className="relative">
-              <Lightbulb className="h-6 w-6 text-yellow-500 animate-pulse" />
-              <div className="absolute inset-0 h-6 w-6 bg-yellow-400 rounded-full opacity-20 animate-ping"></div>
-              <div className="absolute inset-0 h-6 w-6 bg-yellow-300 rounded-full opacity-10 animate-pulse animation-delay-75"></div>
-            </div>
-            <span className="bg-gradient-to-r from-yellow-600 to-orange-500 bg-clip-text text-transparent font-bold">
-              Did You Know?
-            </span>
-            <Sparkles className="h-4 w-4 text-yellow-500 animate-bounce" />
-          </DialogTitle>
-          <DialogDescription>
-            Fascinating facts related to page {pageNumber}
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          {isLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="relative">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
-                <div className="absolute inset-0 h-8 w-8 bg-blue-400 rounded-full opacity-20 animate-ping"></div>
-              </div>
-              <span className="ml-3 text-sm text-gray-600 animate-pulse">
-                Discovering amazing facts...
-              </span>
-            </div>
-          ) : error ? (
-            <Card className="border-red-200 bg-red-50">
-              <CardContent className="pt-4">
-                <div className="flex items-center gap-2 text-red-700">
-                  <X className="h-4 w-4" />
-                  <span className="text-sm">{error}</span>
-                </div>
-              </CardContent>
-            </Card>
-          ) : fact ? (
-            <Card className="border-blue-200 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 shadow-lg">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <Badge 
-                    variant="secondary" 
-                    className={`${getCategoryConfig(fact.category).color} shadow-sm`}
-                  >
-                    {getCategoryConfig(fact.category).emoji} {getCategoryConfig(fact.category).label}
-                  </Badge>
+    <div className={`fixed bottom-6 right-6 z-50 ${className}`}>
+      <Popover open={isOpen} onOpenChange={setIsOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`
+              h-12 w-12 rounded-full shadow-lg transition-all duration-300 hover:scale-110
+              ${isGlowing 
+                ? 'bg-gradient-to-r from-yellow-400 via-orange-400 to-pink-400 animate-pulse shadow-yellow-400/50' 
+                : 'bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700'
+              }
+            `}
+            title="Did You Know? - Interesting Facts"
+          >
+            <Lightbulb className={`h-6 w-6 text-white ${isGlowing ? 'animate-bounce' : ''}`} />
+            {isGlowing && (
+              <div className="absolute -top-1 -right-1 h-3 w-3 bg-yellow-400 rounded-full animate-ping" />
+            )}
+          </Button>
+        </PopoverTrigger>
+        
+        <PopoverContent 
+          side="left" 
+          className="w-80 p-0 border-0 shadow-2xl"
+          sideOffset={10}
+        >
+          <Card className="border-0 bg-gradient-to-br from-white via-blue-50 to-purple-50 dark:from-gray-900 dark:via-blue-950 dark:to-purple-950">
+            <CardHeader className="pb-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <Sparkles className="h-5 w-5 animate-pulse" />
+                  Did You Know?
+                </CardTitle>
+                <div className="flex items-center gap-2">
+                  {facts.length > 1 && (
+                    <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                      {currentFactIndex + 1} of {facts.length}
+                    </Badge>
+                  )}
                   <Button
                     variant="ghost"
                     size="sm"
-                    onClick={() => generateNewFact()}
-                    disabled={isLoading}
-                    className="h-8 w-8 p-0 hover:bg-white/50"
+                    onClick={() => setIsOpen(false)}
+                    className="h-6 w-6 p-0 hover:bg-white/20 text-white"
                   >
-                    <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : 'hover:rotate-180 transition-transform duration-300'}`} />
+                    <X className="h-4 w-4" />
                   </Button>
                 </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex items-start gap-3">
-                    <div className="relative flex-shrink-0 mt-1">
-                      <Lightbulb className="h-5 w-5 text-yellow-500" />
-                      <div className="absolute inset-0 h-5 w-5 bg-yellow-400 rounded-full opacity-30 animate-pulse"></div>
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-800 leading-relaxed font-medium">
-                        {fact.fact}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {fact.topic && (
-                    <div className="pt-3 border-t border-gray-200">
-                      <p className="text-xs text-gray-500 flex items-center gap-1">
-                        <Sparkles className="h-3 w-3" />
-                        Related to: <span className="font-medium text-gray-700">{fact.topic}</span>
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          ) : null}
-
-          <div className="flex justify-between items-center pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => generateNewFact()}
-              disabled={isLoading || !pageText}
-              className="text-xs hover:bg-blue-50 transition-colors"
-            >
-              <RefreshCw className={`h-3 w-3 mr-1 ${isLoading ? 'animate-spin' : ''}`} />
-              Generate New Fact
-            </Button>
+              </div>
+            </CardHeader>
             
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onClose}
-              className="text-xs hover:bg-gray-50 transition-colors"
-            >
-              Close
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+            <CardContent className="p-4 space-y-4">
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-gradient-to-br from-blue-100 to-purple-100 rounded-lg">
+                    {getSourceTypeIcon(currentFact.source_type)}
+                  </div>
+                  <Badge 
+                    variant="outline" 
+                    className={`text-xs px-2 py-1 font-medium ${getSourceTypeColor(currentFact.source_type)}`}
+                  >
+                    {currentFact.source_type.toUpperCase()}
+                  </Badge>
+                </div>
+                
+                <div className="bg-white/80 dark:bg-gray-800/80 p-3 rounded-lg border-l-4 border-l-blue-400">
+                  <p className="text-sm font-medium text-gray-900 dark:text-gray-100 leading-relaxed">
+                    {currentFact.fact}
+                  </p>
+                </div>
+                
+                <div className="bg-blue-50/50 dark:bg-blue-950/50 p-2 rounded border-l-2 border-l-blue-300">
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    <span className="font-medium">Why this matters:</span> {currentFact.relevance_explanation}
+                  </p>
+                </div>
+                
+                {currentFact.tags && currentFact.tags.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {currentFact.tags.map((tag, index) => (
+                      <Badge key={index} variant="outline" className="text-xs px-2 py-0.5 bg-purple-50 border-purple-200 text-purple-700">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {facts.length > 1 && (
+                <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-gray-700">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentFactIndex((prev) => (prev - 1 + facts.length) % facts.length)}
+                    className="text-xs"
+                  >
+                    ← Previous
+                  </Button>
+                  <div className="flex gap-1">
+                    {facts.map((_, index) => (
+                      <div
+                        key={index}
+                        className={`h-2 w-2 rounded-full transition-all duration-200 ${
+                          index === currentFactIndex 
+                            ? 'bg-blue-600 scale-125' 
+                            : 'bg-gray-300 dark:bg-gray-600'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setCurrentFactIndex((prev) => (prev + 1) % facts.length)}
+                    className="text-xs"
+                  >
+                    Next →
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </PopoverContent>
+      </Popover>
+    </div>
   );
-}
-
-// Hook for managing the Did You Know popup
-export function useDidYouKnowPopup() {
-  const [isOpen, setIsOpen] = useState(false);
-  const [currentPage, setCurrentPage] = useState<{
-    documentId: string;
-    pageNumber: number;
-    pageText?: string;
-  } | null>(null);
-
-  const showPopup = (documentId: string, pageNumber: number, pageText?: string) => {
-    setCurrentPage({ documentId, pageNumber, pageText });
-    setIsOpen(true);
-  };
-
-  const hidePopup = () => {
-    setIsOpen(false);
-    setCurrentPage(null);
-  };
-
-  return {
-    isOpen,
-    currentPage,
-    showPopup,
-    hidePopup
-  };
 }

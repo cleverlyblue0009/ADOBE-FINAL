@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { apiService } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { ExpandablePanelModal } from '@/components/ui/ExpandablePanelModal';
+import { DidYouKnowPopup } from './DidYouKnowPopup';
 import { 
   Lightbulb, 
   Brain, 
@@ -124,6 +125,7 @@ export function UpdatedAIInsightsPanel({
   const [keyInsights, setKeyInsights] = useState<KeyInsight[]>([]);
   const [studentQuestions, setStudentQuestions] = useState<StudentQuestion[]>([]);
   const [relatedConnections, setRelatedConnections] = useState<RelatedConnections | null>(null);
+  const [didYouKnowFacts, setDidYouKnowFacts] = useState<any[]>([]);
   
   const [isGeneratingSummary, setIsGeneratingSummary] = useState(false);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
@@ -230,6 +232,25 @@ export function UpdatedAIInsightsPanel({
       ];
       
       setKeyInsights(mockInsights);
+      
+      // Also generate some Did You Know facts
+      const mockFacts = [
+        {
+          id: 'fact-1',
+          fact: 'AI algorithms can process medical images up to 1000 times faster than human radiologists while maintaining equivalent accuracy levels.',
+          source_type: 'research' as const,
+          relevance_explanation: 'This demonstrates the potential for AI to dramatically improve healthcare efficiency and accessibility.',
+          tags: ['AI Performance', 'Medical Imaging']
+        },
+        {
+          id: 'fact-2', 
+          fact: 'The global AI in healthcare market is expected to reach $102 billion by 2028, with diagnostic imaging representing the largest segment.',
+          source_type: 'statistic' as const,
+          relevance_explanation: 'This shows the massive economic impact and growth potential of AI in healthcare sectors.',
+          tags: ['Market Trends', 'Healthcare AI']
+        }
+      ];
+      setDidYouKnowFacts(mockFacts);
       
       toast({
         title: "Key insights generated",
@@ -557,7 +578,7 @@ export function UpdatedAIInsightsPanel({
                     Document Summary
                   </CardTitle>
                   <p className="text-sm text-blue-700">
-                    Actual summary of the current document
+                    One paragraph summary of the whole document
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -646,7 +667,7 @@ export function UpdatedAIInsightsPanel({
                     Key Insights
                   </CardTitle>
                   <p className="text-sm text-yellow-700">
-                    Important lines from the document with AI-generated insights
+                    Important points in the document, references from the web
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -756,10 +777,10 @@ export function UpdatedAIInsightsPanel({
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-purple-900">
                     <MessageCircle className="h-5 w-5" />
-                    Student Questions
+                    Questions
                   </CardTitle>
                   <p className="text-sm text-purple-700">
-                    Insightful questions for students to research about
+                    Insightful questions based on role and personal for users to research
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -856,7 +877,7 @@ export function UpdatedAIInsightsPanel({
                     Related Content
                   </CardTitle>
                   <p className="text-sm text-green-700">
-                    Connections with existing documents and Google links for further research
+                    Links from the web and cross connections from other documents in the library, similarities and contradictions
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -982,7 +1003,7 @@ export function UpdatedAIInsightsPanel({
 
           {/* Placeholder when no content */}
           {!documentSummary && keyInsights.length === 0 && studentQuestions.length === 0 && 
-           !relatedConnections && 
+           !relatedConnections && didYouKnowFacts.length === 0 && 
            !isGeneratingSummary && !isGeneratingInsights && !isGeneratingQuestions && 
            !isGeneratingRelated && (
             <Card className="text-center py-12 bg-gradient-to-br from-white to-gray-50 border-2 border-dashed border-gray-200">
@@ -998,7 +1019,7 @@ export function UpdatedAIInsightsPanel({
                     Configure your role and objectives above, then explore the analysis tabs
                   </p>
                   <p className="text-xs text-gray-500">
-                    Get summaries, insights, questions, and connections
+                    Get summaries, insights, questions, and connections. Watch for the glowing bulb for interesting facts!
                   </p>
                 </div>
                 <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
@@ -1010,6 +1031,12 @@ export function UpdatedAIInsightsPanel({
           )}
         </div>
       </ScrollArea>
+      
+      {/* Did You Know Popup - appears when there are facts */}
+      <DidYouKnowPopup 
+        facts={didYouKnowFacts} 
+        isVisible={didYouKnowFacts.length > 0}
+      />
     </div>
   );
 }

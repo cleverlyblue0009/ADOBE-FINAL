@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import { DidYouKnowPopup } from './DidYouKnowPopup';
 import {
   Brain,
   Lightbulb,
@@ -93,6 +94,7 @@ export function AIInsightsModal({
   onPageNavigate
 }: AIInsightsModalProps) {
   const [insights, setInsights] = useState<AIInsight[]>([]);
+  const [didYouKnowFacts, setDidYouKnowFacts] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState('summary');
   const [error, setError] = useState<string | null>(null);
@@ -126,7 +128,20 @@ export function AIInsightsModal({
         currentPage
       );
 
-      setInsights(generatedInsights);
+      // Separate Did You Know facts from regular insights
+      const didYouKnowInsights = generatedInsights.filter(insight => insight.type === 'did-you-know');
+      const regularInsights = generatedInsights.filter(insight => insight.type !== 'did-you-know');
+      
+      setInsights(regularInsights);
+      setDidYouKnowFacts(didYouKnowInsights.map(insight => ({
+        id: insight.id,
+        fact: insight.content,
+        source_type: insight.tags?.[0] === 'AI Facts' ? 'research' : 
+                     insight.tags?.[0] === 'Market Trends' ? 'statistic' : 
+                     insight.tags?.[0] === 'Performance' ? 'trending' : 'research',
+        relevance_explanation: `This fact is relevant because it provides context about ${insight.tags?.slice(0, 2).join(' and ') || 'the topic'}.`,
+        tags: insight.tags || []
+      })));
       
       // Start typing animation for the first insight
       if (generatedInsights.length > 0) {
@@ -147,7 +162,19 @@ export function AIInsightsModal({
       
       // Fallback to contextual analysis when API fails
       const contextualInsights = generateContextualInsights(selectedText || documentText, persona, jobToBeDone);
-      setInsights(contextualInsights);
+      const didYouKnowInsights = contextualInsights.filter(insight => insight.type === 'did-you-know');
+      const regularInsights = contextualInsights.filter(insight => insight.type !== 'did-you-know');
+      
+      setInsights(regularInsights);
+      setDidYouKnowFacts(didYouKnowInsights.map(insight => ({
+        id: insight.id,
+        fact: insight.content,
+        source_type: insight.tags?.[0] === 'AI Facts' ? 'research' : 
+                     insight.tags?.[0] === 'Market Trends' ? 'statistic' : 
+                     insight.tags?.[0] === 'Performance' ? 'trending' : 'research',
+        relevance_explanation: `This fact is relevant because it provides context about ${insight.tags?.slice(0, 2).join(' and ') || 'the topic'}.`,
+        tags: insight.tags || []
+      })));
       
     } finally {
       setIsLoading(false);
@@ -499,7 +526,7 @@ export function AIInsightsModal({
             </div>
           ) : (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-              <TabsList className="grid grid-cols-6 w-full">
+              <TabsList className="grid grid-cols-5 w-full">
                 <TabsTrigger value="summary" className="gap-2">
                   <BookOpen className="h-4 w-4" />
                   Summary ({getInsightsByType('summary').length})
@@ -520,14 +547,10 @@ export function AIInsightsModal({
                   <Target className="h-4 w-4" />
                   Actions ({getInsightsByType('action-item').length})
                 </TabsTrigger>
-                <TabsTrigger value="did-you-know" className="gap-2">
-                  <Zap className="h-4 w-4" />
-                  Did You Know? ({getInsightsByType('did-you-know').length})
-                </TabsTrigger>
               </TabsList>
 
               <div className="flex-1 mt-4">
-                {['summary', 'key-takeaway', 'question', 'related-topic', 'action-item', 'did-you-know'].map(type => (
+                {['summary', 'key-takeaway', 'question', 'related-topic', 'action-item'].map(type => (
                   <TabsContent key={type} value={type} className="h-full">
                     <ScrollArea className="h-96">
                       <div className="space-y-4 pr-4">
@@ -537,25 +560,16 @@ export function AIInsightsModal({
                           return (
                             <div
                               key={insight.id}
-                              className={`bg-surface-elevated border border-border-subtle rounded-lg p-4 hover:shadow-md transition-shadow ${
-                                insight.type === 'did-you-know' ? 'bg-gradient-to-r from-pink-50 to-purple-50 dark:from-pink-950 dark:to-purple-950' : ''
-                              }`}
+                              className="bg-surface-elevated border border-border-subtle rounded-lg p-4 hover:shadow-md transition-shadow"
                             >
                               <div className="flex items-start gap-3">
-                                <div className={`h-8 w-8 bg-brand-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                                  insight.type === 'did-you-know' ? 'animate-pulse' : ''
-                                }`}>
-                                  <Icon className={`h-4 w-4 text-brand-primary ${
-                                    insight.type === 'did-you-know' ? 'text-pink-600' : ''
-                                  }`} />
+                                <div className="h-8 w-8 bg-brand-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                                  <Icon className="h-4 w-4 text-brand-primary" />
                                 </div>
                                 <div className="flex-1 space-y-3">
                                   <div className="flex items-start justify-between gap-3">
                                     <h3 className="font-semibold text-text-primary">
                                       {insight.title}
-                                      {insight.type === 'did-you-know' && (
-                                        <span className="ml-2 text-pink-500">✨</span>
-                                      )}
                                     </h3>
                                     <Badge 
                                       variant="secondary" 
@@ -631,6 +645,15 @@ export function AIInsightsModal({
           )}
         </div>
       </DialogContent>
+      
+      {/* Did You Know Popup - appears when modal is open and there are facts */}
+      {isOpen && (
+        <DidYouKnowPopup 
+          facts={didYouKnowFacts} 
+          isVisible={didYouKnowFacts.length > 0}
+          className="z-60" // Higher z-index than modal
+        />
+      )}
     </Dialog>
   );
 }
