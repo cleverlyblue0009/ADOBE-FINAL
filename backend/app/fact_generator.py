@@ -69,13 +69,30 @@ class ExternalFactGenerator:
             json_match = re.search(r'\[.*\]', response_text, re.DOTALL)
             if json_match:
                 topics_json = json_match.group(0)
-                topics = json.loads(topics_json)
-                return [topic for topic in topics if isinstance(topic, str) and len(topic.strip()) > 0]
+                try:
+                    topics = json.loads(topics_json)
+                except json.JSONDecodeError as json_err:
+                    print(f"JSON decode error for topics on page {page_number}: {json_err}")
+                    return []
+                
+                # Ensure topics is a list or iterable, not a set
+                if isinstance(topics, set):
+                    topics = list(topics)
+                elif not isinstance(topics, (list, tuple)):
+                    topics = [topics] if topics else []
+                
+                # Filter and return valid string topics
+                try:
+                    return [topic for topic in topics if isinstance(topic, str) and len(topic.strip()) > 0]
+                except TypeError as type_err:
+                    print(f"Type error when processing topics on page {page_number}: {type_err}")
+                    return []
             
             return []
             
         except Exception as e:
             print(f"Error extracting topics from page {page_number}: {e}")
+            # Return empty list to ensure consistent return type
             return []
     
     async def generate_external_fact(self, topic: str, page_context: str) -> Optional[Dict[str, Any]]:
@@ -163,6 +180,10 @@ class ExternalFactGenerator:
                 # Generate external facts for each topic (limit to 2 facts per page)
                 page_facts[page_number] = []
                 
+                # Ensure topics is a list before slicing
+                if isinstance(topics, set):
+                    topics = list(topics)
+                
                 for topic in topics[:2]:  # Limit to 2 topics per page
                     fact = await self.generate_external_fact(topic, page_text)
                     if fact:
@@ -194,6 +215,12 @@ class ExternalFactGenerator:
             return None
         
         # Generate fact for the first/most relevant topic
+        # Ensure topics is a list and has at least one element
+        if isinstance(topics, set):
+            topics = list(topics)
+        if not topics:
+            return None
+        
         fact = await self.generate_external_fact(topics[0], page_text)
         if fact:
             fact['page_number'] = page_number
