@@ -86,6 +86,16 @@ interface DidYouKnowFact {
   relevance_explanation: string;
 }
 
+interface StrategicAction {
+  title: string;
+  description: string;
+  type: 'immediate' | 'research' | 'implement' | 'review' | 'connect';
+  priority: 'high' | 'medium' | 'low';
+  estimated_time: string;
+  effort?: 'low' | 'medium' | 'high';
+  page_reference?: number;
+}
+
 const TypewriterText = ({ text, speed = 30 }: { text: string; speed?: number }) => {
   const [displayedText, setDisplayedText] = useState('');
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -124,12 +134,14 @@ export function EnhancedAIInsightsPanel({
   const [thoughtfulQuestions, setThoughtfulQuestions] = useState<ThoughtfulQuestion[]>([]);
   const [relatedConnections, setRelatedConnections] = useState<RelatedConnections | null>(null);
   const [didYouKnowFacts, setDidYouKnowFacts] = useState<DidYouKnowFact[]>([]);
+  const [strategicActions, setStrategicActions] = useState<StrategicAction[]>([]);
   
   const [isGeneratingSnippet, setIsGeneratingSnippet] = useState(false);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
   const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
   const [isGeneratingRelated, setIsGeneratingRelated] = useState(false);
   const [isGeneratingFacts, setIsGeneratingFacts] = useState(false);
+  const [isGeneratingActions, setIsGeneratingActions] = useState(false);
   
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['snippet']));
   const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
@@ -343,6 +355,92 @@ export function EnhancedAIInsightsPanel({
     }
   };
 
+  const handleGenerateStrategicActions = async () => {
+    if (!currentText || !persona || !jobToBeDone) {
+      toast({
+        title: "Missing information",
+        description: "Please ensure there's content to analyze and persona/job are set.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsGeneratingActions(true);
+    try {
+      const strategicInsights = await apiService.generateStrategicInsights(
+        currentText,
+        persona,
+        jobToBeDone,
+        documentId
+      );
+      
+      // Convert strategic insights to action items
+      const actions: StrategicAction[] = [];
+      
+      // Add opportunities as immediate actions
+      strategicInsights.opportunities?.forEach((opp, index) => {
+        actions.push({
+          title: `Opportunity: ${opp.insight.substring(0, 50)}${opp.insight.length > 50 ? '...' : ''}`,
+          description: opp.insight,
+          type: opp.timeframe === 'immediate' ? 'immediate' : 'implement',
+          priority: opp.priority,
+          estimated_time: opp.timeframe === 'immediate' ? '5-10 minutes' : '15-30 minutes'
+        });
+      });
+
+      // Add action items
+      strategicInsights.action_items?.forEach((action, index) => {
+        actions.push({
+          title: `Action: ${action.action.substring(0, 50)}${action.action.length > 50 ? '...' : ''}`,
+          description: action.action,
+          type: 'implement',
+          priority: action.priority,
+          estimated_time: action.effort === 'low' ? '5-10 minutes' : action.effort === 'medium' ? '15-25 minutes' : '30+ minutes',
+          effort: action.effort
+        });
+      });
+
+      // Add knowledge gaps as research actions
+      strategicInsights.knowledge_gaps?.forEach((gap, index) => {
+        actions.push({
+          title: `Research: ${gap.gap.substring(0, 50)}${gap.gap.length > 50 ? '...' : ''}`,
+          description: gap.gap,
+          type: 'research',
+          priority: gap.importance,
+          estimated_time: '10-20 minutes'
+        });
+      });
+
+      // Add critical decisions as review actions
+      strategicInsights.critical_decisions?.forEach((decision, index) => {
+        actions.push({
+          title: `Decision: ${decision.decision.substring(0, 50)}${decision.decision.length > 50 ? '...' : ''}`,
+          description: `${decision.decision} Consider factors: ${decision.factors.join(', ')}`,
+          type: 'review',
+          priority: decision.urgency,
+          estimated_time: '15-30 minutes'
+        });
+      });
+      
+      setStrategicActions(actions);
+      
+      toast({
+        title: "Strategic actions generated",
+        description: `Generated ${actions.length} actionable recommendations based on your role.`
+      });
+      
+    } catch (error) {
+      console.error('Failed to generate strategic actions:', error);
+      toast({
+        title: "Failed to generate actions",
+        description: "Unable to create strategic actions. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingActions(false);
+    }
+  };
+
   const getImportanceColor = (importance: 'high' | 'medium' | 'low') => {
     switch (importance) {
       case 'high': return 'bg-red-100 text-red-800 border-red-200';
@@ -368,6 +466,25 @@ export function EnhancedAIInsightsPanel({
       case 'historical': return <Clock className="h-4 w-4 text-amber-600" />;
       case 'trending': return <Sparkles className="h-4 w-4 text-purple-600" />;
       default: return <Lightbulb className="h-4 w-4 text-gray-600" />;
+    }
+  };
+
+  const getActionTypeIcon = (type: string) => {
+    switch (type) {
+      case 'immediate': return <Zap className="h-4 w-4 text-orange-600" />;
+      case 'research': return <Search className="h-4 w-4 text-blue-600" />;
+      case 'implement': return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      case 'review': return <AlertCircle className="h-4 w-4 text-purple-600" />;
+      case 'connect': return <Link2 className="h-4 w-4 text-teal-600" />;
+      default: return <Target className="h-4 w-4 text-gray-600" />;
+    }
+  };
+
+  const getActionPriorityColor = (priority: 'high' | 'medium' | 'low') => {
+    switch (priority) {
+      case 'high': return 'bg-red-100 text-red-800 border-red-200';
+      case 'medium': return 'bg-yellow-100 text-yellow-800 border-yellow-200';
+      case 'low': return 'bg-green-100 text-green-800 border-green-200';
     }
   };
 
@@ -485,7 +602,7 @@ export function EnhancedAIInsightsPanel({
             <TabsList className="grid w-full grid-cols-5 bg-background/60 backdrop-blur-sm border border-border">
               <TabsTrigger value="snippet" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
-                Snippet
+                Summary
               </TabsTrigger>
               <TabsTrigger value="insights" className="flex items-center gap-2">
                 <Lightbulb className="h-4 w-4" />
@@ -499,22 +616,22 @@ export function EnhancedAIInsightsPanel({
                 <Link2 className="h-4 w-4" />
                 Related
               </TabsTrigger>
-              <TabsTrigger value="facts" className="flex items-center gap-2">
-                <Sparkles className="h-4 w-4" />
-                Did You Know?
+              <TabsTrigger value="actions" className="flex items-center gap-2">
+                <Target className="h-4 w-4" />
+                Actions
               </TabsTrigger>
             </TabsList>
 
-            {/* Document Snippet Tab */}
+            {/* Document Summary Tab */}
             <TabsContent value="snippet" className="space-y-6 mt-6">
               <Card className="bg-gradient-to-r from-blue-50 to-indigo-50 border-blue-200">
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-blue-900">
                     <FileText className="h-5 w-5" />
-                    Document Snippet
+                    Document Summary
                   </CardTitle>
                   <p className="text-sm text-blue-700">
-                    Get a concise summary of the entire document
+                    Get a comprehensive summary of the document tailored to your role
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -531,7 +648,7 @@ export function EnhancedAIInsightsPanel({
                     ) : (
                       <>
                         <FileText className="h-4 w-4" />
-                        Generate Document Snippet
+                        Generate Document Summary
                       </>
                     )}
                   </Button>
@@ -577,7 +694,7 @@ export function EnhancedAIInsightsPanel({
                     Key Insights
                   </CardTitle>
                   <p className="text-sm text-yellow-700">
-                    Extract important information present across the document
+                    Extract important information and explanations from the document content
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -668,7 +785,7 @@ export function EnhancedAIInsightsPanel({
                     Thoughtful Questions
                   </CardTitle>
                   <p className="text-sm text-purple-700">
-                    Interactive questions designed for deep thinking and LLM engagement
+                    Insightful questions based on your persona to guide deeper research
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -764,7 +881,7 @@ export function EnhancedAIInsightsPanel({
                     Related Content
                   </CardTitle>
                   <p className="text-sm text-green-700">
-                    Document connections and external resources
+                    Connections from documents in your library and relevant web resources
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -877,76 +994,109 @@ export function EnhancedAIInsightsPanel({
               </Card>
             </TabsContent>
 
-            {/* Did You Know Facts Tab */}
-            <TabsContent value="facts" className="space-y-6 mt-6">
-              <Card className="bg-gradient-to-r from-indigo-50 to-purple-50 border-indigo-200">
+            {/* Strategic Actions Tab */}
+            <TabsContent value="actions" className="space-y-6 mt-6">
+              <Card className="bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
                 <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-indigo-900">
-                    <Sparkles className="h-5 w-5" />
-                    Did You Know?
+                  <CardTitle className="flex items-center gap-2 text-emerald-900">
+                    <Target className="h-5 w-5" />
+                    Strategic Actions
                   </CardTitle>
-                  <p className="text-sm text-indigo-700">
-                    Fascinating facts from the internet related to your content
+                  <p className="text-sm text-emerald-700">
+                    Actionable recommendations based on your role and objectives
                   </p>
                 </CardHeader>
                 <CardContent>
                   <Button
-                    onClick={handleGenerateDidYouKnowFacts}
-                    disabled={isGeneratingFacts || !persona || !jobToBeDone}
-                    className="w-full gap-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 py-3 font-semibold"
+                    onClick={handleGenerateStrategicActions}
+                    disabled={isGeneratingActions || !persona || !jobToBeDone}
+                    className="w-full gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 py-3 font-semibold"
                   >
-                    {isGeneratingFacts ? (
+                    {isGeneratingActions ? (
                       <>
                         <RefreshCw className="h-4 w-4 animate-spin" />
-                        Discovering Facts...
+                        Generating Actions...
                       </>
                     ) : (
                       <>
-                        <Sparkles className="h-4 w-4" />
-                        Discover Interesting Facts
+                        <Target className="h-4 w-4" />
+                        Generate Strategic Actions
                       </>
                     )}
                   </Button>
 
-                  {/* Generated Facts */}
-                  {didYouKnowFacts.length > 0 && (
+                  {/* Generated Actions */}
+                  {strategicActions.length > 0 && (
                     <div className="mt-6 space-y-4">
-                      <div className="flex items-center justify-between bg-white/60 p-3 rounded-lg border border-indigo-200">
+                      <div className="flex items-center justify-between bg-white/60 p-3 rounded-lg border border-emerald-200">
                         <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                          <Sparkles className="h-3 w-3 text-indigo-600" />
-                          Fascinating Facts
+                          <Target className="h-3 w-3 text-emerald-600" />
+                          Action Items
                         </h4>
-                        <Badge variant="secondary" className="text-xs font-medium bg-indigo-100 text-indigo-800 border-indigo-200">
-                          {didYouKnowFacts.length} facts
+                        <Badge variant="secondary" className="text-xs font-medium bg-emerald-100 text-emerald-800 border-emerald-200">
+                          {strategicActions.length} actions
                         </Badge>
                       </div>
 
                       <div className="space-y-3">
-                        {didYouKnowFacts.map((factObj, index) => (
-                          <Card key={index} className="p-4 bg-white/80 border border-indigo-200 rounded-lg">
-                            <div className="space-y-3">
-                              <div className="flex items-start gap-3">
-                                <div className="flex-shrink-0 mt-0.5 p-2 bg-gradient-to-br from-indigo-100 to-purple-100 rounded-lg">
-                                  {getSourceTypeIcon(factObj.source_type)}
+                        {strategicActions.map((action, index) => (
+                          <Card
+                            key={index}
+                            className="p-4 bg-white/80 border border-emerald-200 rounded-lg hover:border-emerald-300 hover:shadow-md transition-all duration-200 cursor-pointer group"
+                            onClick={() => {
+                              if (action.page_reference) {
+                                onPageNavigate?.(action.page_reference);
+                              }
+                            }}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 mt-0.5 p-2 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-lg group-hover:from-emerald-200 group-hover:to-teal-200 transition-colors">
+                                {getActionTypeIcon(action.type)}
+                              </div>
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-2">
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-xs px-2 py-1 font-medium ${getActionPriorityColor(action.priority)}`}
+                                  >
+                                    {action.priority.toUpperCase()} PRIORITY
+                                  </Badge>
+                                  
+                                  <Badge 
+                                    variant="outline" 
+                                    className="text-xs px-2 py-1 font-medium bg-emerald-50 border-emerald-200 text-emerald-800"
+                                  >
+                                    {action.type.toUpperCase()}
+                                  </Badge>
+
+                                  {action.page_reference && (
+                                    <div className="flex items-center gap-1 text-xs text-gray-500 bg-emerald-100 px-2 py-1 rounded">
+                                      <ExternalLink className="h-3 w-3" />
+                                      Page {action.page_reference}
+                                    </div>
+                                  )}
                                 </div>
                                 
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2 mb-2">
-                                    <Badge 
-                                      variant="outline" 
-                                      className="text-xs px-2 py-1 font-medium bg-indigo-50 border-indigo-200 text-indigo-800"
-                                    >
-                                      {factObj.source_type.toUpperCase()}
-                                    </Badge>
+                                <h5 className="text-sm font-semibold text-gray-900 mb-2">
+                                  {action.title}
+                                </h5>
+                                
+                                <p className="text-sm text-gray-700 leading-relaxed mb-3 bg-emerald-50/50 p-3 rounded border-l-2 border-l-emerald-300">
+                                  {action.description}
+                                </p>
+
+                                <div className="flex items-center gap-4 text-xs text-gray-600">
+                                  <div className="flex items-center gap-1">
+                                    <Clock className="h-3 w-3" />
+                                    {action.estimated_time}
                                   </div>
-                                  
-                                  <div className="text-sm text-gray-900 mb-3 bg-indigo-50/50 p-3 rounded border-l-2 border-l-indigo-300">
-                                    <TypewriterText text={factObj.fact} speed={50} />
-                                  </div>
-                                  
-                                  <p className="text-xs text-gray-600 italic">
-                                    <span className="font-medium">Why this matters:</span> {factObj.relevance_explanation}
-                                  </p>
+                                  {action.effort && (
+                                    <div className="flex items-center gap-1">
+                                      <Zap className="h-3 w-3" />
+                                      {action.effort} effort
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -962,9 +1112,9 @@ export function EnhancedAIInsightsPanel({
 
           {/* Placeholder when no content */}
           {!documentSnippet && keyInsights.length === 0 && thoughtfulQuestions.length === 0 && 
-           !relatedConnections && didYouKnowFacts.length === 0 && 
+           !relatedConnections && strategicActions.length === 0 && 
            !isGeneratingSnippet && !isGeneratingInsights && !isGeneratingQuestions && 
-           !isGeneratingRelated && !isGeneratingFacts && (
+           !isGeneratingRelated && !isGeneratingActions && (
             <Card className="text-center py-12 bg-gradient-to-br from-white to-gray-50 border-2 border-dashed border-gray-200">
               <CardContent className="space-y-4">
                 <div className="p-4 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full w-fit mx-auto">
@@ -978,12 +1128,12 @@ export function EnhancedAIInsightsPanel({
                     Configure your role and objectives above, then explore the analysis tabs
                   </p>
                   <p className="text-xs text-gray-500">
-                    Get snippets, insights, questions, connections, and fascinating facts
+                    Get summaries, insights, questions, connections, and strategic actions
                   </p>
                 </div>
                 <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
                   <ArrowRight className="h-3 w-3" />
-                  <span>Snippet • Key Insights • Questions • Related • Did You Know?</span>
+                  <span>Summary • Key Insights • Questions • Related • Actions</span>
                 </div>
               </CardContent>
             </Card>
