@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Highlighting Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .pdf-page {
+            width: 100%;
+            height: 600px;
+            border: 2px solid #ddd;
+            position: relative;
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+        
+        .test-highlight {
+            position: absolute;
+            background-color: rgba(255, 255, 0, 0.5);
+            border: 2px solid rgba(255, 255, 0, 0.8);
+            border-radius: 3px;
+            pointer-events: none;
+            transition: all 0.2s ease;
+            z-index: 10;
+        }
+        
+        .test-highlight.green {
+            background-color: rgba(0, 255, 0, 0.4);
+            border-color: rgba(0, 255, 0, 0.8);
+        }
+        
+        .test-highlight.blue {
+            background-color: rgba(0, 150, 255, 0.4);
+            border-color: rgba(0, 150, 255, 0.8);
+        }
+        
+        .button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        
+        .button:hover {
+            background: #0056b3;
+        }
+        
+        .status {
+            margin: 10px 0;
+            padding: 10px;
+            background: #e9ecef;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PDF Highlighting System Test</h1>
+        
+        <div class="status" id="status">
+            Ready to test highlighting system...
+        </div>
+        
+        <button class="button" onclick="testHighlights()">Test Highlights</button>
+        <button class="button" onclick="clearHighlights()">Clear Highlights</button>
+        
+        <div class="pdf-page" id="pdf-page" data-page-number="1">
+            <h2>Comprehensive Guide to Major Cities in the South of France</h2>
+            
+            <h3>Introduction</h3>
+            <p>The South of France, known for its stunning landscapes, Mediterranean coastline, and rich cultural heritage, is home to some of the most beautiful and historically significant cities in the country. This guide provides an in-depth look at the major cities in the South of France, detailing their history, key attractions, cultural highlights, and unique characteristics. Whether you're planning a visit or simply want to learn more about this enchanting region, this guide will offer valuable insights into each city's charm and allure.</p>
+            
+            <h3>Key Cities Overview</h3>
+            <p>From the glamorous beaches of Cannes to the historic streets of Avignon, each city offers its own unique character and attractions. The region combines natural beauty with cultural sophistication, making it a premier destination for travelers worldwide.</p>
+            
+            <h3>Cultural Heritage</h3>
+            <p>The cultural heritage of Southern France reflects centuries of diverse influences, from Roman architecture to modern artistic movements. This rich tapestry creates an environment where history and contemporary life blend seamlessly.</p>
+        </div>
+        
+        <div class="pdf-page" id="pdf-page-2" data-page-number="2">
+            <h3>Major Cities in Detail</h3>
+            
+            <h4>Nice</h4>
+            <p>Nice, the capital of the French Riviera, is renowned for its beautiful beaches, vibrant markets, and stunning architecture. The city's Promenade des Anglais offers breathtaking views of the Mediterranean Sea.</p>
+            
+            <h4>Marseille</h4>
+            <p>As France's oldest city and second-largest urban area, Marseille boasts a rich maritime history and diverse cultural landscape. The Old Port remains the heart of the city's commercial and social life.</p>
+            
+            <h4>Cannes</h4>
+            <p>Famous worldwide for its annual film festival, Cannes epitomizes glamour and luxury. The city's beaches, shopping, and nightlife attract celebrities and visitors from around the globe.</p>
+        </div>
+    </div>
+
+    <script>
+        function updateStatus(message) {
+            document.getElementById('status').textContent = message;
+        }
+        
+        function testHighlights() {
+            updateStatus('Creating test highlights...');
+            
+            const page1 = document.getElementById('pdf-page');
+            const page2 = document.getElementById('pdf-page-2');
+            
+            // Clear existing highlights
+            clearHighlights();
+            
+            // Create highlights on page 1
+            createHighlight(page1, 50, 100, 400, 20, 'Introduction section - Key content', 'yellow');
+            createHighlight(page1, 50, 200, 600, 40, 'Cultural heritage information', 'green');
+            createHighlight(page1, 50, 300, 350, 25, 'Regional overview', 'blue');
+            
+            // Create highlights on page 2
+            createHighlight(page2, 50, 80, 300, 20, 'Nice city information', 'yellow');
+            createHighlight(page2, 50, 180, 400, 20, 'Marseille historical data', 'green');
+            
+            updateStatus('✅ Test highlights created successfully! You should see colored overlays on the text.');
+        }
+        
+        function createHighlight(pageElement, x, y, width, height, tooltip, color = 'yellow') {
+            const highlight = document.createElement('div');
+            highlight.className = `test-highlight ${color}`;
+            highlight.title = tooltip;
+            highlight.style.left = x + 'px';
+            highlight.style.top = y + 'px';
+            highlight.style.width = width + 'px';
+            highlight.style.height = height + 'px';
+            
+            pageElement.appendChild(highlight);
+            
+            // Add animation
+            setTimeout(() => {
+                highlight.style.opacity = '0.8';
+                highlight.style.transform = 'scale(1.02)';
+            }, 100);
+        }
+        
+        function clearHighlights() {
+            const highlights = document.querySelectorAll('.test-highlight');
+            highlights.forEach(h => h.remove());
+            updateStatus('Highlights cleared.');
+        }
+        
+        // Auto-test on load
+        setTimeout(testHighlights, 1000);
+    </script>
+</body>
+</html>

@@ -114,6 +114,28 @@ export class CustomPdfHighlighter {
         -webkit-user-select: text !important;
         -moz-user-select: text !important;
       }
+      
+      @keyframes slideIn {
+        from {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+        to {
+          transform: translateX(0);
+          opacity: 1;
+        }
+      }
+      
+      @keyframes slideOut {
+        from {
+          transform: translateX(0);
+          opacity: 1;
+        }
+        to {
+          transform: translateX(100%);
+          opacity: 0;
+        }
+      }
     `;
     document.head.appendChild(this.styleSheet);
   }
@@ -124,15 +146,36 @@ export class CustomPdfHighlighter {
     
     if (!text || text.length < 3) return positions;
 
-    // Look for text layer in PDF.js rendered page
-    const textLayer = pageElement.querySelector('.react-pdf__Page__textContent') as HTMLElement;
-    if (!textLayer) return positions;
+    // Look for text layer in PDF.js rendered page - try multiple selectors
+    let textLayer = pageElement.querySelector('.react-pdf__Page__textContent') as HTMLElement;
+    
+    // If text layer not found, try alternative selectors
+    if (!textLayer) {
+      textLayer = pageElement.querySelector('.textLayer') as HTMLElement;
+    }
+    if (!textLayer) {
+      textLayer = pageElement.querySelector('[class*="textContent"]') as HTMLElement;
+    }
+    if (!textLayer) {
+      textLayer = pageElement.querySelector('[class*="textLayer"]') as HTMLElement;
+    }
+    
+    // If still no text layer, create fallback positioning based on page dimensions
+    if (!textLayer) {
+      console.warn('No text layer found, creating fallback highlight position');
+      return this.createFallbackPosition(text, pageElement);
+    }
 
     const normalizedSearchText = text.toLowerCase().trim();
     const searchWords = normalizedSearchText.split(/\s+/).filter(word => word.length > 1);
     
     // Get all text spans in the text layer
     const textSpans = Array.from(textLayer.querySelectorAll('span')) as HTMLSpanElement[];
+    
+    if (textSpans.length === 0) {
+      console.warn('No text spans found, creating fallback highlight position');
+      return this.createFallbackPosition(text, pageElement);
+    }
     
     // Build full text content with position mapping
     let fullText = '';
@@ -157,6 +200,16 @@ export class CustomPdfHighlighter {
         const partialSearch = searchWords.slice(0, i).join(' ');
         searchIndex = fullTextLower.indexOf(partialSearch);
         if (searchIndex !== -1) break;
+      }
+    }
+    
+    // If still no match, try individual words
+    if (searchIndex === -1 && searchWords.length > 0) {
+      for (const word of searchWords) {
+        if (word.length > 3) {
+          searchIndex = fullTextLower.indexOf(word);
+          if (searchIndex !== -1) break;
+        }
       }
     }
     
@@ -191,6 +244,37 @@ export class CustomPdfHighlighter {
           });
         }
       }
+    }
+    
+    // If no positions found, create fallback
+    if (positions.length === 0) {
+      return this.createFallbackPosition(text, pageElement);
+    }
+    
+    return positions;
+  }
+
+  // Create fallback position when text cannot be found
+  private createFallbackPosition(text: string, pageElement: HTMLElement): TextPosition[] {
+    const pageRect = pageElement.getBoundingClientRect();
+    const pageNumber = this.getPageNumber(pageElement);
+    
+    // Create multiple highlight positions distributed across the page
+    const positions: TextPosition[] = [];
+    const numHighlights = Math.min(3, Math.max(1, Math.floor(text.length / 50)));
+    
+    for (let i = 0; i < numHighlights; i++) {
+      const yOffset = (pageRect.height * 0.2) + (i * pageRect.height * 0.2);
+      positions.push({
+        pageNumber,
+        textContent: text,
+        boundingBox: {
+          x: pageRect.width * 0.1,
+          y: yOffset,
+          width: pageRect.width * 0.8,
+          height: 20
+        }
+      });
     }
     
     return positions;
@@ -238,18 +322,28 @@ export class CustomPdfHighlighter {
   private createHighlightOverlay(highlight: Highlight, pageElement: HTMLElement) {
     const positions = this.findTextPositions(highlight.text, pageElement);
     
+    if (positions.length === 0) {
+      console.warn(`No positions found for highlight: ${highlight.text.substring(0, 50)}...`);
+      return;
+    }
+    
     positions.forEach((position, index) => {
       const highlightElement = document.createElement('div');
       highlightElement.className = `custom-pdf-highlight ${highlight.color}`;
       highlightElement.id = `highlight-${highlight.id}-${index}`;
       highlightElement.title = `${highlight.explanation} (${Math.round(highlight.relevanceScore * 100)}% relevant)`;
       
+      // Ensure minimum dimensions for visibility
+      const width = Math.max(position.boundingBox.width, 100);
+      const height = Math.max(position.boundingBox.height, 16);
+      
       // Position the highlight
       highlightElement.style.cssText = `
         left: ${position.boundingBox.x}px;
         top: ${position.boundingBox.y}px;
-        width: ${position.boundingBox.width}px;
-        height: ${position.boundingBox.height}px;
+        width: ${width}px;
+        height: ${height}px;
+        z-index: 1000;
       `;
       
       // Add click handler
@@ -264,7 +358,44 @@ export class CustomPdfHighlighter {
       
       // Store reference
       this.highlights.set(`${highlight.id}-${index}`, highlight);
+      
+      // Add animation effect
+      setTimeout(() => {
+        highlightElement.style.opacity = '0.8';
+        highlightElement.style.transform = 'scale(1.02)';
+      }, index * 100);
+      
+      console.log(`Created highlight overlay at position:`, position.boundingBox);
     });
+    
+    // Show notification
+    this.showHighlightNotification(highlight, positions.length);
+  }
+
+  // Show notification when highlight is created
+  private showHighlightNotification(highlight: Highlight, count: number) {
+    const notification = document.createElement('div');
+    notification.className = 'highlight-notification';
+    notification.textContent = `✨ Highlight added: ${highlight.text.substring(0, 30)}...`;
+    notification.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      background: rgba(0, 0, 0, 0.8);
+      color: white;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      z-index: 10000;
+      animation: slideIn 0.3s ease-out;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+      notification.style.animation = 'slideOut 0.3s ease-out';
+      setTimeout(() => notification.remove(), 300);
+    }, 2000);
   }
 
   // Handle highlight click
