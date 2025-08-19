@@ -337,16 +337,16 @@ def generate_enhanced_relevance_explanation(section: Dict[str, Any],
     
     # Primary relevance reason
     if common_persona and common_job:
-        key_terms = list((common_persona | common_job)[:3])
+        key_terms = list((common_persona | common_job))[:3]
         explanation_parts.append(f"Addresses {', '.join(key_terms)} directly relevant to your role and objectives")
     elif common_current and len(common_current) >= 2:
-        key_terms = list(common_current[:2])
+        key_terms = list(common_current)[:2]
         explanation_parts.append(f"Builds upon concepts like {', '.join(key_terms)} from your current reading")
     elif common_persona:
-        key_terms = list(common_persona[:2])
+        key_terms = list(common_persona)[:2]
         explanation_parts.append(f"Contains insights about {', '.join(key_terms)} relevant to your {persona.lower()} role")
     elif common_job:
-        key_terms = list(common_job[:2])
+        key_terms = list(common_job)[:2]
         explanation_parts.append(f"Provides information about {', '.join(key_terms)} for your {job.lower()}")
     
     # Add document context if different document
