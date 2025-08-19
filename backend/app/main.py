@@ -1038,7 +1038,7 @@ async def analyze_document_content_async(doc_id: str, file_path: str):
         # Store the analysis results in the document store
         if doc_id in documents_store:
             documents_store[doc_id]["content_analysis"] = analysis_result
-            print(f"Content analysis completed for {doc_id}: {analysis_result[\"analysis_metadata\"]}")
+            print(f"Content analysis completed for {doc_id}: {analysis_result['analysis_metadata']}")
         
     except Exception as e:
         print(f"Error in background content analysis for {doc_id}: {e}")

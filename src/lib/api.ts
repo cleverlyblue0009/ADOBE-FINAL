@@ -583,137 +583,6 @@ class ApiService {
 
     return response.blob();
   }
-}
-
-export interface CrossConnectionsResponse {
-  document_id: string;
-  related_documents: RelatedDocument[];
-  contradictions: Contradiction[];
-  insights: CrossDocumentInsight[];
-  total_connections: number;
-}
-
-export interface RelatedDocument {
-  document_id: string;
-  document_title: string;
-  connection_type: 'complementary' | 'contradictory' | 'similar' | 'related';
-  relevance_score: number;
-  explanation: string;
-  key_sections: string[];
-  similarities?: Array<{
-    doc1_quote: string;
-    doc2_quote: string;
-    similarity_type: 'identical' | 'paraphrased' | 'concept_match';
-    explanation: string;
-  }>;
-  complementary_insights?: Array<{
-    insight: string;
-    doc1_support: string;
-    doc2_support: string;
-  }>;
-}
-
-export interface Contradiction {
-  document_id: string;
-  document_title: string;
-  contradiction: string;
-  severity: 'low' | 'medium' | 'high';
-  doc1_quote?: string;
-  doc2_quote?: string;
-  contradiction_type?: 'direct' | 'methodological' | 'conclusion' | 'general';
-}
-
-export interface CrossDocumentInsight {
-  type: 'pattern' | 'opportunity' | 'recommendation' | 'takeaway';
-  content: string;
-  confidence: number;
-}
-
-export interface StrategicInsights {
-  opportunities: Array<{
-    insight: string;
-    priority: 'high' | 'medium' | 'low';
-    timeframe: 'immediate' | 'short-term' | 'long-term';
-  }>;
-  critical_decisions: Array<{
-    decision: string;
-    factors: string[];
-    urgency: 'high' | 'medium' | 'low';
-  }>;
-  risks: Array<{
-    risk: string;
-    impact: 'high' | 'medium' | 'low';
-    mitigation: string;
-  }>;
-  action_items: Array<{
-    action: string;
-    priority: 'high' | 'medium' | 'low';
-    effort: 'low' | 'medium' | 'high';
-  }>;
-  knowledge_gaps: Array<{
-    gap: string;
-    importance: 'high' | 'medium' | 'low';
-    source_suggestions: string[];
-  }>;
-  strategic_context: {
-    relevance_to_role: string;
-    business_impact: string;
-    competitive_advantage: string;
-  };
-}
-
-export interface ContextualAnalysis {
-  section_summary: string;
-  contextual_significance: string;
-  personal_relevance: string;
-  deeper_implications: string[];
-  cross_references: string[];
-  expert_perspective: string;
-  questions_to_consider: string[];
-  next_steps: string[];
-  confidence_score: number;
-}
-
-export interface MultiDocumentInsights {
-  analyzed_documents: number;
-  document_titles: string[];
-  insights: {
-    overarching_patterns: Array<{
-      pattern: string;
-      documents: string[];
-      evidence: string[];
-      significance: string;
-    }>;
-    contradictions: Array<{
-      topic: string;
-      doc1_position: string;
-      doc2_position: string;
-      doc1_evidence: string;
-      doc2_evidence: string;
-      impact: string;
-      resolution_suggestion: string;
-    }>;
-    knowledge_gaps: Array<{
-      gap: string;
-      importance: 'high' | 'medium' | 'low';
-      impact_on_job: string;
-      suggested_research: string;
-    }>;
-    synthesis_insights: Array<{
-      insight: string;
-      supporting_documents: string[];
-      implications: string;
-      confidence: number;
-    }>;
-    actionable_recommendations: Array<{
-      recommendation: string;
-      priority: 'high' | 'medium' | 'low';
-      timeframe: 'immediate' | 'short-term' | 'long-term';
-      based_on: string;
-      success_metrics: string;
-    }>;
-  };
-}
 
   async generateDocumentSnippet(
     text: string,
@@ -896,6 +765,136 @@ export interface MultiDocumentInsights {
     }
     return response.json();
   }
+}
+
+export interface CrossConnectionsResponse {
+  document_id: string;
+  related_documents: RelatedDocument[];
+  contradictions: Contradiction[];
+  insights: CrossDocumentInsight[];
+  total_connections: number;
+}
+
+export interface RelatedDocument {
+  document_id: string;
+  document_title: string;
+  connection_type: 'complementary' | 'contradictory' | 'similar' | 'related';
+  relevance_score: number;
+  explanation: string;
+  key_sections: string[];
+  similarities?: Array<{
+    doc1_quote: string;
+    doc2_quote: string;
+    similarity_type: 'identical' | 'paraphrased' | 'concept_match';
+    explanation: string;
+  }>;
+  complementary_insights?: Array<{
+    insight: string;
+    doc1_support: string;
+    doc2_support: string;
+  }>;
+}
+
+export interface Contradiction {
+  document_id: string;
+  document_title: string;
+  contradiction: string;
+  severity: 'low' | 'medium' | 'high';
+  doc1_quote?: string;
+  doc2_quote?: string;
+  contradiction_type?: 'direct' | 'methodological' | 'conclusion' | 'general';
+}
+
+export interface CrossDocumentInsight {
+  type: 'pattern' | 'opportunity' | 'recommendation' | 'takeaway';
+  content: string;
+  confidence: number;
+}
+
+export interface StrategicInsights {
+  opportunities: Array<{
+    insight: string;
+    priority: 'high' | 'medium' | 'low';
+    timeframe: 'immediate' | 'short-term' | 'long-term';
+  }>;
+  critical_decisions: Array<{
+    decision: string;
+    factors: string[];
+    urgency: 'high' | 'medium' | 'low';
+  }>;
+  risks: Array<{
+    risk: string;
+    impact: 'high' | 'medium' | 'low';
+    mitigation: string;
+  }>;
+  action_items: Array<{
+    action: string;
+    priority: 'high' | 'medium' | 'low';
+    effort: 'low' | 'medium' | 'high';
+  }>;
+  knowledge_gaps: Array<{
+    gap: string;
+    importance: 'high' | 'medium' | 'low';
+    source_suggestions: string[];
+  }>;
+  strategic_context: {
+    relevance_to_role: string;
+    business_impact: string;
+    competitive_advantage: string;
+  };
+}
+
+export interface ContextualAnalysis {
+  section_summary: string;
+  contextual_significance: string;
+  personal_relevance: string;
+  deeper_implications: string[];
+  cross_references: string[];
+  expert_perspective: string;
+  questions_to_consider: string[];
+  next_steps: string[];
+  confidence_score: number;
+}
+
+export interface MultiDocumentInsights {
+  analyzed_documents: number;
+  document_titles: string[];
+  insights: {
+    overarching_patterns: Array<{
+      pattern: string;
+      documents: string[];
+      evidence: string[];
+      significance: string;
+    }>;
+    contradictions: Array<{
+      topic: string;
+      doc1_position: string;
+      doc2_position: string;
+      doc1_evidence: string;
+      doc2_evidence: string;
+      impact: string;
+      resolution_suggestion: string;
+    }>;
+    knowledge_gaps: Array<{
+      gap: string;
+      importance: 'high' | 'medium' | 'low';
+      impact_on_job: string;
+      suggested_research: string;
+    }>;
+    synthesis_insights: Array<{
+      insight: string;
+      supporting_documents: string[];
+      implications: string;
+      confidence: number;
+    }>;
+    actionable_recommendations: Array<{
+      recommendation: string;
+      priority: 'high' | 'medium' | 'low';
+      timeframe: 'immediate' | 'short-term' | 'long-term';
+      based_on: string;
+      success_metrics: string;
+    }>;
+  };
 }
 
 export const apiService = new ApiService();
