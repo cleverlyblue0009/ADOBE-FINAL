@@ -575,9 +575,9 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   };
 
   return (
-    <div className="h-screen flex flex-col bg-background">
+    <div className="h-screen flex flex-col bg-background pdf-reader-layout">
       {/* Header */}
-      <header className="border-b border-border-subtle bg-surface-elevated/95 backdrop-blur-md shadow-sm">
+      <header className="border-b border-border-subtle bg-surface-elevated/95 backdrop-blur-md shadow-sm relative z-40">
         <div className="flex items-center justify-between px-8 py-5">
           <div className="flex items-center gap-6">
             {onBack && (
@@ -707,15 +707,15 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
         {/* Left Sidebar - Enhanced Navigation */}
         {leftSidebarOpen && (
           <aside 
-            className="fixed left-0 h-full bg-surface-elevated/95 border-r border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm z-30 shadow-xl"
+            className="fixed left-0 h-full bg-surface-elevated/95 border-r border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm z-30 shadow-xl pdf-reader-sidebar"
             style={{ 
-              width: `280px`, 
-              maxWidth: `280px`,
+              width: `300px`, 
+              maxWidth: `300px`,
               top: '73px', // Account for header height
               height: 'calc(100vh - 73px)'
             }}
           >
-            <div className="flex-1 overflow-hidden flex flex-col min-w-0 p-4">
+            <div className="flex-1 overflow-hidden flex flex-col min-w-0 p-4 sidebar-content">
               <EnhancedLeftPanel
                 documents={documents}
                 currentDocument={currentDocument}
@@ -762,10 +762,12 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
 
         {/* Main PDF Viewer - Enhanced */}
         <main 
-          className="flex-1 relative transition-all duration-300 p-6"
+          className="flex-1 relative transition-all duration-300 p-4 main-content-area"
           style={{ 
-            marginLeft: leftSidebarOpen ? '300px' : '20px',
-            marginRight: rightPanelOpen ? '340px' : '20px'
+            marginLeft: leftSidebarOpen ? '320px' : '20px',
+            marginRight: rightPanelOpen ? '340px' : '20px',
+            minWidth: '0',
+            overflow: 'hidden'
           }}
         >
           {currentDocument ? (
@@ -809,10 +811,10 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
         {/* Right Panel - Interactive Utilities */}
         {rightPanelOpen && (
           <aside 
-            className="fixed right-0 bg-surface-elevated/95 border-l border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm overflow-hidden shadow-xl z-30"
+            className="fixed right-0 bg-surface-elevated/95 border-l border-border-subtle flex flex-col animate-fade-in backdrop-blur-sm overflow-hidden shadow-xl z-30 pdf-reader-sidebar"
             style={{
-              width: '320px',
-              maxWidth: '320px',
+              width: '340px',
+              maxWidth: '340px',
               top: '73px', // Account for header height
               height: 'calc(100vh - 73px)'
             }}
@@ -845,9 +847,9 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               </div>
             </div>
 
-            <div className="flex-1 overflow-hidden min-w-0 p-4">
+            <div className="flex-1 overflow-hidden min-w-0 p-4 sidebar-content">
               {activeRightPanel === 'insights' && (
-                <div className="min-w-0 overflow-y-auto h-full break-words">
+                <div className="min-w-0 overflow-y-auto h-full break-words panel-content">
                   <EnhancedAIInsightsPanel 
                     documentIds={documents?.map(d => d.id) || []}
                     documentId={currentDocument?.id}
@@ -860,7 +862,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               )}
               
               {activeRightPanel === 'strategic' && (
-                <div className="min-w-0 overflow-y-auto h-full break-words">
+                <div className="min-w-0 overflow-y-auto h-full break-words panel-content">
                   <EnhancedStrategicPanel 
                     documentId={currentDocument?.id}
                     persona={persona}
@@ -881,7 +883,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               )}
               
               {activeRightPanel === 'connections' && currentDocument && (
-                <div className="min-w-0 overflow-y-auto h-full break-words">
+                <div className="min-w-0 overflow-y-auto h-full break-words panel-content">
                   <div className="overflow-y-auto h-full">
                     <CrossConnectionsPanel 
                       documentId={currentDocument.id}
@@ -923,7 +925,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               )}
               
               {activeRightPanel === 'podcast' && (
-                <div className="min-w-0 overflow-y-auto h-full break-words">
+                <div className="min-w-0 overflow-y-auto h-full break-words panel-content">
                   <PodcastPanel 
                     documentId={currentDocument?.id}
                     currentPage={currentPage}
@@ -935,7 +937,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               )}
               
               {activeRightPanel === 'accessibility' && (
-                <div className="min-w-0 overflow-y-auto h-full break-words">
+                <div className="min-w-0 overflow-y-auto h-full break-words panel-content">
                   <AccessibilityPanel 
                     currentText={selectedText || getCurrentSectionTitle()}
                     onFontSizeChange={(size) => {
@@ -960,7 +962,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               )}
               
               {activeRightPanel === 'simplifier' && (
-                <div className="min-w-0 overflow-y-auto h-full break-words">
+                <div className="min-w-0 overflow-y-auto h-full break-words panel-content">
                   <TextSimplifier 
                     originalText={selectedText || getCurrentSectionTitle()}
                     onSimplifiedText={(text) => console.log('Simplified:', text)}
@@ -969,7 +971,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               )}
 
               {activeRightPanel === 'export' && (
-                <div className="min-w-0 overflow-y-auto h-full break-words">
+                <div className="min-w-0 overflow-y-auto h-full break-words panel-content">
                   <CopyDownloadPanel
                     selectedText={selectedText}
                     currentSection={getCurrentSectionTitle()}
@@ -984,7 +986,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               )}
 
               {activeRightPanel === 'highlights' && (
-                <div className="min-w-0 overflow-y-auto h-full break-words">
+                <div className="min-w-0 overflow-y-auto h-full break-words panel-content">
                   <EnhancedHighlightFlashcards
                     highlights={highlights}
                     onHighlightClick={(highlight) => {
@@ -1021,7 +1023,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               )}
 
               {activeRightPanel === 'analytics' && (
-                <div className="min-w-0 overflow-y-auto h-full break-words">
+                <div className="min-w-0 overflow-y-auto h-full break-words panel-content">
                   <ReadingAnalyticsPanel
                     currentPage={currentPage}
                     totalPages={totalPages}
@@ -1035,7 +1037,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               )}
 
               {activeRightPanel === 'bookmarks' && (
-                <div className="min-w-0 overflow-y-auto h-full break-words">
+                <div className="min-w-0 overflow-y-auto h-full break-words panel-content">
                   <SmartBookmarksPanel
                     currentPage={currentPage}
                     selectedText={selectedText}

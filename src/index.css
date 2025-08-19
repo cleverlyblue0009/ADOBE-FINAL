@@ -732,4 +732,63 @@
     outline: 2px solid hsl(var(--brand-primary));
     outline-offset: 2px;
   }
+
+  /* Layout fixes for PDF Reader */
+  .pdf-reader-layout {
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  /* Ensure proper text wrapping in panels */
+  .panel-content {
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    hyphens: auto;
+    min-width: 0;
+  }
+
+  /* Prevent content from overflowing in sidebars */
+  .sidebar-content {
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: hidden;
+    overflow-y: auto;
+  }
+
+  /* Ensure main content area doesn't overlap with sidebars */
+  .main-content-area {
+    min-width: 0;
+    flex: 1;
+    overflow: hidden;
+  }
+
+  /* Prevent layout shifts and ensure smooth transitions */
+  .pdf-reader-layout * {
+    box-sizing: border-box;
+  }
+
+  .pdf-reader-sidebar {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Better responsive behavior for navigation */
+  @media (max-width: 768px) {
+    .pdf-reader-sidebar {
+      width: 100% !important;
+      max-width: 100% !important;
+      left: 0 !important;
+      right: 0 !important;
+    }
+    
+    .main-content-area {
+      margin-left: 0 !important;
+      margin-right: 0 !important;
+    }
+  }
+
+  /* Ensure proper text rendering and prevent overflow */
+  .panel-content * {
+    max-width: 100%;
+    word-break: break-word;
+  }
 }
