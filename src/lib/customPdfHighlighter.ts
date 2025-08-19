@@ -30,65 +30,92 @@ export class CustomPdfHighlighter {
       .custom-pdf-highlight {
         position: absolute;
         pointer-events: none;
-        border-radius: 1px;
-        transition: opacity 0.2s ease-in-out;
+        border-radius: 2px;
+        transition: all 0.2s ease-in-out;
         z-index: 10;
         box-sizing: border-box;
+        mix-blend-mode: multiply;
+        opacity: 0.85;
       }
       
-      .custom-pdf-highlight.primary {
-        background-color: rgba(255, 255, 0, 0.6);
-        border: 1px solid rgba(255, 255, 0, 0.8);
-        box-shadow: 0 0 3px rgba(255, 255, 0, 0.4);
+      /* Traditional textbook highlighter colors with realistic appearance */
+      .custom-pdf-highlight.primary,
+      .custom-pdf-highlight.yellow {
+        background: linear-gradient(90deg, 
+          rgba(255, 255, 0, 0.3) 0%, 
+          rgba(255, 255, 0, 0.4) 25%, 
+          rgba(255, 255, 0, 0.35) 50%, 
+          rgba(255, 255, 0, 0.4) 75%, 
+          rgba(255, 255, 0, 0.3) 100%);
+        border-top: 1px solid rgba(255, 255, 0, 0.1);
+        border-bottom: 1px solid rgba(255, 255, 0, 0.1);
       }
       
-      .custom-pdf-highlight.secondary {
-        background-color: rgba(0, 255, 0, 0.5);
-        border: 1px solid rgba(0, 255, 0, 0.8);
-        box-shadow: 0 0 3px rgba(0, 255, 0, 0.4);
+      .custom-pdf-highlight.secondary,
+      .custom-pdf-highlight.green {
+        background: linear-gradient(90deg, 
+          rgba(144, 238, 144, 0.3) 0%, 
+          rgba(144, 238, 144, 0.4) 25%, 
+          rgba(144, 238, 144, 0.35) 50%, 
+          rgba(144, 238, 144, 0.4) 75%, 
+          rgba(144, 238, 144, 0.3) 100%);
+        border-top: 1px solid rgba(144, 238, 144, 0.1);
+        border-bottom: 1px solid rgba(144, 238, 144, 0.1);
       }
       
-      .custom-pdf-highlight.tertiary {
-        background-color: rgba(0, 150, 255, 0.5);
-        border: 1px solid rgba(0, 150, 255, 0.8);
-        box-shadow: 0 0 3px rgba(0, 150, 255, 0.4);
+      .custom-pdf-highlight.tertiary,
+      .custom-pdf-highlight.blue {
+        background: linear-gradient(90deg, 
+          rgba(135, 206, 250, 0.3) 0%, 
+          rgba(135, 206, 250, 0.4) 25%, 
+          rgba(135, 206, 250, 0.35) 50%, 
+          rgba(135, 206, 250, 0.4) 75%, 
+          rgba(135, 206, 250, 0.3) 100%);
+        border-top: 1px solid rgba(135, 206, 250, 0.1);
+        border-bottom: 1px solid rgba(135, 206, 250, 0.1);
       }
       
       .custom-pdf-highlight.quaternary {
-        background-color: rgba(255, 165, 0, 0.6);
-        border: 1px solid rgba(255, 165, 0, 0.8);
-        box-shadow: 0 0 3px rgba(255, 165, 0, 0.4);
-      }
-      
-      /* Standard highlight colors like real PDF highlighters */
-      .custom-pdf-highlight.yellow {
-        background-color: rgba(255, 255, 0, 0.6);
-        border: 1px solid rgba(255, 255, 0, 0.8);
-        box-shadow: 0 0 3px rgba(255, 255, 0, 0.4);
-      }
-      
-      .custom-pdf-highlight.green {
-        background-color: rgba(0, 255, 0, 0.5);
-        border: 1px solid rgba(0, 255, 0, 0.8);
-        box-shadow: 0 0 3px rgba(0, 255, 0, 0.4);
-      }
-      
-      .custom-pdf-highlight.blue {
-        background-color: rgba(0, 150, 255, 0.5);
-        border: 1px solid rgba(0, 150, 255, 0.8);
-        box-shadow: 0 0 3px rgba(0, 150, 255, 0.4);
+        background: linear-gradient(90deg, 
+          rgba(255, 165, 0, 0.3) 0%, 
+          rgba(255, 165, 0, 0.4) 25%, 
+          rgba(255, 165, 0, 0.35) 50%, 
+          rgba(255, 165, 0, 0.4) 75%, 
+          rgba(255, 165, 0, 0.3) 100%);
+        border-top: 1px solid rgba(255, 165, 0, 0.1);
+        border-bottom: 1px solid rgba(255, 165, 0, 0.1);
       }
       
       .custom-pdf-highlight.pink {
-        background-color: rgba(255, 20, 147, 0.5);
-        border: 1px solid rgba(255, 20, 147, 0.8);
-        box-shadow: 0 0 3px rgba(255, 20, 147, 0.4);
+        background: linear-gradient(90deg, 
+          rgba(255, 182, 193, 0.3) 0%, 
+          rgba(255, 182, 193, 0.4) 25%, 
+          rgba(255, 182, 193, 0.35) 50%, 
+          rgba(255, 182, 193, 0.4) 75%, 
+          rgba(255, 182, 193, 0.3) 100%);
+        border-top: 1px solid rgba(255, 182, 193, 0.1);
+        border-bottom: 1px solid rgba(255, 182, 193, 0.1);
       }
       
       .custom-pdf-highlight:hover {
-        opacity: 0.8;
+        opacity: 0.7;
         pointer-events: auto;
         cursor: pointer;
+        transform: scale(1.01);
+        filter: brightness(1.1);
+      }
+      
+      /* Add subtle texture effect for realism */
+      .custom-pdf-highlight::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: radial-gradient(ellipse at center, transparent 0%, rgba(255,255,255,0.1) 100%);
+        pointer-events: none;
+        border-radius: inherit;
       }
       
       .pdf-text-layer {
@@ -128,7 +155,7 @@ export class CustomPdfHighlighter {
     document.head.appendChild(this.styleSheet);
   }
 
-  // Find text positions in PDF page
+  // Find text positions in PDF page with improved accuracy
   findTextPositions(text: string, pageElement: HTMLElement): TextPosition[] {
     const positions: TextPosition[] = [];
     
@@ -158,7 +185,7 @@ export class CustomPdfHighlighter {
     // If still no text layer, create fallback positioning based on page dimensions
     if (!textLayer) {
       console.warn('❌ No text layer found, creating fallback highlight position');
-      return this.createFallbackPosition(text, pageElement);
+      return this.createImprovedFallbackPosition(text, pageElement);
     }
 
     const normalizedSearchText = this.normalizeText(text);
@@ -170,20 +197,25 @@ export class CustomPdfHighlighter {
     console.log(`📝 Found ${textSpans.length} text spans in layer`);
     
     if (textSpans.length === 0) {
-      console.warn('❌ No text spans found, creating fallback highlight position');
-      return this.createFallbackPosition(text, pageElement);
+      console.warn('❌ No text spans found, creating improved fallback highlight position');
+      return this.createImprovedFallbackPosition(text, pageElement);
     }
     
-    // Build full text content with position mapping
+    // Build full text content with position mapping and better word boundaries
     let fullText = '';
-    const spanMap: { span: HTMLSpanElement; start: number; end: number }[] = [];
+    const spanMap: { span: HTMLSpanElement; start: number; end: number; text: string }[] = [];
     
     textSpans.forEach(span => {
       const spanText = span.textContent || '';
       const start = fullText.length;
-      fullText += spanText + ' ';
-      const end = fullText.length - 1;
-      spanMap.push({ span, start, end });
+      fullText += spanText;
+      const end = fullText.length;
+      spanMap.push({ span, start, end, text: spanText });
+      
+      // Add space if next span doesn't start with punctuation
+      if (spanText && !/[.,!?;:]$/.test(spanText.trim())) {
+        fullText += ' ';
+      }
     });
     
     const fullTextNormalized = this.normalizeText(fullText);
@@ -191,93 +223,40 @@ export class CustomPdfHighlighter {
     console.log(`📖 Full page text (first 200 chars): "${fullTextNormalized.substring(0, 200)}..."`);
     console.log(`🎯 Searching for: "${normalizedSearchText}"`);
     
-    // Try multiple matching strategies
-    let searchIndex = -1;
-    let matchLength = normalizedSearchText.length;
+    // Enhanced matching strategies
+    const matchResult = this.findBestTextMatch(normalizedSearchText, fullTextNormalized, searchWords);
     
-    // Strategy 1: Exact match
-    searchIndex = fullTextNormalized.indexOf(normalizedSearchText);
-    if (searchIndex !== -1) {
-      console.log(`✅ Exact match found at index ${searchIndex}`);
-    }
-    
-    // Strategy 2: Partial matches with the first few words
-    if (searchIndex === -1 && searchWords.length > 1) {
-      for (let i = Math.min(searchWords.length, 4); i >= 2; i--) {
-        const partialSearch = searchWords.slice(0, i).join(' ');
-        searchIndex = fullTextNormalized.indexOf(partialSearch);
-        if (searchIndex !== -1) {
-          matchLength = partialSearch.length;
-          console.log(`✅ Partial match found (${i} words) at index ${searchIndex}: "${partialSearch}"`);
-          break;
-        }
-      }
-    }
-    
-    // Strategy 3: Try fuzzy matching for similar text
-    if (searchIndex === -1) {
-      searchIndex = this.findFuzzyMatch(normalizedSearchText, fullTextNormalized);
-      if (searchIndex !== -1) {
-        console.log(`✅ Fuzzy match found at index ${searchIndex}`);
-      }
-    }
-    
-    // Strategy 4: Individual significant words
-    if (searchIndex === -1 && searchWords.length > 0) {
-      for (const word of searchWords) {
-        if (word.length > 4) { // Only longer words
-          searchIndex = fullTextNormalized.indexOf(word);
-          if (searchIndex !== -1) {
-            matchLength = word.length;
-            console.log(`✅ Single word match found: "${word}" at index ${searchIndex}`);
-            break;
-          }
-        }
-      }
-    }
-    
-    if (searchIndex !== -1) {
+    if (matchResult) {
+      const { index: searchIndex, length: matchLength, confidence } = matchResult;
+      console.log(`✅ Match found at index ${searchIndex} with ${confidence}% confidence`);
+      
       const matchEnd = searchIndex + matchLength;
       
-      // Find spans that contain the matched text
-      const matchingSpans = spanMap.filter(({ start, end }) => 
-        (searchIndex <= end && matchEnd >= start)
-      );
+      // Find spans that contain the matched text with improved overlap detection
+      const matchingSpans = spanMap.filter(({ start, end }) => {
+        const overlap = Math.min(end, matchEnd) - Math.max(start, searchIndex);
+        return overlap > 0;
+      });
       
       console.log(`📍 Found ${matchingSpans.length} matching spans for highlight`);
       
       if (matchingSpans.length > 0) {
-        // Calculate bounding box for all matching spans
-        const rects = matchingSpans.map(({ span }) => span.getBoundingClientRect());
-        const pageRect = pageElement.getBoundingClientRect();
+        // Create more accurate positions by grouping consecutive spans
+        const spanGroups = this.groupConsecutiveSpans(matchingSpans, pageElement);
         
-        if (rects.length > 0) {
-          const minX = Math.min(...rects.map(r => r.left));
-          const minY = Math.min(...rects.map(r => r.top));
-          const maxX = Math.max(...rects.map(r => r.right));
-          const maxY = Math.max(...rects.map(r => r.bottom));
-          
-          const position = {
-            pageNumber: this.getPageNumber(pageElement),
-            textContent: text,
-            boundingBox: {
-              x: minX - pageRect.left,
-              y: minY - pageRect.top,
-              width: maxX - minX,
-              height: maxY - minY
-            }
-          };
-          
-          console.log(`✨ Created highlight position:`, position.boundingBox);
-          positions.push(position);
-        }
+        spanGroups.forEach(group => {
+          const position = this.calculatePositionFromSpanGroup(group, pageElement, text);
+          if (position) {
+            positions.push(position);
+          }
+        });
       }
     }
     
-    // If no positions found, create visible fallback
+    // If no positions found, create improved fallback
     if (positions.length === 0) {
-      console.warn(`❌ No text match found, creating fallback position for: "${text.substring(0, 30)}..."`);
-      return this.createFallbackPosition(text, pageElement);
+      console.warn(`❌ No text match found, creating improved fallback position for: "${text.substring(0, 30)}..."`);
+      return this.createImprovedFallbackPosition(text, pageElement);
     }
     
     return positions;
@@ -293,65 +272,233 @@ export class CustomPdfHighlighter {
       .trim();
   }
 
-  // Simple fuzzy matching for similar text
-  private findFuzzyMatch(searchText: string, fullText: string): number {
-    const searchWords = searchText.split(/\s+/).filter(word => word.length > 3);
-    if (searchWords.length === 0) return -1;
+  // Enhanced text matching with multiple strategies
+  private findBestTextMatch(searchText: string, fullText: string, searchWords: string[]): { index: number; length: number; confidence: number } | null {
+    // Strategy 1: Exact match (100% confidence)
+    let index = fullText.indexOf(searchText);
+    if (index !== -1) {
+      return { index, length: searchText.length, confidence: 100 };
+    }
     
-    // Look for sequences where at least 60% of words match
-    const threshold = Math.max(1, Math.floor(searchWords.length * 0.6));
-    const fullWords = fullText.split(/\s+/);
-    
-    for (let i = 0; i <= fullWords.length - searchWords.length; i++) {
-      const segment = fullWords.slice(i, i + searchWords.length);
-      const matches = searchWords.filter(word => 
-        segment.some(segWord => segWord.includes(word) || word.includes(segWord))
-      );
-      
-      if (matches.length >= threshold) {
-        // Find the start position of this segment in the full text
-        const segmentText = segment.join(' ');
-        const startIndex = fullText.indexOf(segmentText);
-        if (startIndex !== -1) {
-          console.log(`🔍 Fuzzy match found with ${matches.length}/${searchWords.length} words matching`);
-          return startIndex;
+    // Strategy 2: Partial matches with decreasing word count (90-70% confidence)
+    if (searchWords.length > 1) {
+      for (let i = Math.min(searchWords.length, 5); i >= 2; i--) {
+        const partialSearch = searchWords.slice(0, i).join(' ');
+        index = fullText.indexOf(partialSearch);
+        if (index !== -1) {
+          const confidence = Math.round(90 - (searchWords.length - i) * 5);
+          return { index, length: partialSearch.length, confidence };
         }
       }
     }
     
-    return -1;
+    // Strategy 3: Fuzzy matching (60-80% confidence)
+    const fuzzyResult = this.findFuzzyMatch(searchText, fullText);
+    if (fuzzyResult.index !== -1) {
+      return fuzzyResult;
+    }
+    
+    // Strategy 4: Individual significant words (50% confidence)
+    for (const word of searchWords) {
+      if (word.length > 4) {
+        index = fullText.indexOf(word);
+        if (index !== -1) {
+          return { index, length: word.length, confidence: 50 };
+        }
+      }
+    }
+    
+    return null;
   }
 
-  // Create fallback position when text cannot be found
-  private createFallbackPosition(text: string, pageElement: HTMLElement): TextPosition[] {
+  // Improved fuzzy matching with confidence scoring
+  private findFuzzyMatch(searchText: string, fullText: string): { index: number; length: number; confidence: number } {
+    const searchWords = searchText.split(/\s+/).filter(word => word.length > 2);
+    if (searchWords.length === 0) return { index: -1, length: 0, confidence: 0 };
+    
+    const threshold = Math.max(1, Math.floor(searchWords.length * 0.6));
+    const fullWords = fullText.split(/\s+/);
+    
+    let bestMatch = { index: -1, length: 0, confidence: 0 };
+    
+    for (let i = 0; i <= fullWords.length - searchWords.length; i++) {
+      const segment = fullWords.slice(i, i + searchWords.length);
+      const matches = searchWords.filter(word => 
+        segment.some(segWord => 
+          segWord.includes(word) || 
+          word.includes(segWord) ||
+          this.levenshteinDistance(word, segWord) <= 1
+        )
+      );
+      
+      if (matches.length >= threshold) {
+        const segmentText = segment.join(' ');
+        const startIndex = fullText.indexOf(segmentText);
+        
+        if (startIndex !== -1) {
+          const confidence = Math.round((matches.length / searchWords.length) * 80);
+          
+          if (confidence > bestMatch.confidence) {
+            bestMatch = { 
+              index: startIndex, 
+              length: segmentText.length, 
+              confidence 
+            };
+          }
+        }
+      }
+    }
+    
+    return bestMatch;
+  }
+
+  // Calculate Levenshtein distance for fuzzy matching
+  private levenshteinDistance(str1: string, str2: string): number {
+    const matrix = Array(str2.length + 1).fill(null).map(() => Array(str1.length + 1).fill(null));
+    
+    for (let i = 0; i <= str1.length; i++) matrix[0][i] = i;
+    for (let j = 0; j <= str2.length; j++) matrix[j][0] = j;
+    
+    for (let j = 1; j <= str2.length; j++) {
+      for (let i = 1; i <= str1.length; i++) {
+        const indicator = str1[i - 1] === str2[j - 1] ? 0 : 1;
+        matrix[j][i] = Math.min(
+          matrix[j][i - 1] + 1,
+          matrix[j - 1][i] + 1,
+          matrix[j - 1][i - 1] + indicator
+        );
+      }
+    }
+    
+    return matrix[str2.length][str1.length];
+  }
+
+  // Group consecutive spans for better highlight positioning
+  private groupConsecutiveSpans(spans: { span: HTMLSpanElement; start: number; end: number; text: string }[], pageElement: HTMLElement): HTMLSpanElement[][] {
+    if (spans.length === 0) return [];
+    
+    const groups: HTMLSpanElement[][] = [];
+    let currentGroup: HTMLSpanElement[] = [spans[0].span];
+    
+    for (let i = 1; i < spans.length; i++) {
+      const prevRect = spans[i - 1].span.getBoundingClientRect();
+      const currRect = spans[i].span.getBoundingClientRect();
+      
+      // Check if spans are on the same line and close to each other
+      const sameLineThreshold = Math.max(prevRect.height * 0.5, 5);
+      const proximityThreshold = Math.max(prevRect.width * 2, 20);
+      
+      const onSameLine = Math.abs(prevRect.top - currRect.top) <= sameLineThreshold;
+      const closeProximity = Math.abs(prevRect.right - currRect.left) <= proximityThreshold;
+      
+      if (onSameLine && closeProximity) {
+        currentGroup.push(spans[i].span);
+      } else {
+        groups.push(currentGroup);
+        currentGroup = [spans[i].span];
+      }
+    }
+    
+    groups.push(currentGroup);
+    return groups;
+  }
+
+  // Calculate position from a group of spans
+  private calculatePositionFromSpanGroup(spanGroup: HTMLSpanElement[], pageElement: HTMLElement, originalText: string): TextPosition | null {
+    if (spanGroup.length === 0) return null;
+    
+    const rects = spanGroup.map(span => span.getBoundingClientRect()).filter(rect => rect.width > 0 && rect.height > 0);
+    if (rects.length === 0) return null;
+    
+    const pageRect = pageElement.getBoundingClientRect();
+    
+    const minX = Math.min(...rects.map(r => r.left));
+    const minY = Math.min(...rects.map(r => r.top));
+    const maxX = Math.max(...rects.map(r => r.right));
+    const maxY = Math.max(...rects.map(r => r.bottom));
+    
+    return {
+      pageNumber: this.getPageNumber(pageElement),
+      textContent: originalText,
+      boundingBox: {
+        x: minX - pageRect.left,
+        y: minY - pageRect.top,
+        width: maxX - minX,
+        height: maxY - minY
+      }
+    };
+  }
+
+  // Create improved fallback position when text cannot be found
+  private createImprovedFallbackPosition(text: string, pageElement: HTMLElement): TextPosition[] {
     const pageRect = pageElement.getBoundingClientRect();
     const pageNumber = this.getPageNumber(pageElement);
     
-    console.log(`🎯 Creating fallback positions for: "${text.substring(0, 30)}..." on page ${pageNumber}`);
+    console.log(`🎯 Creating improved fallback positions for: "${text.substring(0, 30)}..." on page ${pageNumber}`);
     console.log(`📏 Page dimensions:`, { width: pageRect.width, height: pageRect.height });
     
-    // Create multiple highlight positions distributed across the page
+    // Create more realistic fallback positions that mimic actual text layout
     const positions: TextPosition[] = [];
-    const numHighlights = Math.min(5, Math.max(1, Math.floor(text.length / 40)));
     
-    // Create more visible fallback highlights spread across the page
-    for (let i = 0; i < numHighlights; i++) {
-      const yOffset = (pageRect.height * 0.15) + (i * pageRect.height * 0.15);
-      const xOffset = pageRect.width * (0.05 + (i % 2) * 0.1); // Alternate left/right
+    // Estimate text layout based on typical PDF structure
+    const textStartX = pageRect.width * 0.08; // Typical left margin
+    const textEndX = pageRect.width * 0.92;   // Typical right margin
+    const textWidth = textEndX - textStartX;
+    
+    // Estimate line height based on page size
+    const estimatedLineHeight = Math.max(16, Math.min(24, pageRect.height / 40));
+    
+    // Calculate number of lines needed for the text
+    const avgCharsPerLine = Math.floor(textWidth / 8); // Rough estimate
+    const numLines = Math.ceil(text.length / avgCharsPerLine);
+    const actualNumLines = Math.min(numLines, 3); // Limit to 3 lines max
+    
+    // Create positions that look like real text highlighting
+    for (let line = 0; line < actualNumLines; line++) {
+      const startChar = line * avgCharsPerLine;
+      const endChar = Math.min((line + 1) * avgCharsPerLine, text.length);
+      const lineText = text.substring(startChar, endChar);
+      
+      if (lineText.trim().length === 0) continue;
+      
+      // Calculate line position
+      const yOffset = (pageRect.height * 0.2) + (line * estimatedLineHeight * 1.5);
+      
+      // Calculate width based on text length
+      const charWidth = 7; // Approximate character width
+      const lineWidth = Math.min(lineText.length * charWidth, textWidth);
+      
+      // Add some randomness to make it look more natural
+      const xVariation = Math.random() * 10 - 5; // ±5px variation
+      const widthVariation = Math.random() * 20 - 10; // ±10px variation
       
       const position = {
         pageNumber,
-        textContent: text,
+        textContent: lineText,
         boundingBox: {
-          x: xOffset,
+          x: textStartX + xVariation,
           y: yOffset,
-          width: pageRect.width * 0.7,
-          height: 24
+          width: lineWidth + widthVariation,
+          height: estimatedLineHeight
         }
       };
       
-      console.log(`📍 Fallback position ${i + 1}:`, position.boundingBox);
+      console.log(`📍 Improved fallback position ${line + 1}:`, position.boundingBox);
       positions.push(position);
+    }
+    
+    // If no positions created, create at least one
+    if (positions.length === 0) {
+      positions.push({
+        pageNumber,
+        textContent: text,
+        boundingBox: {
+          x: textStartX,
+          y: pageRect.height * 0.3,
+          width: Math.min(text.length * 7, textWidth),
+          height: estimatedLineHeight
+        }
+      });
     }
     
     // Add a debug notification for fallback highlights
@@ -545,16 +692,17 @@ export class CustomPdfHighlighter {
       highlightElement.id = `highlight-${highlight.id}-${index}`;
       highlightElement.title = `${highlight.explanation} (${Math.round(highlight.relevanceScore * 100)}% relevant)`;
       
-      // Use actual text dimensions with padding for better visibility
-      const width = Math.max(position.boundingBox.width, 30);
-      const height = Math.max(position.boundingBox.height, 16);
+      // Use actual text dimensions with improved padding for textbook-style highlighting
+      const width = Math.max(position.boundingBox.width, 20);
+      const height = Math.max(position.boundingBox.height, 14);
       
-      // Position the highlight with padding for better visual alignment
-      const padding = 3;
-      const finalX = Math.max(0, position.boundingBox.x - padding);
-      const finalY = Math.max(0, position.boundingBox.y - padding/2);
-      const finalWidth = width + padding * 2;
-      const finalHeight = height + padding;
+      // Position the highlight with minimal padding for more precise text coverage
+      const horizontalPadding = 2;
+      const verticalPadding = 1;
+      const finalX = Math.max(0, position.boundingBox.x - horizontalPadding);
+      const finalY = Math.max(0, position.boundingBox.y - verticalPadding);
+      const finalWidth = width + horizontalPadding * 2;
+      const finalHeight = height + verticalPadding * 2;
       
       highlightElement.style.cssText = `
         position: absolute;
@@ -562,8 +710,9 @@ export class CustomPdfHighlighter {
         top: ${finalY}px;
         width: ${finalWidth}px;
         height: ${finalHeight}px;
-        z-index: 1000;
+        z-index: 15;
         pointer-events: auto;
+        border-radius: 2px;
       `;
       
       // Add debug info as data attributes
