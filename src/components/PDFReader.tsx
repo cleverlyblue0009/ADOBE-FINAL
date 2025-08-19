@@ -11,6 +11,7 @@ import { EnhancedStrategicPanel } from './EnhancedStrategicPanel';
 import { InsightsPanel } from './InsightsPanel';
 import { EnhancedInsightsPanel } from './EnhancedInsightsPanel';
 import { EnhancedAIInsightsPanel } from './EnhancedAIInsightsPanel';
+import { TextLayerHighlight } from '@/lib/textbookHighlighter';
 
 // Custom PDF Viewer wrapper component
 function CustomPDFViewerWrapper({ 
@@ -21,7 +22,8 @@ function CustomPDFViewerWrapper({
   onTextSelection, 
   highlights,
   currentPage,
-  goToSection
+  goToSection,
+  onHighlightsChange
 }: {
   documentUrl: string;
   documentName: string;
@@ -31,6 +33,7 @@ function CustomPDFViewerWrapper({
   highlights?: Highlight[];
   currentPage?: number;
   goToSection?: { page: number; section?: string } | null;
+  onHighlightsChange?: (highlights: TextLayerHighlight[]) => void;
 }) {
   return (
     <CustomPDFViewer
@@ -42,6 +45,7 @@ function CustomPDFViewerWrapper({
       highlights={highlights}
       currentHighlightPage={currentPage}
       goToSection={goToSection}
+      onHighlightsChange={onHighlightsChange}
     />
   );
 }
@@ -122,6 +126,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [isActivelyReading, setIsActivelyReading] = useState(true);
   const [totalPages, setTotalPages] = useState(30); // Will be updated from PDF
   const [currentLanguage, setCurrentLanguage] = useState('en');
+  const [textbookHighlights, setTextbookHighlights] = useState<TextLayerHighlight[]>([]);
 
   // Sidebar resize functionality
   const [isResizing, setIsResizing] = useState(false);

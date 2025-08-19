@@ -24,6 +24,8 @@ import {
   ChevronLeft
 } from 'lucide-react';
 import { Highlight } from './PDFReader';
+import { FlashcardModal } from './FlashcardModal';
+import { TextLayerHighlight } from '@/lib/textbookHighlighter';
 
 interface EnhancedHighlightFlashcardsProps {
   highlights: Highlight[];
@@ -33,6 +35,7 @@ interface EnhancedHighlightFlashcardsProps {
   currentPage?: number;
   persona?: string;
   jobToBeDone?: string;
+  textbookHighlights?: TextLayerHighlight[];
 }
 
 interface FlashcardData extends Highlight {

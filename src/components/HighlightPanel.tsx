@@ -13,7 +13,9 @@ import {
   SortAsc,
   MoreVertical,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Brain,
+  CreditCard
 } from 'lucide-react';
 import { 
   DropdownMenu,
@@ -23,19 +25,22 @@ import {
   DropdownMenuSeparator
 } from '@/components/ui/dropdown-menu';
 import { Highlight } from './PDFReader';
-import { HighlightFlashcards } from './HighlightFlashcards';
+import { FlashcardModal } from './FlashcardModal';
+import { TextLayerHighlight } from '@/lib/textbookHighlighter';
 
 interface HighlightPanelProps {
   highlights: Highlight[];
   onHighlightClick: (highlight: Highlight) => void;
   onRemoveHighlight?: (highlightId: string) => void;
+  textbookHighlights?: TextLayerHighlight[];
 }
 
-export function HighlightPanel({ highlights, onHighlightClick, onRemoveHighlight }: HighlightPanelProps) {
+export function HighlightPanel({ highlights, onHighlightClick, onRemoveHighlight, textbookHighlights = [] }: HighlightPanelProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterColor, setFilterColor] = useState<'all' | 'primary' | 'secondary' | 'tertiary'>('all');
   const [sortBy, setSortBy] = useState<'relevance' | 'page' | 'recent'>('relevance');
   const [expandedHighlights, setExpandedHighlights] = useState<Set<string>>(new Set());
+  const [flashcardModalOpen, setFlashcardModalOpen] = useState(false);
 
   const toggleExpanded = (highlightId: string) => {
     setExpandedHighlights(prev => {
@@ -128,11 +133,16 @@ export function HighlightPanel({ highlights, onHighlightClick, onRemoveHighlight
           </div>
           
           {/* Flashcards Button */}
-          <HighlightFlashcards 
-            highlights={highlights}
-            onHighlightClick={onHighlightClick}
-            onRemoveHighlight={onRemoveHighlight}
-          />
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setFlashcardModalOpen(true)}
+            disabled={highlights.length === 0}
+            className="gap-2"
+          >
+            <Brain className="h-4 w-4" />
+            Study Cards
+          </Button>
         </div>
 
         {/* Search */}
@@ -405,6 +415,14 @@ export function HighlightPanel({ highlights, onHighlightClick, onRemoveHighlight
           </div>
         </div>
       )}
+
+      {/* Flashcard Modal */}
+      <FlashcardModal
+        isOpen={flashcardModalOpen}
+        onClose={() => setFlashcardModalOpen(false)}
+        highlights={highlights}
+        textbookHighlights={textbookHighlights}
+      />
     </div>
   );
 }
