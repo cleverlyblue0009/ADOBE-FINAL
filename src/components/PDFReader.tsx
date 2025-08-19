@@ -55,6 +55,7 @@ import { AccessibilityPanel } from './AccessibilityPanel';
 import { PodcastPanel } from './PodcastPanel';
 import { HighlightPanel } from './HighlightPanel';
 import { EnhancedHighlightFlashcards } from './EnhancedHighlightFlashcards';
+import { HighlightsPopup } from './HighlightsPopup';
 import { TextSimplifier } from './TextSimplifier';
 import { CopyDownloadPanel } from './CopyDownloadPanel';
 import { ReadingAnalyticsPanel } from './ReadingAnalyticsPanel';
@@ -117,6 +118,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [zoom, setZoom] = useState(1.0);
   const [highlights, setHighlights] = useState<Highlight[]>([]);
   const [aiHighlightsVisible, setAiHighlightsVisible] = useState(false); // New state for AI highlights visibility
+  const [highlightsPopupOpen, setHighlightsPopupOpen] = useState(false); // New state for highlights popup
   const [goToSection, setGoToSection] = useState<{ page: number; section?: string } | null>(null);
   const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'strategic' | 'connections' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | 'highlights' | 'analytics' | 'bookmarks' | null>('highlights');
 
@@ -618,53 +620,37 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
             </Button>
             
             <Button
-              variant={aiHighlightsVisible ? "default" : "ghost"}
+              variant="ghost"
               size="sm"
               onClick={() => {
-                if (aiHighlightsVisible) {
-                  // Toggle off AI highlights
-                  setAiHighlightsVisible(false);
-                  toast({
-                    title: "AI Highlights Hidden",
-                    description: "AI highlights are no longer visible on the PDF"
-                  });
+                if (highlights.length === 0) {
+                  // Generate new highlights first
+                  generateIntelligenceHighlights();
+                  // Open popup after a short delay to allow highlights to be generated
+                  setTimeout(() => {
+                    setHighlightsPopupOpen(true);
+                  }, 1000);
                 } else {
-                  // Generate and show AI highlights, but also force apply existing highlights
-                  console.log('AI Highlights: Current highlights count:', highlights.length);
-                  console.log('AI Highlights: Current page:', currentPage);
-                  
-                  // Force apply highlights to current page
-                  const pageElement = document.querySelector(`[data-page-number="${currentPage}"]`) as HTMLElement ||
-                                     document.querySelector('.react-pdf__Page') as HTMLElement;
-                  
-                  if (pageElement && highlights.length > 0) {
-                    console.log('AI Highlights: Applying highlights manually');
-                    // Add page number attribute if missing
-                    pageElement.setAttribute('data-page-number', currentPage.toString());
-                    
-                    // Import and use the highlighter directly
-                    import('@/lib/customPdfHighlighter').then(({ customPdfHighlighter }) => {
-                      customPdfHighlighter.applyHighlights(highlights, currentPage, pageElement);
-                    });
-                    
-                    setAiHighlightsVisible(true);
-                    toast({
-                      title: "AI Highlights Applied",
-                      description: `Applied ${highlights.length} highlights to page ${currentPage}`
-                    });
-                  } else {
-                    // Generate new highlights
-                    generateIntelligenceHighlights();
-                  }
+                  // Open highlights popup directly
+                  setHighlightsPopupOpen(true);
                 }
+                
+                toast({
+                  title: "Opening AI Highlights",
+                  description: "View and study your highlighted content in flashcard format"
+                });
               }}
               disabled={!documents}
-              className={`gap-2 ${aiHighlightsVisible ? 'bg-brand-primary text-white hover:bg-brand-primary/90' : 'hover:bg-surface-hover'}`}
-              aria-label={aiHighlightsVisible ? "Hide AI highlights" : "Generate AI highlights"}
+              className="gap-2 hover:bg-surface-hover"
+              aria-label="Open AI highlights popup"
             >
               <Highlighter className="h-4 w-4" />
               AI Highlights
-              {aiHighlightsVisible && <span className="text-xs opacity-80">ON</span>}
+              {highlights.length > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs">
+                  {highlights.length}
+                </Badge>
+              )}
             </Button>
             
             <Button
@@ -783,20 +769,17 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
           }}
         >
           {currentDocument ? (
-            <EnhancedPDFViewer
+            <CustomPDFViewerWrapper
               documentUrl={currentDocument.url}
               documentName={currentDocument.name}
+              documentId={currentDocument.id}
               onPageChange={setCurrentPage}
               onTextSelection={handleTextSelection}
               highlights={highlights}
-              aiHighlightsVisible={aiHighlightsVisible}
-              currentHighlightPage={currentPage}
+              currentPage={currentPage}
               goToSection={goToSection}
-              persona={persona}
-              jobToBeDone={jobToBeDone}
-              onOpenSidebar={(panelType) => {
-                setActiveRightPanel(panelType);
-                setRightPanelOpen(true);
+              onHighlightsChange={(newHighlights) => {
+                console.log('Highlights changed:', newHighlights);
               }}
             />
           ) : (
@@ -1067,6 +1050,23 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
           </aside>
         )}
       </div>
+
+      {/* Highlights Popup */}
+      <HighlightsPopup
+        isOpen={highlightsPopupOpen}
+        onClose={() => setHighlightsPopupOpen(false)}
+        highlights={highlights}
+        onHighlightClick={(highlight) => {
+          // Navigate to the highlight page and close popup
+          setCurrentPage(highlight.page);
+          setHighlightsPopupOpen(false);
+          
+          toast({
+            title: "Navigated to Highlight",
+            description: `Page ${highlight.page}: ${highlight.text.substring(0, 50)}...`,
+          });
+        }}
+      />
     </div>
   );
 }

@@ -39,6 +39,36 @@ import {
   BookmarkPlus
 } from 'lucide-react';
 
+// Add this function at the top of UpdatedAIInsightsPanel.tsx after the imports
+function extractMainThemes(text: string): string[] {
+  if (!text || text.trim().length === 0) {
+    return ['Document Analysis'];
+  }
+
+  const commonWords = new Set([
+    'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+    'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+    'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those'
+  ]);
+
+  const words = text.toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length > 3 && !commonWords.has(word));
+
+  const wordFreq = words.reduce((freq, word) => {
+    freq[word] = (freq[word] || 0) + 1;
+    return freq;
+  }, {} as Record<string, number>);
+
+  const themes = Object.entries(wordFreq)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 6)
+    .map(([word]) => word.charAt(0).toUpperCase() + word.slice(1));
+
+  return themes.length > 0 ? themes : ['Document Analysis', 'Content Review'];
+}
+
 interface UpdatedAIInsightsPanelProps {
   documentIds?: string[];
   documentId?: string;
@@ -571,19 +601,19 @@ export function UpdatedAIInsightsPanel({
             <TabsList className="grid w-full grid-cols-4 bg-background/60 backdrop-blur-sm border border-border">
               <TabsTrigger value="summary" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
-                Summary
+                Summary {documentSummary ? '(1)' : '(0)'}
               </TabsTrigger>
               <TabsTrigger value="insights" className="flex items-center gap-2">
                 <Lightbulb className="h-4 w-4" />
-                Key Insights
+                Key Insights ({keyInsights.length})
               </TabsTrigger>
               <TabsTrigger value="questions" className="flex items-center gap-2">
                 <MessageCircle className="h-4 w-4" />
-                Questions
+                Questions ({studentQuestions.length})
               </TabsTrigger>
               <TabsTrigger value="related" className="flex items-center gap-2">
                 <Link2 className="h-4 w-4" />
-                Related
+                Related ({relatedConnections?.document_connections.length || 0})
               </TabsTrigger>
             </TabsList>
 
