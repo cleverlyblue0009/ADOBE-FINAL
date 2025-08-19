@@ -11,7 +11,6 @@ import { EnhancedStrategicPanel } from './EnhancedStrategicPanel';
 import { InsightsPanel } from './InsightsPanel';
 import { EnhancedInsightsPanel } from './EnhancedInsightsPanel';
 import { EnhancedAIInsightsPanel } from './EnhancedAIInsightsPanel';
-import { HighlightFlashcardSidebar } from './HighlightFlashcardSidebar';
 import { TextLayerHighlight } from '@/lib/textbookHighlighter';
 
 // Custom PDF Viewer wrapper component
@@ -128,7 +127,6 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [totalPages, setTotalPages] = useState(30); // Will be updated from PDF
   const [currentLanguage, setCurrentLanguage] = useState('en');
   const [textbookHighlights, setTextbookHighlights] = useState<TextLayerHighlight[]>([]);
-  const [flashcardSidebarVisible, setFlashcardSidebarVisible] = useState(false);
 
   // Sidebar resize functionality
   const [isResizing, setIsResizing] = useState(false);
