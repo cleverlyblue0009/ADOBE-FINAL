@@ -17,6 +17,7 @@ import {
   Lightbulb
 } from 'lucide-react';
 import { DidYouKnowPopup, useDidYouKnowPopup, AlternativeDidYouKnowPopup } from './DidYouKnowPopup';
+import { EnhancedCustomTextSelectionMenu } from './EnhancedCustomTextSelectionMenu';
 
 // Configure PDF.js worker - Use the worker file from public directory
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
@@ -34,6 +35,9 @@ interface CustomPDFViewerProps {
   currentHighlightPage?: number;
   goToSection?: { page: number; section?: string } | null;
   onHighlightsChange?: (highlights: any[]) => void;
+  onOpenSimplifyPanel?: () => void;
+  onOpenTranslatePanel?: () => void;
+  onOpenAIInsights?: () => void;
 }
 
 
@@ -49,7 +53,10 @@ export function CustomPDFViewer({
   highlights = [],
   currentHighlightPage = 1,
   goToSection,
-  onHighlightsChange
+  onHighlightsChange,
+  onOpenSimplifyPanel,
+  onOpenTranslatePanel,
+  onOpenAIInsights
 }: CustomPDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
   const [currentPage, setCurrentPage] = useState<number>(1);
@@ -65,6 +72,17 @@ export function CustomPDFViewer({
   
   // State for tracking page text for insights
   const [pageTexts, setPageTexts] = useState<Map<number, string>>(new Map());
+  
+  // Text selection menu state
+  const [textSelectionMenu, setTextSelectionMenu] = useState<{
+    visible: boolean;
+    position: { x: number; y: number } | null;
+    selectedText: string;
+  }>({
+    visible: false,
+    position: null,
+    selectedText: ''
+  });
 
 
 
@@ -165,8 +183,8 @@ export function CustomPDFViewer({
     }
   };
 
-  // Handle text selection (simplified - no context menu for highlighting)
-  const handleTextSelection = useCallback(() => {
+  // Handle text selection with custom menu
+  const handleTextSelection = useCallback((event?: MouseEvent) => {
     const selection = window.getSelection();
     const selectedText = selection?.toString().trim();
     
@@ -176,10 +194,32 @@ export function CustomPDFViewer({
       // Store page text for Did You Know functionality
       pageTexts.set(currentPage, selectedText);
       
+      // Get selection position for menu
+      const range = selection?.getRangeAt(0);
+      const rect = range?.getBoundingClientRect();
+      
+      if (rect) {
+        setTextSelectionMenu({
+          visible: true,
+          position: {
+            x: rect.left + rect.width / 2,
+            y: rect.top
+          },
+          selectedText
+        });
+      }
+      
       // Call the parent's text selection handler
       if (onTextSelection) {
         onTextSelection(selectedText, currentPage);
       }
+    } else {
+      // Hide menu if no text selected
+      setTextSelectionMenu({
+        visible: false,
+        position: null,
+        selectedText: ''
+      });
     }
   }, [onTextSelection, currentPage, pageTexts]);
 
@@ -484,6 +524,19 @@ export function CustomPDFViewer({
         />
       )}
       
+      {/* Enhanced Text Selection Menu */}
+      {textSelectionMenu.visible && (
+        <EnhancedCustomTextSelectionMenu
+          selectedText={textSelectionMenu.selectedText}
+          position={textSelectionMenu.position}
+          documentId={documentId}
+          onClose={() => setTextSelectionMenu({ visible: false, position: null, selectedText: '' })}
+          onOpenSimplifyPanel={onOpenSimplifyPanel}
+          onOpenTranslatePanel={onOpenTranslatePanel}
+          onOpenAIInsights={onOpenAIInsights}
+        />
+      )}
+
       {/* Floating Did You Know Bulb */}
       <div className="fixed bottom-6 right-6 z-50">
         <Button

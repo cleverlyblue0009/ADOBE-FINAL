@@ -23,7 +23,10 @@ function CustomPDFViewerWrapper({
   highlights,
   currentPage,
   goToSection,
-  onHighlightsChange
+  onHighlightsChange,
+  onOpenSimplifyPanel,
+  onOpenTranslatePanel,
+  onOpenAIInsights
 }: {
   documentUrl: string;
   documentName: string;
@@ -34,6 +37,9 @@ function CustomPDFViewerWrapper({
   currentPage?: number;
   goToSection?: { page: number; section?: string } | null;
   onHighlightsChange?: (highlights: TextLayerHighlight[]) => void;
+  onOpenSimplifyPanel?: () => void;
+  onOpenTranslatePanel?: () => void;
+  onOpenAIInsights?: () => void;
 }) {
   return (
     <CustomPDFViewer
@@ -46,6 +52,9 @@ function CustomPDFViewerWrapper({
       currentHighlightPage={currentPage}
       goToSection={goToSection}
       onHighlightsChange={onHighlightsChange}
+      onOpenSimplifyPanel={onOpenSimplifyPanel}
+      onOpenTranslatePanel={onOpenTranslatePanel}
+      onOpenAIInsights={onOpenAIInsights}
     />
   );
 }
@@ -725,6 +734,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                 totalPages={totalPages}
                 persona={persona}
                 jobToBeDone={jobToBeDone}
+                selectedText={selectedText}
                 onDocumentChange={setCurrentDocument}
                 onPageNavigate={setCurrentPage}
                 onSectionNavigate={(page, section) => {
@@ -784,6 +794,29 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
               goToSection={goToSection}
               onHighlightsChange={(newHighlights) => {
                 console.log('Highlights changed:', newHighlights);
+              }}
+              onOpenSimplifyPanel={() => {
+                setActiveRightPanel('simplifier');
+                setRightPanelOpen(true);
+                toast({
+                  title: "Simplify Panel Opened",
+                  description: "Text simplification panel is now open in the right sidebar",
+                });
+              }}
+              onOpenTranslatePanel={() => {
+                setLeftSidebarOpen(true);
+                toast({
+                  title: "Translate Panel Opened",
+                  description: "Translation panel is now open in the left sidebar",
+                });
+              }}
+              onOpenAIInsights={() => {
+                setActiveRightPanel('insights');
+                setRightPanelOpen(true);
+                toast({
+                  title: "AI Insights Panel Opened",
+                  description: "AI insights panel is now open in the right sidebar",
+                });
               }}
             />
           ) : (

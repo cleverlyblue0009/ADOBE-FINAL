@@ -8,6 +8,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { DocumentOutline } from './DocumentOutline';
+import { EnhancedTranslatePanel } from './EnhancedTranslatePanel';
 import { 
   FileText, 
   Search, 
@@ -26,7 +27,9 @@ import {
   Target,
   Zap,
   Users,
-  Filter
+  Filter,
+  Languages,
+  Globe
 } from 'lucide-react';
 
 interface OutlineItem {
@@ -69,6 +72,7 @@ interface EnhancedLeftPanelProps {
   totalPages?: number;
   persona?: string;
   jobToBeDone?: string;
+  selectedText?: string;
   onDocumentChange?: (document: PDFDocument) => void;
   onPageNavigate?: (page: number) => void;
   onSectionNavigate?: (page: number, section: string) => void;
@@ -82,6 +86,7 @@ export function EnhancedLeftPanel({
   totalPages = 1,
   persona,
   jobToBeDone,
+  selectedText,
   onDocumentChange,
   onPageNavigate,
   onSectionNavigate,
@@ -89,7 +94,7 @@ export function EnhancedLeftPanel({
 }: EnhancedLeftPanelProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(
-    new Set(['outline', 'session', 'documents'])
+    new Set(['outline', 'session', 'documents', 'translate'])
   );
   const [expandedOutlineItems, setExpandedOutlineItems] = useState<Set<string>>(new Set());
   const [readingSession, setReadingSession] = useState<ReadingSession>({
@@ -475,6 +480,35 @@ export function EnhancedLeftPanel({
                   }}
                   onDocumentSwitch={(document) => {
                     onDocumentChange?.(document);
+                  }}
+                />
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Translate Section */}
+          <Collapsible 
+            open={expandedSections.has('translate')}
+            onOpenChange={() => toggleSection('translate')}
+          >
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-0 h-auto">
+                <div className="flex items-center gap-2">
+                  <Languages className="h-4 w-4" />
+                  <span className="font-medium text-sm">Translate</span>
+                </div>
+                {expandedSections.has('translate') ? 
+                  <ChevronDown className="h-4 w-4" /> : 
+                  <ChevronRight className="h-4 w-4" />
+                }
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-3">
+              <div className="min-h-[200px]">
+                <EnhancedTranslatePanel 
+                  originalText={selectedText}
+                  onTranslatedText={(text, language) => {
+                    console.log('Text translated:', { text, language });
                   }}
                 />
               </div>

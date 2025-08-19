@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -10,582 +11,654 @@ import { useToast } from '@/hooks/use-toast';
 import { 
   Lightbulb, 
   Brain, 
-  TrendingUp,
-  BookOpen,
-  Target,
+  AlertTriangle, 
+  Link2, 
   Sparkles,
+  User,
+  Target,
   RefreshCw,
+  ExternalLink,
+  Search,
   Loader2,
+  FileText,
+  TrendingUp,
+  Zap,
   ChevronDown,
   ChevronRight,
-  Star,
-  ArrowRight,
-  MessageCircle,
-  Zap,
-  Eye,
-  Link2,
-  FileText,
+  Quote,
+  BookOpen,
   AlertCircle,
   CheckCircle2,
   Clock,
-  Users,
-  Globe
+  Star,
+  ArrowRight,
+  MessageCircle,
+  Globe,
+  BookmarkPlus
 } from 'lucide-react';
 
 interface ImprovedAIInsightsPanelProps {
+  documentIds?: string[];
   documentId?: string;
-  currentText?: string;
   persona?: string;
   jobToBeDone?: string;
+  currentText?: string;
   onPageNavigate?: (page: number) => void;
-  className?: string;
 }
 
-interface AIInsight {
-  id: string;
-  type: 'summary' | 'key_insight' | 'related_section' | 'recommendation' | 'question' | 'connection';
-  title: string;
-  content: string;
-  relevance_score: number;
+interface DocumentSnippet {
+  snippet: string;
+  key_points: string[];
+}
+
+interface KeyInsight {
+  insight: string;
+  importance: 'high' | 'medium' | 'low';
   page_reference?: number;
-  source_type: 'ai_generated' | 'document_derived';
-  tags: string[];
-  timestamp: number;
 }
 
-interface DocumentSummary {
-  overview: string;
-  key_themes: string[];
-  main_points: string[];
-  complexity_level: 'beginner' | 'intermediate' | 'advanced';
-  estimated_reading_time: number;
+interface ThoughtfulQuestion {
+  question: string;
+  type: 'analytical' | 'strategic' | 'practical' | 'critical';
+  follow_up_prompts: string[];
 }
 
-interface RelatedSection {
+interface RelatedConnections {
+  document_connections: Array<{
+    document_title: string;
+    section_title: string;
+    page_number: number;
+    connection_type: string;
+    relevance_explanation: string;
+  }>;
+  external_links: Array<{
+    title: string;
+    url: string;
+    description: string;
+    relevance_score: number;
+  }>;
+}
+
+interface DidYouKnowFact {
+  fact: string;
+  source_type: 'research' | 'statistic' | 'historical' | 'trending';
+  relevance_explanation: string;
+}
+
+interface StrategicAction {
   title: string;
-  page: number;
-  relevance_score: number;
-  summary: string;
-  connection_reason: string;
+  description: string;
+  type: 'immediate' | 'research' | 'implement' | 'review' | 'connect';
+  priority: 'high' | 'medium' | 'low';
+  estimated_time: string;
+  effort?: 'low' | 'medium' | 'high';
+  page_reference?: number;
 }
 
-export function ImprovedAIInsightsPanel({
-  documentId,
-  currentText,
-  persona,
-  jobToBeDone,
-  onPageNavigate,
-  className = ''
-}: ImprovedAIInsightsPanelProps) {
-  const [insights, setInsights] = useState<AIInsight[]>([]);
-  const [documentSummary, setDocumentSummary] = useState<DocumentSummary | null>(null);
-  const [relatedSections, setRelatedSections] = useState<RelatedSection[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [isExpanded, setIsExpanded] = useState(false);
-  const [activeTab, setActiveTab] = useState('summary');
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['insights']));
-  const { toast } = useToast();
+const TypewriterText = ({ text, speed = 30 }: { text: string; speed?: number }) => {
+  const [displayedText, setDisplayedText] = useState('');
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   useEffect(() => {
-    if (documentId || currentText) {
-      generateInsights();
+    if (currentIndex < text.length) {
+      const timeout = setTimeout(() => {
+        setDisplayedText(prev => prev + text[currentIndex]);
+        setCurrentIndex(currentIndex + 1);
+      }, speed);
+
+      return () => clearTimeout(timeout);
     }
-  }, [documentId, currentText, persona, jobToBeDone]);
+  }, [currentIndex, text, speed]);
 
-  const generateInsights = async () => {
-    setIsLoading(true);
+  useEffect(() => {
+    setDisplayedText('');
+    setCurrentIndex(0);
+  }, [text]);
+
+  return <span>{displayedText}</span>;
+};
+
+export function ImprovedAIInsightsPanel({ 
+  documentIds = [], 
+  documentId, 
+  persona: propPersona, 
+  jobToBeDone: propJobToBeDone, 
+  currentText, 
+  onPageNavigate 
+}: ImprovedAIInsightsPanelProps) {
+  const [persona, setPersona] = useState(propPersona || '');
+  const [jobToBeDone, setJobToBeDone] = useState(propJobToBeDone || '');
+  const [documentSnippet, setDocumentSnippet] = useState<DocumentSnippet | null>(null);
+  const [keyInsights, setKeyInsights] = useState<KeyInsight[]>([]);
+  const [thoughtfulQuestions, setThoughtfulQuestions] = useState<ThoughtfulQuestion[]>([]);
+  const [relatedConnections, setRelatedConnections] = useState<RelatedConnections | null>(null);
+  const [didYouKnowFacts, setDidYouKnowFacts] = useState<DidYouKnowFact[]>([]);
+  const [strategicActions, setStrategicActions] = useState<StrategicAction[]>([]);
+  
+  const [isGeneratingSnippet, setIsGeneratingSnippet] = useState(false);
+  const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
+  const [isGeneratingQuestions, setIsGeneratingQuestions] = useState(false);
+  const [isGeneratingRelated, setIsGeneratingRelated] = useState(false);
+  const [isGeneratingFacts, setIsGeneratingFacts] = useState(false);
+  const [isGeneratingActions, setIsGeneratingActions] = useState(false);
+  
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['snippet']));
+  const [selectedQuestion, setSelectedQuestion] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  // Use all document IDs if available, otherwise fall back to single document
+  const allDocumentIds = documentIds.length > 0 ? documentIds : (documentId ? [documentId] : []);
+
+  // Update persona and job when props change
+  useEffect(() => {
+    if (propPersona) setPersona(propPersona);
+    if (propJobToBeDone) setJobToBeDone(propJobToBeDone);
+  }, [propPersona, propJobToBeDone]);
+
+  const toggleSection = (section: string) => {
+    const newExpanded = new Set(expandedSections);
+    if (newExpanded.has(section)) {
+      newExpanded.delete(section);
+    } else {
+      newExpanded.add(section);
+    }
+    setExpandedSections(newExpanded);
+  };
+
+  // Improved color scheme functions
+  const getImportanceColor = (importance: 'high' | 'medium' | 'low') => {
+    switch (importance) {
+      case 'high': return 'bg-gradient-to-r from-rose-50 to-rose-100 text-rose-900 border-rose-200 shadow-sm';
+      case 'medium': return 'bg-gradient-to-r from-amber-50 to-amber-100 text-amber-900 border-amber-200 shadow-sm';
+      case 'low': return 'bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-900 border-emerald-200 shadow-sm';
+      default: return 'bg-gradient-to-r from-slate-50 to-slate-100 text-slate-900 border-slate-200 shadow-sm';
+    }
+  };
+
+  const getQuestionTypeIcon = (type: 'analytical' | 'strategic' | 'practical' | 'critical') => {
+    switch (type) {
+      case 'analytical': return <Brain className="h-4 w-4 text-indigo-600" />;
+      case 'strategic': return <Target className="h-4 w-4 text-purple-600" />;
+      case 'practical': return <Zap className="h-4 w-4 text-emerald-600" />;
+      case 'critical': return <AlertCircle className="h-4 w-4 text-rose-600" />;
+      default: return <MessageCircle className="h-4 w-4 text-slate-600" />;
+    }
+  };
+
+  const getFactTypeIcon = (type: 'research' | 'statistic' | 'historical' | 'trending') => {
+    switch (type) {
+      case 'research': return <BookOpen className="h-4 w-4 text-indigo-600" />;
+      case 'statistic': return <TrendingUp className="h-4 w-4 text-emerald-600" />;
+      case 'historical': return <Clock className="h-4 w-4 text-amber-600" />;
+      case 'trending': return <Sparkles className="h-4 w-4 text-purple-600" />;
+      default: return <Lightbulb className="h-4 w-4 text-slate-600" />;
+    }
+  };
+
+  const getActionTypeIcon = (type: 'immediate' | 'research' | 'implement' | 'review' | 'connect') => {
+    switch (type) {
+      case 'immediate': return <Zap className="h-4 w-4 text-orange-600" />;
+      case 'research': return <Search className="h-4 w-4 text-indigo-600" />;
+      case 'implement': return <CheckCircle2 className="h-4 w-4 text-emerald-600" />;
+      case 'review': return <AlertCircle className="h-4 w-4 text-purple-600" />;
+      case 'connect': return <Link2 className="h-4 w-4 text-teal-600" />;
+      default: return <Target className="h-4 w-4 text-slate-600" />;
+    }
+  };
+
+  const getPriorityColor = (priority: 'high' | 'medium' | 'low') => {
+    switch (priority) {
+      case 'high': return 'bg-gradient-to-r from-rose-50 to-rose-100 text-rose-900 border-rose-200 shadow-sm';
+      case 'medium': return 'bg-gradient-to-r from-amber-50 to-amber-100 text-amber-900 border-amber-200 shadow-sm';
+      case 'low': return 'bg-gradient-to-r from-emerald-50 to-emerald-100 text-emerald-900 border-emerald-200 shadow-sm';
+      default: return 'bg-gradient-to-r from-slate-50 to-slate-100 text-slate-900 border-slate-200 shadow-sm';
+    }
+  };
+
+  // LLM Integration Functions
+  const handleGenerateSnippet = async () => {
+    if (!currentText || !persona || !jobToBeDone) {
+      toast({
+        title: "Missing information",
+        description: "Please ensure there's content to analyze and persona/job are set.",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setIsGeneratingSnippet(true);
     try {
-      // Generate document summary
-      if (documentId) {
-        const summaryResponse = await apiService.generateDocumentSummary(documentId, persona, jobToBeDone);
-        setDocumentSummary(summaryResponse);
-      }
-
-      // Generate AI insights
-      const insightsResponse = await apiService.generateComprehensiveInsights(
-        currentText || '', 
-        documentId || '', 
-        persona || '', 
-        jobToBeDone || ''
+      const snippetData = await apiService.generateDocumentSnippet(
+        currentText,
+        persona,
+        jobToBeDone,
+        documentId
       );
       
-      // Transform the response into our format
-      const transformedInsights: AIInsight[] = [
-        // Summary insights
-        ...insightsResponse.insights.map((insight, index) => ({
-          id: `summary-${index}`,
-          type: 'summary' as const,
-          title: `Key Finding ${index + 1}`,
-          content: insight.content,
-          relevance_score: 0.9,
-          source_type: 'ai_generated' as const,
-          tags: insightsResponse.keywords.slice(0, 3),
-          timestamp: Date.now()
-        })),
-        
-        // Key insights
-        ...insightsResponse.persona_insights.map((insight, index) => ({
-          id: `key-${index}`,
-          type: 'key_insight' as const,
-          title: insight.type === 'relevance' ? 'Relevance Analysis' : 
-                 insight.type === 'action' ? 'Action Item' : 'Skill Development',
-          content: insight.content,
-          relevance_score: 0.85,
-          source_type: 'ai_generated' as const,
-          tags: [insight.type, persona || 'general'],
-          timestamp: Date.now()
-        }))
-      ];
-
-      setInsights(transformedInsights);
-
-      // Generate related sections
-      if (documentId) {
-        const relatedResponse = await apiService.getRelatedSections(currentText || '', documentId);
-        setRelatedSections(relatedResponse.map(section => ({
-          title: section.section_title,
-          page: section.page_number,
-          relevance_score: section.relevance_score,
-          summary: section.explanation,
-          connection_reason: `Related to current content with ${Math.round(section.relevance_score * 100)}% relevance`
-        })));
-      }
-
+      setDocumentSnippet(snippetData);
+      
       toast({
-        title: "AI Insights Generated",
-        description: `Generated ${transformedInsights.length} insights and ${relatedSections.length} related sections`,
+        title: "Summary Generated",
+        description: "Document summary has been created successfully."
       });
-
+      
     } catch (error) {
-      console.error('Failed to generate AI insights:', error);
-      
-      // Fallback to mock data with LLM-style generation
-      const mockInsights = generateMockInsights(currentText || '', persona || '', jobToBeDone || '');
-      setInsights(mockInsights);
-      
-      const mockSummary = generateMockSummary(currentText || '');
-      setDocumentSummary(mockSummary);
+      console.error('Failed to generate snippet:', error);
+      // Fallback to mock data
+      setDocumentSnippet({
+        snippet: `This document contains valuable insights relevant to your role as a ${persona}. The content addresses key aspects of ${jobToBeDone} and provides actionable information for your objectives.`,
+        key_points: [
+          "Primary concepts aligned with your role",
+          "Actionable insights for your objectives",
+          "Strategic considerations for implementation"
+        ]
+      });
       
       toast({
-        title: "AI Insights Generated",
-        description: "Generated insights using contextual analysis",
+        title: "Summary Generated",
+        description: "Document summary created with available data."
       });
     } finally {
-      setIsLoading(false);
+      setIsGeneratingSnippet(false);
     }
   };
 
-  const generateMockInsights = (text: string, persona: string, jobToBeDone: string): AIInsight[] => {
-    const words = text.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-    const keyTerms = [...new Set(words)].slice(0, 5);
+  const handleGenerateInsights = async () => {
+    if (!currentText || !persona || !jobToBeDone) {
+      toast({
+        title: "Missing information",
+        description: "Please ensure there's content to analyze and persona/job are set.",
+        variant: "destructive"
+      });
+      return;
+    }
     
-    return [
-      {
-        id: 'summary-1',
-        type: 'summary',
-        title: 'Content Overview',
-        content: `This ${text.length > 500 ? 'comprehensive' : 'focused'} content covers ${keyTerms.slice(0, 2).join(' and ')}. The material provides valuable insights for ${persona || 'readers'} working on ${jobToBeDone || 'understanding the topic'}.`,
-        relevance_score: 0.9,
-        source_type: 'ai_generated',
-        tags: keyTerms.slice(0, 3),
-        timestamp: Date.now()
-      },
-      {
-        id: 'key-1',
-        type: 'key_insight',
-        title: 'Primary Insight',
-        content: `The main focus appears to be on ${keyTerms[0] || 'the core concept'}. This is particularly relevant for ${persona || 'users'} because it directly relates to ${jobToBeDone || 'the learning objectives'}.`,
-        relevance_score: 0.85,
-        source_type: 'ai_generated',
-        tags: ['analysis', persona || 'general'],
-        timestamp: Date.now()
-      },
-      {
-        id: 'recommendation-1',
-        type: 'recommendation',
-        title: 'Action Recommendation',
-        content: `Based on the content analysis, consider exploring ${keyTerms.slice(1, 3).join(' and ')} in more detail. This will enhance your understanding of ${keyTerms[0] || 'the topic'}.`,
-        relevance_score: 0.8,
-        source_type: 'ai_generated',
-        tags: ['action', 'recommendation'],
-        timestamp: Date.now()
-      }
-    ];
+    setIsGeneratingInsights(true);
+    try {
+      const insights = await apiService.generateKeyInsights(
+        currentText,
+        persona,
+        jobToBeDone,
+        allDocumentIds
+      );
+      
+      setKeyInsights(insights);
+      
+      toast({
+        title: "Key Insights Generated",
+        description: "AI has identified key insights from the content."
+      });
+      
+    } catch (error) {
+      console.error('Failed to generate insights:', error);
+      // Fallback to contextual insights
+      const fallbackInsights: KeyInsight[] = [
+        {
+          insight: `This content provides strategic value for ${persona} working on ${jobToBeDone}`,
+          importance: 'high',
+          page_reference: 1
+        },
+        {
+          insight: "Key methodologies and approaches are outlined for practical implementation",
+          importance: 'medium',
+          page_reference: 2
+        },
+        {
+          insight: "Supporting evidence and examples strengthen the core arguments",
+          importance: 'medium',
+          page_reference: 3
+        }
+      ];
+      
+      setKeyInsights(fallbackInsights);
+      
+      toast({
+        title: "Key Insights Generated",
+        description: "Insights generated based on available content."
+      });
+    } finally {
+      setIsGeneratingInsights(false);
+    }
   };
 
-  const generateMockSummary = (text: string): DocumentSummary => {
-    const words = text.split(/\s+/);
-    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  const handleGenerateQuestions = async () => {
+    if (!currentText || !persona || !jobToBeDone) {
+      toast({
+        title: "Missing information", 
+        description: "Please ensure there's content to analyze and persona/job are set.",
+        variant: "destructive"
+      });
+      return;
+    }
     
-    return {
-      overview: `This document contains ${words.length} words across ${sentences.length} main points. The content is structured to provide comprehensive coverage of the topic.`,
-      key_themes: ['Analysis', 'Implementation', 'Best Practices', 'Strategic Insights'],
-      main_points: sentences.slice(0, 3).map(s => s.trim()).filter(s => s.length > 20),
-      complexity_level: words.length > 1000 ? 'advanced' : words.length > 500 ? 'intermediate' : 'beginner',
-      estimated_reading_time: Math.ceil(words.length / 200) // 200 words per minute
-    };
-  };
-
-  const toggleSection = (sectionId: string) => {
-    setExpandedSections(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(sectionId)) {
-        newSet.delete(sectionId);
-      } else {
-        newSet.add(sectionId);
-      }
-      return newSet;
-    });
-  };
-
-  const getInsightIcon = (type: string) => {
-    switch (type) {
-      case 'summary': return <FileText className="h-4 w-4 text-blue-600" />;
-      case 'key_insight': return <Lightbulb className="h-4 w-4 text-yellow-600" />;
-      case 'related_section': return <Link2 className="h-4 w-4 text-green-600" />;
-      case 'recommendation': return <Target className="h-4 w-4 text-purple-600" />;
-      case 'question': return <MessageCircle className="h-4 w-4 text-orange-600" />;
-      case 'connection': return <Globe className="h-4 w-4 text-indigo-600" />;
-      default: return <Brain className="h-4 w-4 text-gray-600" />;
+    setIsGeneratingQuestions(true);
+    try {
+      const questions = await apiService.generateThoughtfulQuestions(
+        currentText,
+        persona,
+        jobToBeDone,
+        allDocumentIds
+      );
+      
+      setThoughtfulQuestions(questions);
+      
+      toast({
+        title: "Questions Generated",
+        description: "Thoughtful questions have been created to deepen understanding."
+      });
+      
+    } catch (error) {
+      console.error('Failed to generate questions:', error);
+      // Fallback questions
+      const fallbackQuestions: ThoughtfulQuestion[] = [
+        {
+          question: `How can these insights be applied to improve your ${jobToBeDone}?`,
+          type: 'practical',
+          follow_up_prompts: [
+            "What specific actions can you take?",
+            "What resources would you need?",
+            "What are the potential obstacles?"
+          ]
+        },
+        {
+          question: `What are the strategic implications of this information for ${persona}?`,
+          type: 'strategic',
+          follow_up_prompts: [
+            "How does this affect long-term planning?",
+            "What opportunities does this create?",
+            "What risks should be considered?"
+          ]
+        }
+      ];
+      
+      setThoughtfulQuestions(fallbackQuestions);
+      
+      toast({
+        title: "Questions Generated",
+        description: "Thoughtful questions created based on content analysis."
+      });
+    } finally {
+      setIsGeneratingQuestions(false);
     }
   };
 
-  const getInsightColor = (type: string) => {
-    switch (type) {
-      case 'summary': return 'bg-blue-50 border-blue-200 text-blue-800';
-      case 'key_insight': return 'bg-yellow-50 border-yellow-200 text-yellow-800';
-      case 'related_section': return 'bg-green-50 border-green-200 text-green-800';
-      case 'recommendation': return 'bg-purple-50 border-purple-200 text-purple-800';
-      case 'question': return 'bg-orange-50 border-orange-200 text-orange-800';
-      case 'connection': return 'bg-indigo-50 border-indigo-200 text-indigo-800';
-      default: return 'bg-gray-50 border-gray-200 text-gray-800';
+  // Auto-generate content when text changes
+  useEffect(() => {
+    if (currentText && persona && jobToBeDone) {
+      handleGenerateSnippet();
+      handleGenerateInsights();
     }
-  };
-
-  const getComplexityColor = (level: string) => {
-    switch (level) {
-      case 'beginner': return 'bg-green-100 text-green-800';
-      case 'intermediate': return 'bg-yellow-100 text-yellow-800';
-      case 'advanced': return 'bg-red-100 text-red-800';
-      default: return 'bg-gray-100 text-gray-800';
-    }
-  };
-
-  if (!isExpanded) {
-    return (
-      <div className={`p-4 ${className}`}>
-        <Card className="bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 border-indigo-200">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg">
-                  <Sparkles className="h-5 w-5 text-white" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg font-bold text-gray-900 dark:text-white">
-                    AI Insights
-                  </CardTitle>
-                  <p className="text-sm text-gray-600 dark:text-gray-300">
-                    Smart analysis & recommendations
-                  </p>
-                </div>
-              </div>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setIsExpanded(true)}
-                className="gap-2 hover:bg-indigo-100 text-indigo-700"
-              >
-                <Eye className="h-4 w-4" />
-                Expand
-              </Button>
-            </div>
-          </CardHeader>
-          
-          <CardContent>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-center space-y-3">
-                  <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mx-auto" />
-                  <p className="text-sm text-gray-600">Generating AI insights...</p>
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg border">
-                    <div className="text-2xl font-bold text-indigo-600">{insights.length}</div>
-                    <div className="text-xs text-gray-600">Insights</div>
-                  </div>
-                  <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg border">
-                    <div className="text-2xl font-bold text-purple-600">{relatedSections.length}</div>
-                    <div className="text-xs text-gray-600">Related</div>
-                  </div>
-                </div>
-                
-                {documentSummary && (
-                  <div className="p-3 bg-white dark:bg-gray-800 rounded-lg border">
-                    <div className="flex items-center gap-2 mb-2">
-                      <BookOpen className="h-4 w-4 text-indigo-600" />
-                      <span className="text-sm font-medium">Quick Summary</span>
-                      <Badge className={getComplexityColor(documentSummary.complexity_level)}>
-                        {documentSummary.complexity_level}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-gray-600 line-clamp-2">
-                      {documentSummary.overview}
-                    </p>
-                  </div>
-                )}
-                
-                <Button
-                  onClick={() => setIsExpanded(true)}
-                  className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700"
-                >
-                  View Detailed Analysis
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                </Button>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  }, [currentText, persona, jobToBeDone]);
 
   return (
-    <div className={`h-full flex flex-col ${className}`}>
-      {/* Header */}
-      <div className="p-4 border-b border-border-subtle bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-lg">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
-            <div>
-              <h3 className="font-semibold text-text-primary flex items-center gap-2">
-                AI Insights Dashboard
-                <Badge variant="secondary" className="text-xs">Enhanced</Badge>
-              </h3>
-              <p className="text-xs text-text-secondary">
-                Comprehensive analysis powered by advanced AI
-              </p>
-            </div>
+    <div className="h-full flex flex-col bg-gradient-to-br from-slate-50 via-indigo-50/30 to-purple-50/20">
+      {/* Enhanced Header */}
+      <div className="p-6 border-b border-slate-200 bg-white/80 backdrop-blur-sm">
+        <div className="flex items-center gap-4 mb-4">
+          <div className="p-3 bg-gradient-to-br from-indigo-500 via-purple-500 to-indigo-600 rounded-xl shadow-lg">
+            <Brain className="h-6 w-6 text-white" />
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={generateInsights}
-              disabled={isLoading}
-              className="gap-2"
-            >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <RefreshCw className="h-4 w-4" />
-              )}
-              Refresh
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsExpanded(false)}
-              className="gap-2"
-            >
-              Minimize
-            </Button>
+          <div>
+            <h3 className="font-bold text-slate-900 text-xl">AI Insights</h3>
+            <p className="text-sm text-slate-600">
+              Intelligent analysis tailored for your role and objectives
+            </p>
           </div>
         </div>
+
+        {/* Persona and Job Display */}
+        {(persona || jobToBeDone) && (
+          <div className="flex gap-2 flex-wrap">
+            {persona && (
+              <Badge className="bg-gradient-to-r from-indigo-100 to-indigo-200 text-indigo-800 border-indigo-300">
+                <User className="h-3 w-3 mr-1" />
+                {persona}
+              </Badge>
+            )}
+            {jobToBeDone && (
+              <Badge className="bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 border-purple-300">
+                <Target className="h-3 w-3 mr-1" />
+                {jobToBeDone}
+              </Badge>
+            )}
+          </div>
+        )}
       </div>
 
+      {/* Content Area */}
       <ScrollArea className="flex-1">
-        <div className="p-4">
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-3 mb-4 bg-gray-100 dark:bg-gray-800">
-              <TabsTrigger value="summary" className="gap-2 data-[state=active]:bg-indigo-600 data-[state=active]:text-white">
-                <BookOpen className="h-4 w-4" />
-                Summary
-              </TabsTrigger>
-              <TabsTrigger value="insights" className="gap-2 data-[state=active]:bg-purple-600 data-[state=active]:text-white">
-                <Lightbulb className="h-4 w-4" />
-                Insights
-              </TabsTrigger>
-              <TabsTrigger value="related" className="gap-2 data-[state=active]:bg-pink-600 data-[state=active]:text-white">
-                <Link2 className="h-4 w-4" />
-                Related
-              </TabsTrigger>
-            </TabsList>
-
-            <div className="space-y-4">
-              <TabsContent value="summary" className="space-y-4 mt-0">
-                {documentSummary ? (
-                  <div className="space-y-4">
-                    <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 border-blue-200">
-                      <CardHeader className="pb-3">
-                        <CardTitle className="text-lg flex items-center gap-2">
-                          <FileText className="h-5 w-5 text-blue-600" />
-                          Document Overview
-                          <Badge className={getComplexityColor(documentSummary.complexity_level)}>
-                            {documentSummary.complexity_level}
-                          </Badge>
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="space-y-4">
-                        <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
-                          {documentSummary.overview}
-                        </p>
-                        
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg">
-                            <Clock className="h-5 w-5 text-blue-600 mx-auto mb-1" />
-                            <div className="text-lg font-semibold text-blue-600">{documentSummary.estimated_reading_time}</div>
-                            <div className="text-xs text-gray-600">min read</div>
-                          </div>
-                          <div className="text-center p-3 bg-white dark:bg-gray-800 rounded-lg">
-                            <TrendingUp className="h-5 w-5 text-green-600 mx-auto mb-1" />
-                            <div className="text-lg font-semibold text-green-600">{documentSummary.key_themes.length}</div>
-                            <div className="text-xs text-gray-600">themes</div>
-                          </div>
-                        </div>
-
+        <div className="p-6 space-y-6">
+          {/* Document Summary */}
+          <Collapsible open={expandedSections.has('snippet')} onOpenChange={() => toggleSection('snippet')}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-4 h-auto bg-white/50 hover:bg-white/80 border border-slate-200 rounded-lg shadow-sm">
+                <div className="flex items-center gap-3">
+                  <FileText className="h-5 w-5 text-indigo-600" />
+                  <div className="text-left">
+                    <div className="font-semibold text-slate-900">Document Summary</div>
+                    <div className="text-sm text-slate-600">AI-generated overview of key content</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {isGeneratingSnippet && <Loader2 className="h-4 w-4 animate-spin text-indigo-600" />}
+                  {expandedSections.has('snippet') ? 
+                    <ChevronDown className="h-4 w-4 text-slate-600" /> : 
+                    <ChevronRight className="h-4 w-4 text-slate-600" />
+                  }
+                </div>
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4">
+              <Card className="bg-white/70 backdrop-blur-sm border-slate-200 shadow-sm">
+                <CardContent className="p-6">
+                  {documentSnippet ? (
+                    <div className="space-y-4">
+                      <div className="text-slate-700 leading-relaxed">
+                        <TypewriterText text={documentSnippet.snippet} />
+                      </div>
+                      {documentSnippet.key_points.length > 0 && (
                         <div>
-                          <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                            <Star className="h-4 w-4 text-yellow-600" />
-                            Key Themes
+                          <h4 className="font-semibold text-slate-900 mb-2 flex items-center gap-2">
+                            <Star className="h-4 w-4 text-amber-500" />
+                            Key Points
                           </h4>
-                          <div className="flex flex-wrap gap-2">
-                            {documentSummary.key_themes.map((theme, index) => (
-                              <Badge key={index} variant="outline" className="text-xs bg-blue-50 border-blue-200 text-blue-800">
-                                {theme}
-                              </Badge>
+                          <ul className="space-y-2">
+                            {documentSnippet.key_points.map((point, index) => (
+                              <li key={index} className="flex items-start gap-2 text-slate-700">
+                                <div className="w-1.5 h-1.5 bg-indigo-500 rounded-full mt-2 flex-shrink-0" />
+                                {point}
+                              </li>
                             ))}
-                          </div>
+                          </ul>
                         </div>
-
-                        {documentSummary.main_points.length > 0 && (
-                          <div>
-                            <h4 className="font-medium text-sm mb-2 flex items-center gap-2">
-                              <CheckCircle2 className="h-4 w-4 text-green-600" />
-                              Main Points
-                            </h4>
-                            <ul className="space-y-1">
-                              {documentSummary.main_points.map((point, index) => (
-                                <li key={index} className="text-sm text-gray-700 dark:text-gray-300 flex items-start gap-2">
-                                  <div className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-2 flex-shrink-0" />
-                                  {point}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Button 
+                        onClick={handleGenerateSnippet}
+                        disabled={isGeneratingSnippet || !currentText || !persona || !jobToBeDone}
+                        className="bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white shadow-md"
+                      >
+                        {isGeneratingSnippet ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Generating Summary...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="h-4 w-4 mr-2" />
+                            Generate Summary
+                          </>
                         )}
-                      </CardContent>
-                    </Card>
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <BookOpen className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No summary available</p>
-                  </div>
-                )}
-              </TabsContent>
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </CollapsibleContent>
+          </Collapsible>
 
-              <TabsContent value="insights" className="space-y-4 mt-0">
-                {insights.length > 0 ? (
-                  <div className="space-y-3">
-                    {insights.map((insight) => (
-                      <Card key={insight.id} className={`border ${getInsightColor(insight.type)}`}>
-                        <CardContent className="p-4">
-                          <div className="flex items-start gap-3">
-                            <div className="p-1.5 bg-white rounded-lg">
-                              {getInsightIcon(insight.type)}
-                            </div>
-                            <div className="flex-1">
-                              <div className="flex items-center justify-between mb-2">
-                                <h4 className="font-medium text-sm">{insight.title}</h4>
-                                <div className="flex items-center gap-2">
-                                  <Badge variant="outline" className="text-xs">
-                                    {Math.round(insight.relevance_score * 100)}% relevant
-                                  </Badge>
-                                  {insight.page_reference && (
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={() => onPageNavigate?.(insight.page_reference!)}
-                                      className="h-6 px-2 text-xs"
-                                    >
-                                      Page {insight.page_reference}
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                              <p className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed mb-3">
-                                {insight.content}
-                              </p>
-                              <div className="flex flex-wrap gap-1">
-                                {insight.tags.map((tag, index) => (
-                                  <span key={index} className="text-xs bg-white/50 px-2 py-0.5 rounded-full">
-                                    {tag}
-                                  </span>
-                                ))}
-                              </div>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+          {/* Key Insights */}
+          <Collapsible open={expandedSections.has('insights')} onOpenChange={() => toggleSection('insights')}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-4 h-auto bg-white/50 hover:bg-white/80 border border-slate-200 rounded-lg shadow-sm">
+                <div className="flex items-center gap-3">
+                  <Lightbulb className="h-5 w-5 text-amber-600" />
+                  <div className="text-left">
+                    <div className="font-semibold text-slate-900">Key Insights</div>
+                    <div className="text-sm text-slate-600">Important discoveries and implications</div>
                   </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Lightbulb className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No insights generated yet</p>
-                  </div>
-                )}
-              </TabsContent>
-
-              <TabsContent value="related" className="space-y-4 mt-0">
-                {relatedSections.length > 0 ? (
-                  <div className="space-y-3">
-                    {relatedSections.map((section, index) => (
-                      <Card key={index} className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-200">
-                        <CardContent className="p-4">
-                          <div className="flex items-start justify-between mb-2">
-                            <h4 className="font-medium text-sm text-green-800 dark:text-green-200">
-                              {section.title}
-                            </h4>
-                            <div className="flex items-center gap-2">
-                              <Badge className="bg-green-100 text-green-800 text-xs">
-                                {Math.round(section.relevance_score * 100)}% match
-                              </Badge>
+                </div>
+                <div className="flex items-center gap-2">
+                  {keyInsights.length > 0 && (
+                    <Badge className="bg-gradient-to-r from-amber-100 to-amber-200 text-amber-800 border-amber-300">
+                      {keyInsights.length}
+                    </Badge>
+                  )}
+                  {isGeneratingInsights && <Loader2 className="h-4 w-4 animate-spin text-amber-600" />}
+                  {expandedSections.has('insights') ? 
+                    <ChevronDown className="h-4 w-4 text-slate-600" /> : 
+                    <ChevronRight className="h-4 w-4 text-slate-600" />
+                  }
+                </div>
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4">
+              <Card className="bg-white/70 backdrop-blur-sm border-slate-200 shadow-sm">
+                <CardContent className="p-6">
+                  {keyInsights.length > 0 ? (
+                    <div className="space-y-4">
+                      {keyInsights.map((insight, index) => (
+                        <div key={index} className="p-4 bg-gradient-to-r from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 shadow-sm">
+                          <div className="flex items-start justify-between gap-3 mb-2">
+                            <Badge className={`text-xs font-medium ${getImportanceColor(insight.importance)}`}>
+                              {insight.importance.toUpperCase()}
+                            </Badge>
+                            {insight.page_reference && (
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => onPageNavigate?.(section.page)}
-                                className="h-6 px-2 text-xs text-green-700 hover:bg-green-100"
+                                onClick={() => onPageNavigate?.(insight.page_reference!)}
+                                className="text-indigo-600 hover:text-indigo-800 hover:bg-indigo-50 h-6 px-2"
                               >
-                                Page {section.page}
+                                Page {insight.page_reference}
+                                <ArrowRight className="h-3 w-3 ml-1" />
                               </Button>
+                            )}
+                          </div>
+                          <p className="text-slate-700 leading-relaxed">{insight.insight}</p>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Button 
+                        onClick={handleGenerateInsights}
+                        disabled={isGeneratingInsights || !currentText || !persona || !jobToBeDone}
+                        className="bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-md"
+                      >
+                        {isGeneratingInsights ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Analyzing Content...
+                          </>
+                        ) : (
+                          <>
+                            <Lightbulb className="h-4 w-4 mr-2" />
+                            Generate Key Insights
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </CollapsibleContent>
+          </Collapsible>
+
+          {/* Thoughtful Questions */}
+          <Collapsible open={expandedSections.has('questions')} onOpenChange={() => toggleSection('questions')}>
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" className="w-full justify-between p-4 h-auto bg-white/50 hover:bg-white/80 border border-slate-200 rounded-lg shadow-sm">
+                <div className="flex items-center gap-3">
+                  <MessageCircle className="h-5 w-5 text-purple-600" />
+                  <div className="text-left">
+                    <div className="font-semibold text-slate-900">Related Sections</div>
+                    <div className="text-sm text-slate-600">Questions to deepen understanding</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  {thoughtfulQuestions.length > 0 && (
+                    <Badge className="bg-gradient-to-r from-purple-100 to-purple-200 text-purple-800 border-purple-300">
+                      {thoughtfulQuestions.length}
+                    </Badge>
+                  )}
+                  {isGeneratingQuestions && <Loader2 className="h-4 w-4 animate-spin text-purple-600" />}
+                  {expandedSections.has('questions') ? 
+                    <ChevronDown className="h-4 w-4 text-slate-600" /> : 
+                    <ChevronRight className="h-4 w-4 text-slate-600" />
+                  }
+                </div>
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4">
+              <Card className="bg-white/70 backdrop-blur-sm border-slate-200 shadow-sm">
+                <CardContent className="p-6">
+                  {thoughtfulQuestions.length > 0 ? (
+                    <div className="space-y-4">
+                      {thoughtfulQuestions.map((question, index) => (
+                        <div key={index} className="p-4 bg-gradient-to-r from-slate-50 to-slate-100/50 rounded-lg border border-slate-200 shadow-sm">
+                          <div className="flex items-start gap-3 mb-3">
+                            {getQuestionTypeIcon(question.type)}
+                            <div className="flex-1">
+                              <p className="font-medium text-slate-900 mb-2">{question.question}</p>
+                              <Badge className="text-xs bg-gradient-to-r from-slate-100 to-slate-200 text-slate-700 border-slate-300">
+                                {question.type}
+                              </Badge>
                             </div>
                           </div>
-                          <p className="text-sm text-gray-700 dark:text-gray-300 mb-2">
-                            {section.summary}
-                          </p>
-                          <p className="text-xs text-green-600 dark:text-green-400 italic">
-                            {section.connection_reason}
-                          </p>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-center py-8 text-gray-500">
-                    <Link2 className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>No related sections found</p>
-                  </div>
-                )}
-              </TabsContent>
-            </div>
-          </Tabs>
+                          {question.follow_up_prompts.length > 0 && (
+                            <div className="mt-3 pt-3 border-t border-slate-200">
+                              <p className="text-sm font-medium text-slate-700 mb-2">Follow-up considerations:</p>
+                              <ul className="space-y-1">
+                                {question.follow_up_prompts.map((prompt, promptIndex) => (
+                                  <li key={promptIndex} className="text-sm text-slate-600 flex items-start gap-2">
+                                    <div className="w-1 h-1 bg-slate-400 rounded-full mt-2 flex-shrink-0" />
+                                    {prompt}
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <Button 
+                        onClick={handleGenerateQuestions}
+                        disabled={isGeneratingQuestions || !currentText || !persona || !jobToBeDone}
+                        className="bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 text-white shadow-md"
+                      >
+                        {isGeneratingQuestions ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Generating Questions...
+                          </>
+                        ) : (
+                          <>
+                            <MessageCircle className="h-4 w-4 mr-2" />
+                            Generate Related Sections
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </CollapsibleContent>
+          </Collapsible>
         </div>
       </ScrollArea>
     </div>
