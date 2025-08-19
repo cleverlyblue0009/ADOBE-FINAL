@@ -1,402 +1,137 @@
-// Text Analysis Service for Intelligent Highlighting
-// This service analyzes PDF text content to identify different types of information
-// and provides intelligent highlighting suggestions
+// Text analysis utilities for extracting themes and insights from documents
 
-export interface ContentType {
-  type: 'key-concept' | 'statistic' | 'definition' | 'action-item' | 'conclusion' | 'date' | 'name' | 'technical-term';
-  color: 'primary' | 'secondary' | 'tertiary' | 'quaternary' | 'yellow' | 'green' | 'blue' | 'gold';
-  priority: number; // 1-10, higher is more important
-  category: 'fact' | 'definition' | 'date' | 'insight' | 'action' | 'person' | 'technical';
+/**
+ * Extracts main themes from text using keyword frequency analysis
+ */
+export function extractMainThemes(text: string): string[] {
+  if (!text || text.trim().length === 0) {
+    return ['Document Analysis'];
+  }
+
+  // Common words to exclude from theme extraction
+  const commonWords = new Set([
+    'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+    'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+    'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those',
+    'they', 'them', 'their', 'there', 'then', 'than', 'when', 'where', 'why', 'how', 'what', 'who',
+    'which', 'while', 'during', 'before', 'after', 'above', 'below', 'up', 'down', 'out', 'off',
+    'over', 'under', 'again', 'further', 'then', 'once', 'here', 'there', 'when', 'where', 'why',
+    'how', 'all', 'any', 'both', 'each', 'few', 'more', 'most', 'other', 'some', 'such', 'no',
+    'nor', 'not', 'only', 'own', 'same', 'so', 'than', 'too', 'very', 'can', 'will', 'just',
+    'should', 'now', 'also', 'from', 'into', 'through', 'between', 'among', 'within', 'without',
+    'across', 'around', 'behind', 'beside', 'beyond', 'inside', 'outside', 'toward', 'towards',
+    'upon', 'within', 'without', 'about', 'against', 'along', 'among', 'around', 'because',
+    'become', 'becomes', 'becoming', 'been', 'before', 'being', 'between', 'both', 'but',
+    'cannot', 'come', 'comes', 'coming', 'does', 'doing', 'done', 'each', 'either', 'even',
+    'every', 'example', 'first', 'get', 'gets', 'getting', 'give', 'gives', 'giving', 'go',
+    'goes', 'going', 'gone', 'good', 'great', 'group', 'however', 'important', 'include',
+    'includes', 'including', 'instead', 'know', 'knows', 'knowing', 'known', 'large', 'last',
+    'later', 'less', 'let', 'like', 'little', 'long', 'look', 'looks', 'looking', 'made',
+    'make', 'makes', 'making', 'many', 'much', 'must', 'need', 'needs', 'needing', 'new',
+    'next', 'number', 'often', 'old', 'one', 'open', 'order', 'part', 'people', 'place',
+    'point', 'possible', 'present', 'problem', 'provide', 'provides', 'providing', 'put',
+    'puts', 'putting', 'right', 'said', 'same', 'say', 'says', 'saying', 'see', 'sees',
+    'seeing', 'seem', 'seems', 'seeming', 'several', 'show', 'shows', 'showing', 'since',
+    'small', 'state', 'still', 'such', 'system', 'take', 'takes', 'taking', 'tell', 'tells',
+    'telling', 'think', 'thinks', 'thinking', 'three', 'time', 'times', 'today', 'together',
+    'turn', 'turns', 'turning', 'two', 'under', 'until', 'use', 'used', 'uses', 'using',
+    'want', 'wants', 'wanting', 'way', 'ways', 'well', 'went', 'work', 'works', 'working',
+    'year', 'years', 'yet', 'young'
+  ]);
+
+  // Clean and tokenize text
+  const words = text.toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length > 3 && !commonWords.has(word));
+
+  // Count word frequencies
+  const wordFreq = words.reduce((freq, word) => {
+    freq[word] = (freq[word] || 0) + 1;
+    return freq;
+  }, {} as Record<string, number>);
+
+  // Extract top themes based on frequency
+  const themes = Object.entries(wordFreq)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 8)
+    .map(([word]) => word)
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1)); // Capitalize
+
+  // If no themes found, return generic ones
+  if (themes.length === 0) {
+    return ['Document Analysis', 'Content Review'];
+  }
+
+  // Add some domain-specific theme detection
+  const textLower = text.toLowerCase();
+  const domainThemes: string[] = [];
+
+  if (textLower.includes('artificial intelligence') || textLower.includes('machine learning') || textLower.includes('neural network')) {
+    domainThemes.push('Artificial Intelligence');
+  }
+  if (textLower.includes('healthcare') || textLower.includes('medical') || textLower.includes('patient')) {
+    domainThemes.push('Healthcare');
+  }
+  if (textLower.includes('business') || textLower.includes('management') || textLower.includes('strategy')) {
+    domainThemes.push('Business Strategy');
+  }
+  if (textLower.includes('research') || textLower.includes('study') || textLower.includes('analysis')) {
+    domainThemes.push('Research');
+  }
+  if (textLower.includes('technology') || textLower.includes('software') || textLower.includes('digital')) {
+    domainThemes.push('Technology');
+  }
+  if (textLower.includes('education') || textLower.includes('learning') || textLower.includes('student')) {
+    domainThemes.push('Education');
+  }
+
+  // Combine domain themes with frequency-based themes
+  const combinedThemes = [...domainThemes, ...themes];
+  
+  // Remove duplicates and return top 6 themes
+  return Array.from(new Set(combinedThemes)).slice(0, 6);
 }
 
-export interface AnalyzedText {
-  text: string;
-  contentType: ContentType;
-  relevanceScore: number;
-  explanation: string;
-  keywords: string[];
+/**
+ * Extracts key terms from text for contextual analysis
+ */
+export function extractKeyTerms(text: string): string[] {
+  const commonWords = new Set(['the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by', 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did', 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'this', 'that', 'these', 'those']);
+  
+  const words = text.toLowerCase()
+    .replace(/[^\w\s]/g, ' ')
+    .split(/\s+/)
+    .filter(word => word.length > 3 && !commonWords.has(word));
+  
+  const wordFreq = words.reduce((freq, word) => {
+    freq[word] = (freq[word] || 0) + 1;
+    return freq;
+  }, {} as Record<string, number>);
+  
+  return Object.entries(wordFreq)
+    .sort(([,a], [,b]) => b - a)
+    .slice(0, 5)
+    .map(([word]) => word);
 }
 
-export class TextAnalysisService {
-  private keyConceptPatterns = [
-    /\b(?:key|important|crucial|significant|essential|fundamental|critical|main|primary|central|core)\s+(?:concept|idea|principle|factor|element|aspect|point)\b/gi,
-    /\b(?:this is|it is|these are)\s+(?:important|significant|crucial|essential)\b/gi,
-    /\b(?:note that|remember that|keep in mind|it's important to)\b/gi,
-    /\b(?:definition|meaning|refers to|is defined as|can be understood as)\b/gi
-  ];
-
-  private statisticPatterns = [
-    /\b\d+(?:\.\d+)?%\b/g, // Percentages
-    /\b\d{1,3}(?:,\d{3})*(?:\.\d+)?\s*(?:million|billion|thousand|k|m|b)\b/gi, // Large numbers
-    /\b(?:increased|decreased|grew|fell|rose|dropped)\s+by\s+\d+/gi, // Change indicators
-    /\b\d+(?:\.\d+)?\s*(?:times|fold|x)\s+(?:higher|lower|more|less)\b/gi, // Comparisons
-    /\b(?:average|median|mean|total|sum|approximately|roughly)\s+\d+/gi, // Statistical terms
-    /\b\d+\s*(?:years?|months?|days?|hours?|minutes?)\b/gi // Time periods
-  ];
-
-  private definitionPatterns = [
-    /\b(.+?)\s+(?:is|are|means?|refers? to|can be (?:defined|described) as|is known as)\s+(.+?)(?:\.|$)/gi,
-    /\b(?:definition|terminology|glossary|meaning):/gi,
-    /\b(.+?):\s*(.+?)(?:\n|$)/g, // Colon definitions
-    /\b(?:in other words|that is|i\.e\.|namely|specifically)\b/gi
-  ];
-
-  private actionItemPatterns = [
-    /\b(?:should|must|need to|have to|ought to|required to|necessary to)\b/gi,
-    /\b(?:action|step|measure|approach|strategy|method|solution|recommendation)\b/gi,
-    /\b(?:implement|execute|perform|conduct|carry out|take action)\b/gi,
-    /\b(?:next steps?|following actions?|recommendations?|suggestions?)\b/gi,
-    /\b(?:conclusion|summary|in conclusion|to summarize|finally)\b/gi
-  ];
-
-  private conclusionPatterns = [
-    /\b(?:therefore|thus|hence|consequently|as a result|in conclusion|to conclude)\b/gi,
-    /\b(?:findings|results|outcomes|implications|significance)\b/gi,
-    /\b(?:this (?:shows|demonstrates|indicates|suggests|reveals|proves))\b/gi,
-    /\b(?:we can conclude|it can be concluded|the evidence suggests)\b/gi
-  ];
-
-  // New patterns for enhanced content detection
-  private datePatterns = [
-    /\b(?:January|February|March|April|May|June|July|August|September|October|November|December)\s+\d{1,2},?\s+\d{4}\b/gi,
-    /\b\d{1,2}\/\d{1,2}\/\d{2,4}\b/g,
-    /\b\d{4}-\d{2}-\d{2}\b/g,
-    /\b(?:in|during|since|from|until|by)\s+\d{4}\b/gi,
-    /\b(?:19|20)\d{2}s?\b/g, // Years like 1990s, 2020
-    /\b(?:early|mid|late)\s+(?:19|20)\d{2}s?\b/gi
-  ];
-
-  private namePatterns = [
-    /\b[A-Z][a-z]+\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/g, // Full names
-    /\b(?:Dr\.|Prof\.|Mr\.|Ms\.|Mrs\.)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/gi, // Titles with names
-    /\b[A-Z][a-z]+\s+(?:said|stated|argued|claimed|proposed|discovered|invented|founded)\b/gi, // Action-based name detection
-    /\b(?:according to|as stated by|research by|work of|theory of)\s+[A-Z][a-z]+(?:\s+[A-Z][a-z]+)?\b/gi
-  ];
-
-  private technicalTermPatterns = [
-    /\b[A-Z]{2,}(?:\s+[A-Z]{2,})*\b/g, // Acronyms
-    /\b\w+(?:-\w+)+\b/g, // Hyphenated technical terms
-    /\b(?:API|SDK|AI|ML|IoT|SaaS|PaaS|IaaS|HTTP|HTTPS|JSON|XML|SQL|NoSQL|REST|GraphQL)\b/gi,
-    /\b\w*(?:ology|ism|tion|sion|ment|ness|ity|ics|ing)\b/g, // Technical suffixes
-    /\b(?:system|framework|methodology|algorithm|protocol|architecture|infrastructure|platform|interface)\b/gi
-  ];
-
-  // Keywords that indicate importance in academic/business contexts
-  private importanceKeywords = [
-    'breakthrough', 'revolutionary', 'significant', 'major', 'critical', 'essential',
-    'fundamental', 'key', 'primary', 'main', 'central', 'core', 'vital', 'crucial',
-    'important', 'notable', 'remarkable', 'substantial', 'considerable', 'extensive'
-  ];
-
-  // Technical terms that might need definitions
-  private technicalTerms = [
-    'algorithm', 'methodology', 'framework', 'paradigm', 'protocol', 'infrastructure',
-    'architecture', 'implementation', 'optimization', 'analysis', 'synthesis', 'evaluation'
-  ];
-
-  analyzeText(text: string, context?: string): AnalyzedText[] {
-    const analyzedTexts: AnalyzedText[] = [];
-    const sentences = this.splitIntoSentences(text);
-
-    sentences.forEach((sentence, index) => {
-      const analysis = this.analyzeSentence(sentence, index, context);
-      if (analysis && analysis.contentType.priority >= 5) { // Only include high-priority content
-        analyzedTexts.push(analysis);
-      }
-    });
-
-    // Sort by priority and relevance score
-    return analyzedTexts.sort((a, b) => 
-      (b.contentType.priority * b.relevanceScore) - (a.contentType.priority * a.relevanceScore)
-    );
-  }
-
-  private splitIntoSentences(text: string): string[] {
-    // Split text into sentences while preserving context
-    const sentences = text.match(/[^\.!?]+[\.!?]+/g) || [text];
-    return sentences.map(s => s.trim()).filter(s => s.length > 20); // Filter out very short sentences
-  }
-
-  private analyzeSentence(sentence: string, index: number, context?: string): AnalyzedText | null {
-    const lowerSentence = sentence.toLowerCase();
-    
-    // Check for key concepts
-    if (this.matchesPatterns(sentence, this.keyConceptPatterns) || 
-        this.containsImportanceKeywords(lowerSentence)) {
-      return {
-        text: sentence,
-        contentType: {
-          type: 'key-concept',
-          color: 'primary',
-          priority: this.calculatePriority(sentence, 'key-concept'),
-          category: 'insight'
-        },
-        relevanceScore: this.calculateRelevanceScore(sentence, context),
-        explanation: 'Key concept identified - contains important information relevant to understanding the topic',
-        keywords: this.extractKeywords(sentence)
-      };
-    }
-
-    // Check for statistics
-    if (this.matchesPatterns(sentence, this.statisticPatterns)) {
-      return {
-        text: sentence,
-        contentType: {
-          type: 'statistic',
-          color: 'tertiary',
-          priority: this.calculatePriority(sentence, 'statistic'),
-          category: 'fact'
-        },
-        relevanceScore: this.calculateRelevanceScore(sentence, context),
-        explanation: 'Statistical data or quantitative information that supports the main arguments',
-        keywords: this.extractKeywords(sentence)
-      };
-    }
-
-    // Check for definitions
-    if (this.matchesPatterns(sentence, this.definitionPatterns)) {
-      return {
-        text: sentence,
-        contentType: {
-          type: 'definition',
-          color: 'secondary',
-          priority: this.calculatePriority(sentence, 'definition'),
-          category: 'definition'
-        },
-        relevanceScore: this.calculateRelevanceScore(sentence, context),
-        explanation: 'Definition or explanation of important terms and concepts',
-        keywords: this.extractKeywords(sentence)
-      };
-    }
-
-    // Check for action items
-    if (this.matchesPatterns(sentence, this.actionItemPatterns)) {
-      return {
-        text: sentence,
-        contentType: {
-          type: 'action-item',
-          color: 'quaternary',
-          priority: this.calculatePriority(sentence, 'action-item'),
-          category: 'action'
-        },
-        relevanceScore: this.calculateRelevanceScore(sentence, context),
-        explanation: 'Action item, recommendation, or step that requires attention',
-        keywords: this.extractKeywords(sentence)
-      };
-    }
-
-    // Check for conclusions
-    if (this.matchesPatterns(sentence, this.conclusionPatterns)) {
-      return {
-        text: sentence,
-        contentType: {
-          type: 'conclusion',
-          color: 'primary',
-          priority: this.calculatePriority(sentence, 'conclusion'),
-          category: 'insight'
-        },
-        relevanceScore: this.calculateRelevanceScore(sentence, context),
-        explanation: 'Conclusion or key finding that summarizes important results',
-        keywords: this.extractKeywords(sentence)
-      };
-    }
-
-    // Check for dates
-    if (this.matchesPatterns(sentence, this.datePatterns)) {
-      return {
-        text: sentence,
-        contentType: {
-          type: 'date',
-          color: 'blue',
-          priority: this.calculatePriority(sentence, 'date'),
-          category: 'date'
-        },
-        relevanceScore: this.calculateRelevanceScore(sentence, context),
-        explanation: 'Contains important date or temporal information',
-        keywords: this.extractKeywords(sentence)
-      };
-    }
-
-    // Check for names
-    if (this.matchesPatterns(sentence, this.namePatterns)) {
-      return {
-        text: sentence,
-        contentType: {
-          type: 'name',
-          color: 'green',
-          priority: this.calculatePriority(sentence, 'name'),
-          category: 'person'
-        },
-        relevanceScore: this.calculateRelevanceScore(sentence, context),
-        explanation: 'Contains reference to important person or authority',
-        keywords: this.extractKeywords(sentence)
-      };
-    }
-
-    // Check for technical terms
-    if (this.matchesPatterns(sentence, this.technicalTermPatterns)) {
-      return {
-        text: sentence,
-        contentType: {
-          type: 'technical-term',
-          color: 'gold',
-          priority: this.calculatePriority(sentence, 'technical-term'),
-          category: 'technical'
-        },
-        relevanceScore: this.calculateRelevanceScore(sentence, context),
-        explanation: 'Contains technical terminology that may require understanding',
-        keywords: this.extractKeywords(sentence)
-      };
-    }
-
-    return null;
-  }
-
-  private matchesPatterns(text: string, patterns: RegExp[]): boolean {
-    return patterns.some(pattern => pattern.test(text));
-  }
-
-  private containsImportanceKeywords(text: string): boolean {
-    return this.importanceKeywords.some(keyword => 
-      text.includes(keyword.toLowerCase())
-    );
-  }
-
-  private calculatePriority(sentence: string, type: string): number {
-    let priority = 5; // Base priority
-    
-    // Increase priority based on sentence characteristics
-    if (sentence.length > 100 && sentence.length < 300) priority += 1; // Good length
-    if (this.containsImportanceKeywords(sentence.toLowerCase())) priority += 2;
-    if (sentence.includes('important') || sentence.includes('significant')) priority += 1;
-    
-    // Type-specific priority adjustments
-    switch (type) {
-      case 'key-concept':
-        priority += 2;
-        break;
-      case 'statistic':
-        priority += 1;
-        break;
-      case 'definition':
-        priority += 1;
-        break;
-      case 'action-item':
-        priority += 2;
-        break;
-      case 'conclusion':
-        priority += 3;
-        break;
-      case 'date':
-        priority += 1;
-        break;
-      case 'name':
-        priority += 1;
-        break;
-      case 'technical-term':
-        priority += 1;
-        break;
-    }
-
-    return Math.min(10, Math.max(1, priority));
-  }
-
-  private calculateRelevanceScore(sentence: string, context?: string): number {
-    let score = 0.7; // Base score
-
-    // Increase score based on sentence quality
-    const wordCount = sentence.split(' ').length;
-    if (wordCount >= 10 && wordCount <= 40) score += 0.1; // Good length
-    
-    if (this.containsImportanceKeywords(sentence.toLowerCase())) score += 0.1;
-    
-    // Context relevance
-    if (context) {
-      const contextWords = context.toLowerCase().split(' ');
-      const sentenceWords = sentence.toLowerCase().split(' ');
-      const overlap = sentenceWords.filter(word => 
-        contextWords.includes(word) && word.length > 3
-      ).length;
-      
-      if (overlap > 0) {
-        score += Math.min(0.2, overlap * 0.05);
-      }
-    }
-
-    return Math.min(1.0, Math.max(0.1, score));
-  }
-
-  private extractKeywords(sentence: string): string[] {
-    // Extract meaningful keywords from the sentence
-    const words = sentence.toLowerCase()
-      .replace(/[^\w\s]/g, ' ')
-      .split(/\s+/)
-      .filter(word => 
-        word.length > 3 && 
-        !this.isStopWord(word)
-      );
-
-    // Return top 5 most relevant words
-    return words.slice(0, 5);
-  }
-
-  private isStopWord(word: string): boolean {
-    const stopWords = [
-      'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with',
-      'by', 'from', 'up', 'about', 'into', 'through', 'during', 'before', 'after',
-      'above', 'below', 'between', 'among', 'this', 'that', 'these', 'those', 'is',
-      'was', 'are', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does',
-      'did', 'will', 'would', 'could', 'should', 'may', 'might', 'must', 'can', 'shall'
-    ];
-    return stopWords.includes(word.toLowerCase());
-  }
-
-  // Analyze an entire document to find the most relevant sections
-  analyzeDocument(fullText: string, persona?: string, jobToBeDone?: string): AnalyzedText[] {
-    const context = `${persona || ''} ${jobToBeDone || ''}`.trim();
-    const analyzed = this.analyzeText(fullText, context);
-    
-    // Filter and deduplicate
-    const uniqueTexts = new Map<string, AnalyzedText>();
-    
-    analyzed.forEach(item => {
-      const key = item.text.substring(0, 50); // Use first 50 chars as key
-      if (!uniqueTexts.has(key) || uniqueTexts.get(key)!.relevanceScore < item.relevanceScore) {
-        uniqueTexts.set(key, item);
-      }
-    });
-    
-    return Array.from(uniqueTexts.values())
-      .sort((a, b) => (b.contentType.priority * b.relevanceScore) - (a.contentType.priority * a.relevanceScore))
-      .slice(0, 20); // Return top 20 most relevant items
-  }
-
-  // Get terms that might need "Do You Know?" tooltips
-  getComplexTerms(text: string): string[] {
-    const words = text.toLowerCase()
-      .replace(/[^\w\s]/g, ' ')
-      .split(/\s+/)
-      .filter(word => word.length > 6); // Focus on longer words
-
-    const complexTerms = words.filter(word => 
-      this.technicalTerms.includes(word) ||
-      this.isLikelyTechnicalTerm(word)
-    );
-
-    // Remove duplicates and return
-    return [...new Set(complexTerms)];
-  }
-
-  private isLikelyTechnicalTerm(word: string): boolean {
-    // Heuristics for identifying technical terms
-    return (
-      word.length > 8 || // Long words are often technical
-      word.includes('tion') || // Common technical suffix
-      word.includes('ology') || // Scientific terms
-      word.includes('ment') || // Process terms
-      /[A-Z]{2,}/.test(word) // Acronyms (if original case preserved)
-    );
-  }
+/**
+ * Analyzes text complexity and readability
+ */
+export function analyzeTextComplexity(text: string) {
+  const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
+  const words = text.split(/\s+/).filter(w => w.length > 0);
+  const avgWordsPerSentence = sentences.length > 0 ? words.length / sentences.length : 0;
+  
+  const complexity = avgWordsPerSentence > 20 ? 'complex' : 
+                    avgWordsPerSentence > 12 ? 'moderate' : 'simple';
+  
+  return {
+    wordCount: words.length,
+    sentenceCount: sentences.length,
+    avgWordsPerSentence: Math.round(avgWordsPerSentence * 10) / 10,
+    complexity,
+    readingLevel: complexity === 'complex' ? 'Advanced' : 
+                  complexity === 'moderate' ? 'Intermediate' : 'Beginner'
+  };
 }
-
-export const textAnalysisService = new TextAnalysisService();

@@ -32,6 +32,7 @@ import { EnhancedContextMenu } from './EnhancedContextMenu';
 import { EnhancedTextSelectionMenu } from './EnhancedTextSelectionMenu';
 import { TodoistStylePopup } from './TodoistStylePopup';
 import { DidYouKnowPopup, useDidYouKnowPopup } from './DidYouKnowPopup';
+import { apiService } from '@/lib/api';
 import { Highlight } from './PDFReader';
 import { customPdfHighlighter } from '@/lib/customPdfHighlighter';
 
@@ -76,6 +77,10 @@ export function EnhancedPDFViewer({
   const [selectedText, setSelectedText] = useState<string>('');
   const [currentHighlights, setCurrentHighlights] = useState<Highlight[]>(highlights);
   const [isAIInsightsOpen, setIsAIInsightsOpen] = useState(false);
+  
+  // Did You Know popup functionality
+  const [didYouKnowFacts, setDidYouKnowFacts] = useState<any[]>([]);
+  const [isGeneratingFacts, setIsGeneratingFacts] = useState(false);
   
   // Enhanced context menu and popup states
   const [contextMenuState, setContextMenuState] = useState<{
