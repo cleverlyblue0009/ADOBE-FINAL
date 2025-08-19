@@ -9,6 +9,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { apiService } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { ExpandablePanelModal } from '@/components/ui/ExpandablePanelModal';
+import { DidYouKnowPopup } from './DidYouKnowPopup';
 import { 
   Lightbulb, 
   Brain, 
@@ -599,7 +600,7 @@ export function EnhancedAIInsightsPanel({
 
           {/* Analysis Tabs */}
           <Tabs defaultValue="snippet" className="w-full">
-            <TabsList className="grid w-full grid-cols-5 bg-background/60 backdrop-blur-sm border border-border">
+            <TabsList className="grid w-full grid-cols-4 bg-background/60 backdrop-blur-sm border border-border">
               <TabsTrigger value="snippet" className="flex items-center gap-2">
                 <FileText className="h-4 w-4" />
                 Summary
@@ -616,10 +617,6 @@ export function EnhancedAIInsightsPanel({
                 <Link2 className="h-4 w-4" />
                 Related
               </TabsTrigger>
-              <TabsTrigger value="actions" className="flex items-center gap-2">
-                <Target className="h-4 w-4" />
-                Actions
-              </TabsTrigger>
             </TabsList>
 
             {/* Document Summary Tab */}
@@ -631,7 +628,7 @@ export function EnhancedAIInsightsPanel({
                     Document Summary
                   </CardTitle>
                   <p className="text-sm text-blue-700">
-                    Get a comprehensive summary of the document tailored to your role
+                    One paragraph summary of the whole document
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -694,7 +691,7 @@ export function EnhancedAIInsightsPanel({
                     Key Insights
                   </CardTitle>
                   <p className="text-sm text-yellow-700">
-                    Extract important information and explanations from the document content
+                    Important points in the document, references from the web
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -782,10 +779,10 @@ export function EnhancedAIInsightsPanel({
                 <CardHeader className="pb-4">
                   <CardTitle className="flex items-center gap-2 text-purple-900">
                     <MessageCircle className="h-5 w-5" />
-                    Thoughtful Questions
+                    Questions
                   </CardTitle>
                   <p className="text-sm text-purple-700">
-                    Insightful questions based on your persona to guide deeper research
+                    Insightful questions based on role and personal for users to research
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -881,7 +878,7 @@ export function EnhancedAIInsightsPanel({
                     Related Content
                   </CardTitle>
                   <p className="text-sm text-green-700">
-                    Connections from documents in your library and relevant web resources
+                    Links from the web and cross connections from other documents in the library, similarities and contradictions
                   </p>
                 </CardHeader>
                 <CardContent>
@@ -994,127 +991,14 @@ export function EnhancedAIInsightsPanel({
               </Card>
             </TabsContent>
 
-            {/* Strategic Actions Tab */}
-            <TabsContent value="actions" className="space-y-6 mt-6">
-              <Card className="bg-gradient-to-r from-emerald-50 to-teal-50 border-emerald-200">
-                <CardHeader className="pb-4">
-                  <CardTitle className="flex items-center gap-2 text-emerald-900">
-                    <Target className="h-5 w-5" />
-                    Strategic Actions
-                  </CardTitle>
-                  <p className="text-sm text-emerald-700">
-                    Actionable recommendations based on your role and objectives
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <Button
-                    onClick={handleGenerateStrategicActions}
-                    disabled={isGeneratingActions || !persona || !jobToBeDone}
-                    className="w-full gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-lg hover:shadow-xl transition-all duration-200 py-3 font-semibold"
-                  >
-                    {isGeneratingActions ? (
-                      <>
-                        <RefreshCw className="h-4 w-4 animate-spin" />
-                        Generating Actions...
-                      </>
-                    ) : (
-                      <>
-                        <Target className="h-4 w-4" />
-                        Generate Strategic Actions
-                      </>
-                    )}
-                  </Button>
 
-                  {/* Generated Actions */}
-                  {strategicActions.length > 0 && (
-                    <div className="mt-6 space-y-4">
-                      <div className="flex items-center justify-between bg-white/60 p-3 rounded-lg border border-emerald-200">
-                        <h4 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                          <Target className="h-3 w-3 text-emerald-600" />
-                          Action Items
-                        </h4>
-                        <Badge variant="secondary" className="text-xs font-medium bg-emerald-100 text-emerald-800 border-emerald-200">
-                          {strategicActions.length} actions
-                        </Badge>
-                      </div>
-
-                      <div className="space-y-3">
-                        {strategicActions.map((action, index) => (
-                          <Card
-                            key={index}
-                            className="p-4 bg-white/80 border border-emerald-200 rounded-lg hover:border-emerald-300 hover:shadow-md transition-all duration-200 cursor-pointer group"
-                            onClick={() => {
-                              if (action.page_reference) {
-                                onPageNavigate?.(action.page_reference);
-                              }
-                            }}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className="flex-shrink-0 mt-0.5 p-2 bg-gradient-to-br from-emerald-100 to-teal-100 rounded-lg group-hover:from-emerald-200 group-hover:to-teal-200 transition-colors">
-                                {getActionTypeIcon(action.type)}
-                              </div>
-                              
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-2">
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-xs px-2 py-1 font-medium ${getActionPriorityColor(action.priority)}`}
-                                  >
-                                    {action.priority.toUpperCase()} PRIORITY
-                                  </Badge>
-                                  
-                                  <Badge 
-                                    variant="outline" 
-                                    className="text-xs px-2 py-1 font-medium bg-emerald-50 border-emerald-200 text-emerald-800"
-                                  >
-                                    {action.type.toUpperCase()}
-                                  </Badge>
-
-                                  {action.page_reference && (
-                                    <div className="flex items-center gap-1 text-xs text-gray-500 bg-emerald-100 px-2 py-1 rounded">
-                                      <ExternalLink className="h-3 w-3" />
-                                      Page {action.page_reference}
-                                    </div>
-                                  )}
-                                </div>
-                                
-                                <h5 className="text-sm font-semibold text-gray-900 mb-2">
-                                  {action.title}
-                                </h5>
-                                
-                                <p className="text-sm text-gray-700 leading-relaxed mb-3 bg-emerald-50/50 p-3 rounded border-l-2 border-l-emerald-300">
-                                  {action.description}
-                                </p>
-
-                                <div className="flex items-center gap-4 text-xs text-gray-600">
-                                  <div className="flex items-center gap-1">
-                                    <Clock className="h-3 w-3" />
-                                    {action.estimated_time}
-                                  </div>
-                                  {action.effort && (
-                                    <div className="flex items-center gap-1">
-                                      <Zap className="h-3 w-3" />
-                                      {action.effort} effort
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
           </Tabs>
 
           {/* Placeholder when no content */}
           {!documentSnippet && keyInsights.length === 0 && thoughtfulQuestions.length === 0 && 
-           !relatedConnections && strategicActions.length === 0 && 
+           !relatedConnections && didYouKnowFacts.length === 0 && 
            !isGeneratingSnippet && !isGeneratingInsights && !isGeneratingQuestions && 
-           !isGeneratingRelated && !isGeneratingActions && (
+           !isGeneratingRelated && !isGeneratingFacts && (
             <Card className="text-center py-12 bg-gradient-to-br from-white to-gray-50 border-2 border-dashed border-gray-200">
               <CardContent className="space-y-4">
                 <div className="p-4 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full w-fit mx-auto">
@@ -1128,18 +1012,24 @@ export function EnhancedAIInsightsPanel({
                     Configure your role and objectives above, then explore the analysis tabs
                   </p>
                   <p className="text-xs text-gray-500">
-                    Get summaries, insights, questions, connections, and strategic actions
+                    Get summaries, insights, questions, and connections. Watch for the glowing bulb for interesting facts!
                   </p>
                 </div>
                 <div className="flex items-center justify-center gap-2 text-xs text-gray-500">
                   <ArrowRight className="h-3 w-3" />
-                  <span>Summary • Key Insights • Questions • Related • Actions</span>
+                  <span>Summary • Key Insights • Questions • Related</span>
                 </div>
               </CardContent>
             </Card>
           )}
         </div>
       </ScrollArea>
+      
+      {/* Did You Know Popup - appears when there are facts */}
+      <DidYouKnowPopup 
+        facts={didYouKnowFacts} 
+        isVisible={didYouKnowFacts.length > 0}
+      />
     </div>
   );
 }
