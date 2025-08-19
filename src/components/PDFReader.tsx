@@ -58,7 +58,7 @@ import { EnhancedHighlightFlashcards } from './EnhancedHighlightFlashcards';
 import { HighlightsPopup } from './HighlightsPopup';
 import { TextSimplifier } from './TextSimplifier';
 import { CopyDownloadPanel } from './CopyDownloadPanel';
-import { ReadingAnalyticsPanel } from './ReadingAnalyticsPanel';
+import { EnhancedTranslatePanel } from './EnhancedTranslatePanel';
 import { SmartBookmarksPanel } from './SmartBookmarksPanel';
 import { apiService, RelatedSection } from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
@@ -73,7 +73,8 @@ import {
   Highlighter,
   Download,
   BarChart3,
-  Bookmark
+  Bookmark,
+  Languages
 } from 'lucide-react';
 
 export interface PDFDocument {
@@ -120,7 +121,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
   const [aiHighlightsVisible, setAiHighlightsVisible] = useState(false); // New state for AI highlights visibility
   const [highlightsPopupOpen, setHighlightsPopupOpen] = useState(false); // New state for highlights popup
   const [goToSection, setGoToSection] = useState<{ page: number; section?: string } | null>(null);
-  const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'strategic' | 'connections' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | 'highlights' | 'analytics' | 'bookmarks' | null>('highlights');
+  const [activeRightPanel, setActiveRightPanel] = useState<'insights' | 'strategic' | 'connections' | 'podcast' | 'accessibility' | 'simplifier' | 'export' | 'highlights' | 'translate' | 'bookmarks' | null>('highlights');
 
   // Reset goToSection after it's been processed to prevent continuous navigation
   useEffect(() => {
@@ -132,6 +133,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
     }
   }, [goToSection]);
   const [selectedText, setSelectedText] = useState<string>('');
+  const [selectedTextForTranslation, setSelectedTextForTranslation] = useState<string>('');
   const [currentInsights, setCurrentInsights] = useState<Array<{ type: string; content: string }>>([]);
   const [relatedSections, setRelatedSections] = useState<RelatedSection[]>([]);
   const [isLoadingRelated, setIsLoadingRelated] = useState(false);
@@ -830,7 +832,7 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                   { key: 'simplifier', label: 'Simplify', icon: Upload },
                   { key: 'export', label: 'Export', icon: Upload },
                   { key: 'highlights', label: 'Highlights', icon: Highlighter },
-                  { key: 'analytics', label: 'Analytics', icon: BarChart3 },
+                  { key: 'translate', label: 'Translate', icon: Languages },
                   { key: 'bookmarks', label: 'Bookmarks', icon: Bookmark }
                 ].map(({ key, label, icon: Icon }) => (
                   <Button
@@ -1022,16 +1024,13 @@ export function PDFReader({ documents, persona, jobToBeDone, onBack }: PDFReader
                 </div>
               )}
 
-              {activeRightPanel === 'analytics' && (
+              {activeRightPanel === 'translate' && (
                 <div className="min-w-0 overflow-y-auto h-full break-words panel-content">
-                  <ReadingAnalyticsPanel
-                    currentPage={currentPage}
-                    totalPages={totalPages}
-                    readingStartTime={readingStartTime}
-                    isActivelyReading={isActivelyReading}
-                    documentsRead={documents?.length || 1}
-                    persona={persona}
-                    jobToBeDone={jobToBeDone}
+                  <EnhancedTranslatePanel
+                    originalText={selectedTextForTranslation}
+                    onTranslatedText={(text, language) => {
+                      console.log('Translation completed:', { text, language });
+                    }}
                   />
                 </div>
               )}
