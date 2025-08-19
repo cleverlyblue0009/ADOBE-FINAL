@@ -15,6 +15,7 @@ import {
   Loader2,
   Copy
 } from 'lucide-react';
+import { DidYouKnowPopup, useDidYouKnowPopup } from './DidYouKnowPopup';
 
 // Configure PDF.js worker - Use the worker file from public directory
 pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
@@ -26,6 +27,7 @@ import { customPdfHighlighter } from '@/lib/customPdfHighlighter';
 interface CustomPDFViewerProps {
   documentUrl: string;
   documentName: string;
+  documentId?: string;
   onPageChange?: (page: number) => void;
   onTextSelection?: (text: string, page: number) => void;
   highlights?: Highlight[];
@@ -161,6 +163,7 @@ function AiPopup({ aiPopup, onClose }: { aiPopup: AiPopupState; onClose: () => v
 export function CustomPDFViewer({ 
   documentUrl, 
   documentName, 
+  documentId,
   onPageChange, 
   onTextSelection,
   highlights = [],
@@ -175,6 +178,9 @@ export function CustomPDFViewer({
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const { toast } = useToast();
+  
+  // Did You Know popup hook
+  const { isOpen: isFactPopupOpen, currentPage: factCurrentPage, showPopup: showFactPopup, hidePopup: hideFactPopup } = useDidYouKnowPopup();
 
   // Context menu and AI popup states
   const [contextMenu, setContextMenu] = useState<ContextMenuState>({
@@ -245,8 +251,52 @@ export function CustomPDFViewer({
         }
         customPdfHighlighter.enableTextSelection();
       }, 300);
+      
+      // Check for interesting facts on this page
+      if (documentId) {
+        checkForPageFacts(documentId, page);
+      }
     }
-  }, [numPages, onPageChange, highlights]);
+  }, [numPages, onPageChange, highlights, documentId]);
+
+  // Function to check for facts on the current page
+  const checkForPageFacts = async (docId: string, pageNum: number) => {
+    try {
+      const response = await fetch(`/api/documents/${docId}/facts/page/${pageNum}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.has_facts) {
+          // Get page text for fact generation
+          const pageText = getPageText(pageNum);
+          
+          // Show popup after a short delay to let the page settle
+          setTimeout(() => {
+            showFactPopup(docId, pageNum, pageText);
+          }, 2000); // 2 second delay to let user read the page first
+        }
+      }
+    } catch (error) {
+      console.error('Error checking for page facts:', error);
+    }
+  };
+
+  // Function to extract text from current page
+  const getPageText = (pageNum: number): string => {
+    try {
+      const pageElement = document.querySelector(`[data-page-number="${pageNum}"]`) as HTMLElement;
+      if (pageElement) {
+        // Extract text content from the page
+        const textLayer = pageElement.querySelector('.react-pdf__Page__textContent');
+        if (textLayer) {
+          return textLayer.textContent || '';
+        }
+      }
+      return '';
+    } catch (error) {
+      console.error('Error extracting page text:', error);
+      return '';
+    }
+  };
 
   // Handle text selection
   const handleTextSelection = useCallback(() => {
@@ -766,6 +816,22 @@ export function CustomPDFViewer({
           </div>
         </div>
       )}
+
+      {/* Did You Know Popup */}
+      <DidYouKnowPopup
+        isOpen={isFactPopupOpen}
+        onClose={hideFactPopup}
+        documentId={factCurrentPage?.documentId || ''}
+        pageNumber={factCurrentPage?.pageNumber || 0}
+        pageText={factCurrentPage?.pageText}
+        onFactGenerated={(fact) => {
+          console.log('New fact generated:', fact);
+          toast({
+            title: "Interesting Fact Generated!",
+            description: "A new fascinating fact has been discovered for this page.",
+          });
+        }}
+      />
     </>
   );
 }

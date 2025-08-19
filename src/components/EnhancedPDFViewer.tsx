@@ -31,12 +31,14 @@ import { AIInsightsModal } from './AIInsightsModal';
 import { EnhancedContextMenu } from './EnhancedContextMenu';
 import { EnhancedTextSelectionMenu } from './EnhancedTextSelectionMenu';
 import { TodoistStylePopup } from './TodoistStylePopup';
+import { DidYouKnowPopup, useDidYouKnowPopup } from './DidYouKnowPopup';
 import { Highlight } from './PDFReader';
 import { customPdfHighlighter } from '@/lib/customPdfHighlighter';
 
 interface EnhancedPDFViewerProps {
   documentUrl: string;
   documentName: string;
+  documentId?: string;
   onPageChange?: (page: number) => void;
   onTextSelection?: (text: string, page: number) => void;
   highlights?: Highlight[];
@@ -50,6 +52,7 @@ interface EnhancedPDFViewerProps {
 export function EnhancedPDFViewer({
   documentUrl,
   documentName,
+  documentId,
   onPageChange,
   onTextSelection,
   highlights = [],
