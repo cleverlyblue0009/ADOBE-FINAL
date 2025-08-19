@@ -28,79 +28,57 @@ export class CustomPdfHighlighter {
       .custom-pdf-highlight {
         position: absolute;
         pointer-events: none;
-        border-radius: 3px;
-        transition: all 0.2s ease-in-out;
+        border-radius: 2px;
+        transition: opacity 0.2s ease-in-out;
         z-index: 10;
-        box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+        mix-blend-mode: multiply;
       }
       
       .custom-pdf-highlight.primary {
-        background-color: rgba(254, 240, 138, 0.6);
-        border: 1px solid rgba(251, 191, 36, 0.8);
-        box-shadow: 0 0 12px rgba(255, 255, 0, 0.3);
+        background-color: rgba(255, 235, 59, 0.35);
+        border: 1px solid rgba(255, 235, 59, 0.6);
       }
       
       .custom-pdf-highlight.secondary {
-        background-color: rgba(134, 239, 172, 0.6);
-        border: 1px solid rgba(34, 197, 94, 0.8);
-        box-shadow: 0 0 12px rgba(0, 255, 0, 0.3);
+        background-color: rgba(76, 175, 80, 0.35);
+        border: 1px solid rgba(76, 175, 80, 0.6);
       }
       
       .custom-pdf-highlight.tertiary {
-        background-color: rgba(147, 197, 253, 0.6);
-        border: 1px solid rgba(59, 130, 246, 0.8);
-        box-shadow: 0 0 12px rgba(0, 150, 255, 0.3);
+        background-color: rgba(33, 150, 243, 0.35);
+        border: 1px solid rgba(33, 150, 243, 0.6);
       }
       
       .custom-pdf-highlight.quaternary {
-        background-color: rgba(251, 146, 60, 0.6);
-        border: 1px solid rgba(249, 115, 22, 0.8);
-        box-shadow: 0 0 12px rgba(255, 165, 0, 0.3);
+        background-color: rgba(255, 152, 0, 0.35);
+        border: 1px solid rgba(255, 152, 0, 0.6);
       }
       
-      /* Fluorescent highlight colors */
+      /* Standard highlight colors like real PDF highlighters */
       .custom-pdf-highlight.yellow {
-        background-color: rgba(255, 255, 0, 0.5);
-        border: 2px solid rgba(255, 255, 0, 0.8);
-        box-shadow: 0 0 15px rgba(255, 255, 0, 0.4);
-        animation: fluorescent-glow 2s ease-in-out infinite alternate;
+        background-color: rgba(255, 235, 59, 0.4);
+        border: 1px solid rgba(255, 235, 59, 0.7);
       }
       
       .custom-pdf-highlight.green {
-        background-color: rgba(0, 255, 0, 0.4);
-        border: 2px solid rgba(0, 255, 0, 0.8);
-        box-shadow: 0 0 15px rgba(0, 255, 0, 0.4);
-        animation: fluorescent-glow 2s ease-in-out infinite alternate;
+        background-color: rgba(76, 175, 80, 0.4);
+        border: 1px solid rgba(76, 175, 80, 0.7);
       }
       
       .custom-pdf-highlight.blue {
-        background-color: rgba(0, 150, 255, 0.4);
-        border: 2px solid rgba(0, 150, 255, 0.8);
-        box-shadow: 0 0 15px rgba(0, 150, 255, 0.4);
-        animation: fluorescent-glow 2s ease-in-out infinite alternate;
+        background-color: rgba(33, 150, 243, 0.4);
+        border: 1px solid rgba(33, 150, 243, 0.7);
       }
       
       .custom-pdf-highlight.pink {
-        background-color: rgba(255, 20, 147, 0.4);
-        border: 2px solid rgba(255, 20, 147, 0.8);
-        box-shadow: 0 0 15px rgba(255, 20, 147, 0.4);
-        animation: fluorescent-glow 2s ease-in-out infinite alternate;
-      }
-      
-      @keyframes fluorescent-glow {
-        0% {
-          box-shadow: 0 0 15px rgba(255, 255, 255, 0.4);
-        }
-        100% {
-          box-shadow: 0 0 25px rgba(255, 255, 255, 0.6);
-        }
+        background-color: rgba(233, 30, 99, 0.4);
+        border: 1px solid rgba(233, 30, 99, 0.7);
       }
       
       .custom-pdf-highlight:hover {
-        opacity: 0.9;
+        opacity: 0.8;
         pointer-events: auto;
         cursor: pointer;
-        transform: scale(1.02);
       }
       
       .pdf-text-layer {
@@ -359,11 +337,11 @@ export class CustomPdfHighlighter {
       // Store reference
       this.highlights.set(`${highlight.id}-${index}`, highlight);
       
-      // Add animation effect
+      // Simple fade-in effect
+      highlightElement.style.opacity = '0';
       setTimeout(() => {
-        highlightElement.style.opacity = '0.8';
-        highlightElement.style.transform = 'scale(1.02)';
-      }, index * 100);
+        highlightElement.style.opacity = '1';
+      }, index * 50);
       
       console.log(`Created highlight overlay at position:`, position.boundingBox);
     });
