@@ -23,6 +23,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
 // Import types and utilities
 import { Highlight } from './PDFReader';
 import { customPdfHighlighter } from '@/lib/customPdfHighlighter';
+import { textbookHighlighter, TextLayerHighlight, TextbookHighlighter } from '@/lib/textbookHighlighter';
 
 interface CustomPDFViewerProps {
   documentUrl: string;
@@ -33,6 +34,7 @@ interface CustomPDFViewerProps {
   highlights?: Highlight[];
   currentHighlightPage?: number;
   goToSection?: { page: number; section?: string } | null;
+  onHighlightsChange?: (highlights: TextLayerHighlight[]) => void;
 }
 
 interface ContextMenuState {
@@ -168,9 +170,11 @@ export function CustomPDFViewer({
   onTextSelection,
   highlights = [],
   currentHighlightPage = 1,
-  goToSection
+  goToSection,
+  onHighlightsChange
 }: CustomPDFViewerProps) {
   const [numPages, setNumPages] = useState<number>(0);
+  const [textbookHighlights, setTextbookHighlights] = useState<TextLayerHighlight[]>([]);
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [zoom, setZoom] = useState<number>(1.0);
   const [rotation, setRotation] = useState<number>(0);
@@ -609,10 +613,55 @@ export function CustomPDFViewer({
     }
   }, [highlights, currentPage]);
 
+  // Convert legacy highlights to textbook highlights
+  useEffect(() => {
+    if (highlights.length > 0) {
+      const converted = highlights.map(h => 
+        TextbookHighlighter.fromLegacyHighlight(h)
+      ) as TextLayerHighlight[];
+      setTextbookHighlights(converted);
+    }
+  }, [highlights]);
+
+  // Apply textbook highlights to current page
+  useEffect(() => {
+    if (textbookHighlights.length > 0) {
+      setTimeout(() => {
+        textbookHighlighter.applyHighlightsToPage(currentPage, textbookHighlights);
+      }, 500); // Wait for page to render
+    }
+  }, [currentPage, textbookHighlights]);
+
+  // Listen for highlight clicks to generate flashcards
+  useEffect(() => {
+    const handleHighlightClick = (event: CustomEvent) => {
+      const highlight = event.detail as TextLayerHighlight;
+      console.log('Generating flashcard for highlight:', highlight);
+      // Dispatch event to parent component for flashcard generation
+      window.dispatchEvent(new CustomEvent('generateFlashcard', {
+        detail: highlight
+      }));
+    };
+
+    window.addEventListener('highlightClicked', handleHighlightClick as EventListener);
+    
+    return () => {
+      window.removeEventListener('highlightClicked', handleHighlightClick as EventListener);
+    };
+  }, []);
+
+  // Notify parent of highlight changes
+  useEffect(() => {
+    if (onHighlightsChange) {
+      onHighlightsChange(textbookHighlights);
+    }
+  }, [textbookHighlights, onHighlightsChange]);
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       customPdfHighlighter.removeAllHighlights();
+      textbookHighlighter.clearHighlights();
     };
   }, []);
 
@@ -793,9 +842,18 @@ export function CustomPDFViewer({
                       if (pageElement) {
                         pageElement.setAttribute('data-page-number', currentPage.toString());
                         
+                        // Apply legacy overlay highlights
                         if (highlights.length > 0) {
                           customPdfHighlighter.applyHighlights(highlights, currentPage, pageElement);
                         }
+                        
+                        // Apply textbook-style highlights to text layer
+                        if (textbookHighlights.length > 0) {
+                          setTimeout(() => {
+                            textbookHighlighter.applyHighlightsToPage(currentPage, textbookHighlights);
+                          }, 200); // Additional delay for text layer to be ready
+                        }
+                        
                         customPdfHighlighter.enableTextSelection();
                       }
                     }, 100);
