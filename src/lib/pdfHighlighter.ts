@@ -1,339 +1,263 @@
-import { Highlight } from '@/components/PDFReader';
+import { pdfjs } from 'react-pdf';
 
-interface HighlightPosition {
-  page: number;
-  x: number;
-  y: number;
+// Types for text content and positioning
+export interface TextItem {
+  str: string;
+  dir: string;
+  width: number;
+  height: number;
+  transform: number[];
+  fontName: string;
+  hasEOL: boolean;
+}
+
+export interface TextContent {
+  items: TextItem[];
+  styles: Record<string, any>;
+}
+
+export interface BoundingBox {
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
   width: number;
   height: number;
 }
 
+export interface HighlightPosition {
+  pageNumber: number;
+  boundingRect: BoundingBox;
+  rects: BoundingBox[];
+  text: string;
+}
+
+export interface PhraseMatch {
+  phrase: string;
+  startIndex: number;
+  endIndex: number;
+  confidence: number;
+  category: "primary" | "secondary" | "tertiary";
+}
+
+/**
+ * PDF Highlighter utility class for working with PDF.js text layer
+ */
 export class PDFHighlighter {
-  private highlightOverlayContainer: HTMLElement | null = null;
-  private currentHighlights: Map<string, HTMLElement[]> = new Map();
-  
-  constructor() {
-    this.initializeOverlayContainer();
+  private document: any = null;
+  private pageTextCache: Map<number, TextContent> = new Map();
+  private pageTextStringCache: Map<number, string> = new Map();
+
+  constructor(document: any) {
+    this.document = document;
   }
 
-  private initializeOverlayContainer(): void {
-    // Check if overlay container already exists
-    this.highlightOverlayContainer = document.getElementById('pdf-highlight-overlay-container');
-    
-    if (!this.highlightOverlayContainer) {
-      this.highlightOverlayContainer = document.createElement('div');
-      this.highlightOverlayContainer.id = 'pdf-highlight-overlay-container';
-      this.highlightOverlayContainer.style.cssText = `
-        position: absolute;
-        top: 0;
-        left: 0;
-        right: 0;
-        bottom: 0;
-        pointer-events: none;
-        z-index: 10;
-      `;
+  /**
+   * Extract text content from a specific page with positioning information
+   */
+  async getPageTextContent(pageNumber: number): Promise<TextContent> {
+    if (this.pageTextCache.has(pageNumber)) {
+      return this.pageTextCache.get(pageNumber)!;
+    }
+
+    try {
+      const page = await this.document.getPage(pageNumber);
+      const textContent = await page.getTextContent();
+      
+      this.pageTextCache.set(pageNumber, textContent);
+      return textContent;
+    } catch (error) {
+      console.error(`Error extracting text from page ${pageNumber}:`, error);
+      throw error;
     }
   }
 
   /**
-   * Find all occurrences of text in the PDF content
+   * Get plain text string from a page
    */
-  public findTextInPDF(searchText: string, container: HTMLElement): HighlightPosition[] {
-    const positions: HighlightPosition[] = [];
-    
-    if (!searchText || searchText.length < 3) return positions;
-    
-    // Normalize search text
-    const normalizedSearch = this.normalizeText(searchText);
-    
-    // Get all text nodes in the container
-    const textNodes = this.getTextNodes(container);
-    
-    // Build full text content
-    const fullText = textNodes.map(node => node.textContent || '').join(' ');
-    const normalizedFullText = this.normalizeText(fullText);
-    
-    // Find matches
-    const matches = this.findMatches(normalizedSearch, normalizedFullText);
-    
-    // Convert matches to positions
-    matches.forEach(match => {
-      const position = this.getPositionFromMatch(match, textNodes, container);
-      if (position) {
-        positions.push(position);
+  async getPageTextString(pageNumber: number): Promise<string> {
+    if (this.pageTextStringCache.has(pageNumber)) {
+      return this.pageTextStringCache.get(pageNumber)!;
+    }
+
+    try {
+      const textContent = await this.getPageTextContent(pageNumber);
+      const textString = textContent.items
+        .map((item: TextItem) => item.str)
+        .join(' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      this.pageTextStringCache.set(pageNumber, textString);
+      return textString;
+    } catch (error) {
+      console.error(`Error getting text string from page ${pageNumber}:`, error);
+      return '';
+    }
+  }
+
+  /**
+   * Find all occurrences of phrases in the document
+   */
+  async findPhrasesInDocument(phrases: PhraseMatch[]): Promise<HighlightPosition[]> {
+    const highlights: HighlightPosition[] = [];
+    const numPages = this.document.numPages;
+
+    for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+      const pageHighlights = await this.findPhrasesInPage(pageNum, phrases);
+      highlights.push(...pageHighlights);
+    }
+
+    return highlights;
+  }
+
+  /**
+   * Find phrases in a specific page
+   */
+  async findPhrasesInPage(pageNumber: number, phrases: PhraseMatch[]): Promise<HighlightPosition[]> {
+    try {
+      const textContent = await this.getPageTextContent(pageNumber);
+      const textString = await this.getPageTextString(pageNumber);
+      const highlights: HighlightPosition[] = [];
+
+      for (const phraseMatch of phrases) {
+        const positions = await this.findPhrasePositions(
+          pageNumber,
+          phraseMatch.phrase,
+          textContent,
+          textString
+        );
+        
+        highlights.push(...positions);
       }
-    });
-    
+
+      return highlights;
+    } catch (error) {
+      console.error(`Error finding phrases in page ${pageNumber}:`, error);
+      return [];
+    }
+  }
+
+  /**
+   * Find all positions of a specific phrase in a page
+   */
+  private async findPhrasePositions(
+    pageNumber: number,
+    phrase: string,
+    textContent: TextContent,
+    textString: string
+  ): Promise<HighlightPosition[]> {
+    const positions: HighlightPosition[] = [];
+    const normalizedPhrase = this.normalizeText(phrase);
+    const normalizedText = this.normalizeText(textString);
+
+    // Find all occurrences of the phrase
+    let searchIndex = 0;
+    while (true) {
+      const index = normalizedText.indexOf(normalizedPhrase, searchIndex);
+      if (index === -1) break;
+
+      // Get the actual character positions in the original text
+      const startPos = this.getActualPosition(textString, normalizedText, index);
+      const endPos = this.getActualPosition(textString, normalizedText, index + normalizedPhrase.length);
+
+      if (startPos !== -1 && endPos !== -1) {
+        const position = await this.getTextBounds(
+          pageNumber,
+          startPos,
+          endPos,
+          textContent,
+          textString
+        );
+
+        if (position) {
+          positions.push(position);
+        }
+      }
+
+      searchIndex = index + 1;
+    }
+
     return positions;
   }
 
   /**
-   * Apply highlights to the PDF viewer
+   * Get bounding boxes for text between start and end positions
    */
-  public applyHighlights(highlights: Highlight[], currentPage: number): void {
-    // Clear existing highlights
-    this.clearHighlights();
-    
-    // Get the PDF container
-    const pdfContainer = this.getPDFContainer();
-    if (!pdfContainer) {
-      console.warn('PDF container not found');
-      return;
-    }
-    
-    // Ensure overlay container is attached
-    this.attachOverlayContainer(pdfContainer);
-    
-    // Filter highlights for current page
-    const pageHighlights = highlights.filter(h => h.page === currentPage);
-    
-    // Apply each highlight
-    pageHighlights.forEach(highlight => {
-      this.applyHighlight(highlight, pdfContainer);
-    });
-  }
-
-  /**
-   * Apply a single highlight to the PDF
-   */
-  private applyHighlight(highlight: Highlight, container: HTMLElement): void {
+  private async getTextBounds(
+    pageNumber: number,
+    startPos: number,
+    endPos: number,
+    textContent: TextContent,
+    textString: string
+  ): Promise<HighlightPosition | null> {
     try {
-      // Find text positions
-      const positions = this.findTextInPDF(highlight.text, container);
+      const page = await this.document.getPage(pageNumber);
+      const viewport = page.getViewport({ scale: 1 });
       
-      if (positions.length === 0) {
-        // Try partial match if exact match fails
-        const partialText = highlight.text.substring(0, Math.min(50, highlight.text.length));
-        const partialPositions = this.findTextInPDF(partialText, container);
-        if (partialPositions.length > 0) {
-          positions.push(...partialPositions);
+      // Find the text items that contain our target text
+      const rects: BoundingBox[] = [];
+      let currentPos = 0;
+      
+      for (const item of textContent.items) {
+        const itemLength = item.str.length;
+        const itemStart = currentPos;
+        const itemEnd = currentPos + itemLength;
+        
+        // Check if this item overlaps with our target range
+        if (itemStart < endPos && itemEnd > startPos) {
+          // Calculate the bounding box for this text item
+          const transform = item.transform;
+          const x = transform[4];
+          const y = transform[5];
+          const width = item.width;
+          const height = item.height;
+          
+          // Convert PDF coordinates to viewport coordinates
+          const rect: BoundingBox = {
+            x1: x,
+            y1: viewport.height - y - height, // Flip Y coordinate
+            x2: x + width,
+            y2: viewport.height - y,
+            width: width,
+            height: height,
+          };
+          
+          rects.push(rect);
         }
+        
+        currentPos = itemEnd + 1; // +1 for space between items
       }
+
+      if (rects.length === 0) return null;
+
+      // Calculate overall bounding rect
+      const boundingRect: BoundingBox = {
+        x1: Math.min(...rects.map(r => r.x1)),
+        y1: Math.min(...rects.map(r => r.y1)),
+        x2: Math.max(...rects.map(r => r.x2)),
+        y2: Math.max(...rects.map(r => r.y2)),
+        width: 0,
+        height: 0,
+      };
       
-      // Create highlight elements
-      const highlightElements: HTMLElement[] = [];
-      
-      positions.forEach((position, index) => {
-        const highlightElement = this.createHighlightElement(highlight, position, index);
-        if (this.highlightOverlayContainer) {
-          this.highlightOverlayContainer.appendChild(highlightElement);
-          highlightElements.push(highlightElement);
-        }
-      });
-      
-      // Store highlight elements for later removal
-      if (highlightElements.length > 0) {
-        this.currentHighlights.set(highlight.id, highlightElements);
-      }
-      
+      boundingRect.width = boundingRect.x2 - boundingRect.x1;
+      boundingRect.height = boundingRect.y2 - boundingRect.y1;
+
+      return {
+        pageNumber,
+        boundingRect,
+        rects,
+        text: textString.substring(startPos, endPos),
+      };
     } catch (error) {
-      console.error('Failed to apply highlight:', error);
+      console.error('Error getting text bounds:', error);
+      return null;
     }
   }
 
   /**
-   * Create a highlight element
-   */
-  private createHighlightElement(highlight: Highlight, position: HighlightPosition, index: number): HTMLElement {
-    const element = document.createElement('div');
-    element.className = `pdf-highlight pdf-highlight-${highlight.color}`;
-    element.id = `highlight-${highlight.id}-${index}`;
-    
-    // Set color based on highlight type
-    const colorMap = {
-      'primary': 'rgba(254, 240, 138, 0.4)',
-      'secondary': 'rgba(134, 239, 172, 0.4)',
-      'tertiary': 'rgba(147, 197, 253, 0.4)'
-    };
-    
-    element.style.cssText = `
-      position: absolute;
-      left: ${position.x}px;
-      top: ${position.y}px;
-      width: ${position.width}px;
-      height: ${position.height}px;
-      background-color: ${colorMap[highlight.color] || colorMap.primary};
-      mix-blend-mode: multiply;
-      pointer-events: auto;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      border-radius: 2px;
-    `;
-    
-    // Add hover effect
-    element.addEventListener('mouseenter', () => {
-      element.style.backgroundColor = highlight.color === 'primary' ? 'rgba(254, 240, 138, 0.6)' :
-                                      highlight.color === 'secondary' ? 'rgba(134, 239, 172, 0.6)' :
-                                      'rgba(147, 197, 253, 0.6)';
-      element.style.transform = 'scale(1.02)';
-    });
-    
-    element.addEventListener('mouseleave', () => {
-      element.style.backgroundColor = colorMap[highlight.color] || colorMap.primary;
-      element.style.transform = 'scale(1)';
-    });
-    
-    // Add click handler
-    element.addEventListener('click', () => {
-      this.showHighlightTooltip(highlight, element);
-    });
-    
-    // Add tooltip
-    element.title = `${highlight.explanation}\n${highlight.text.substring(0, 100)}${highlight.text.length > 100 ? '...' : ''}`;
-    
-    return element;
-  }
-
-  /**
-   * Show tooltip for highlight
-   */
-  private showHighlightTooltip(highlight: Highlight, element: HTMLElement): void {
-    // Remove existing tooltip
-    const existingTooltip = document.getElementById('highlight-tooltip');
-    if (existingTooltip) {
-      existingTooltip.remove();
-    }
-    
-    // Create new tooltip
-    const tooltip = document.createElement('div');
-    tooltip.id = 'highlight-tooltip';
-    tooltip.className = 'highlight-tooltip';
-    
-    const rect = element.getBoundingClientRect();
-    
-    tooltip.style.cssText = `
-      position: fixed;
-      top: ${rect.bottom + 10}px;
-      left: ${rect.left}px;
-      background: rgba(0, 0, 0, 0.9);
-      color: white;
-      padding: 12px;
-      border-radius: 8px;
-      max-width: 300px;
-      z-index: 1000;
-      font-size: 14px;
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-      animation: fadeIn 0.3s ease;
-    `;
-    
-    tooltip.innerHTML = `
-      <div style="margin-bottom: 8px; font-weight: 600;">
-        Page ${highlight.page} • ${Math.round(highlight.relevanceScore * 100)}% Relevant
-      </div>
-      <div style="margin-bottom: 8px; opacity: 0.9;">
-        ${highlight.explanation}
-      </div>
-      <div style="font-size: 12px; opacity: 0.7; font-style: italic;">
-        "${highlight.text.substring(0, 150)}${highlight.text.length > 150 ? '...' : ''}"
-      </div>
-    `;
-    
-    document.body.appendChild(tooltip);
-    
-    // Remove tooltip after 5 seconds or on click outside
-    const removeTooltip = () => {
-      tooltip.style.animation = 'fadeOut 0.3s ease forwards';
-      setTimeout(() => tooltip.remove(), 300);
-    };
-    
-    setTimeout(removeTooltip, 5000);
-    
-    const handleClickOutside = (e: MouseEvent) => {
-      if (!tooltip.contains(e.target as Node) && e.target !== element) {
-        removeTooltip();
-        document.removeEventListener('click', handleClickOutside);
-      }
-    };
-    
-    setTimeout(() => {
-      document.addEventListener('click', handleClickOutside);
-    }, 100);
-  }
-
-  /**
-   * Clear all highlights
-   */
-  public clearHighlights(): void {
-    this.currentHighlights.forEach(elements => {
-      elements.forEach(element => element.remove());
-    });
-    this.currentHighlights.clear();
-  }
-
-  /**
-   * Get PDF container element
-   */
-  private getPDFContainer(): HTMLElement | null {
-    // Try multiple selectors to find the PDF container
-    const selectors = [
-      '#custom-pdf-viewer',
-      '.custom-pdf-viewer',
-      '.react-pdf__Document',
-      '.pdf-viewer-container',
-      '#pdf-content',
-      'iframe',
-      '[data-pdf-viewer]'
-    ];
-    
-    for (const selector of selectors) {
-      const element = document.querySelector(selector);
-      if (element) {
-        return element as HTMLElement;
-      }
-    }
-    
-    return null;
-  }
-
-  /**
-   * Attach overlay container to PDF container
-   */
-  private attachOverlayContainer(pdfContainer: HTMLElement): void {
-    if (!this.highlightOverlayContainer) return;
-    
-    // Check if it's an iframe
-    if (pdfContainer.tagName === 'IFRAME') {
-      const parent = pdfContainer.parentElement;
-      if (parent) {
-        parent.style.position = 'relative';
-        if (!parent.contains(this.highlightOverlayContainer)) {
-          parent.appendChild(this.highlightOverlayContainer);
-        }
-      }
-    } else {
-      pdfContainer.style.position = 'relative';
-      if (!pdfContainer.contains(this.highlightOverlayContainer)) {
-        pdfContainer.appendChild(this.highlightOverlayContainer);
-      }
-    }
-  }
-
-  /**
-   * Get all text nodes from container
-   */
-  private getTextNodes(container: HTMLElement): Text[] {
-    const textNodes: Text[] = [];
-    const walker = document.createTreeWalker(
-      container,
-      NodeFilter.SHOW_TEXT,
-      {
-        acceptNode: (node) => {
-          const text = node.textContent || '';
-          return text.trim().length > 0 ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-        }
-      }
-    );
-    
-    let node;
-    while (node = walker.nextNode()) {
-      textNodes.push(node as Text);
-    }
-    
-    return textNodes;
-  }
-
-  /**
-   * Normalize text for matching
+   * Normalize text for better matching (remove extra spaces, normalize case)
    */
   private normalizeText(text: string): string {
     return text
@@ -344,120 +268,111 @@ export class PDFHighlighter {
   }
 
   /**
-   * Find matches in text
+   * Get actual character position in original text from normalized position
    */
-  private findMatches(searchText: string, fullText: string): Array<{ start: number; end: number }> {
-    const matches: Array<{ start: number; end: number }> = [];
-    let startIndex = 0;
+  private getActualPosition(originalText: string, normalizedText: string, normalizedPos: number): number {
+    let originalPos = 0;
+    let normalizedCount = 0;
     
-    while (startIndex < fullText.length) {
-      const index = fullText.indexOf(searchText, startIndex);
-      if (index === -1) break;
+    for (let i = 0; i < originalText.length && normalizedCount < normalizedPos; i++) {
+      const char = originalText[i];
+      const normalizedChar = char.toLowerCase().replace(/[^\w\s]/g, '');
       
-      matches.push({
-        start: index,
-        end: index + searchText.length
-      });
-      
-      startIndex = index + 1;
-    }
-    
-    return matches;
-  }
-
-  /**
-   * Get position from text match
-   */
-  private getPositionFromMatch(
-    match: { start: number; end: number },
-    textNodes: Text[],
-    container: HTMLElement
-  ): HighlightPosition | null {
-    let currentOffset = 0;
-    
-    for (const node of textNodes) {
-      const nodeText = this.normalizeText(node.textContent || '');
-      const nodeLength = nodeText.length;
-      
-      // Check if match is in this node
-      if (match.start >= currentOffset && match.start < currentOffset + nodeLength) {
-        try {
-          const range = document.createRange();
-          const startInNode = match.start - currentOffset;
-          const endInNode = Math.min(nodeLength, match.end - currentOffset);
-          
-          // Handle text node boundaries
-          const actualStartInNode = Math.min(startInNode, (node.textContent || '').length - 1);
-          const actualEndInNode = Math.min(endInNode, (node.textContent || '').length);
-          
-          if (actualStartInNode >= 0 && actualEndInNode > actualStartInNode) {
-            range.setStart(node, actualStartInNode);
-            range.setEnd(node, actualEndInNode);
-            
-            const rect = range.getBoundingClientRect();
-            const containerRect = container.getBoundingClientRect();
-            
-            if (rect.width > 0 && rect.height > 0) {
-              return {
-                page: 1, // Will be set by caller
-                x: rect.left - containerRect.left,
-                y: rect.top - containerRect.top,
-                width: rect.width,
-                height: rect.height
-              };
-            }
+      if (normalizedChar) {
+        if (normalizedChar === ' ') {
+          // Skip multiple spaces in normalized text
+          if (normalizedCount === 0 || normalizedText[normalizedCount - 1] !== ' ') {
+            normalizedCount++;
           }
-        } catch (error) {
-          console.error('Error creating range:', error);
+        } else {
+          normalizedCount++;
         }
       }
       
-      currentOffset += nodeLength + 1; // Add 1 for space between nodes
+      originalPos = i + 1;
     }
     
-    return null;
+    return originalPos;
   }
 
   /**
-   * Add CSS styles for highlights
+   * Extract important phrases using simple heuristics
    */
-  public addHighlightStyles(): void {
-    if (document.getElementById('pdf-highlight-styles')) return;
+  static extractImportantPhrases(
+    text: string,
+    heading?: string
+  ): PhraseMatch[] {
+    const phrases: PhraseMatch[] = [];
+
+    // Add heading as primary
+    if (heading && heading.trim()) {
+      phrases.push({
+        phrase: heading.trim(),
+        startIndex: 0,
+        endIndex: heading.length,
+        confidence: 1.0,
+        category: "primary"
+      });
+    }
+
+    // Split into sentences and analyze
+    const sentences = text.split(/[.!?]+/).filter(s => s.trim().length > 10);
     
-    const style = document.createElement('style');
-    style.id = 'pdf-highlight-styles';
-    style.textContent = `
-      @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(-10px); }
-        to { opacity: 1; transform: translateY(0); }
-      }
+    sentences.forEach((sentence, index) => {
+      const trimmed = sentence.trim();
       
-      @keyframes fadeOut {
-        from { opacity: 1; transform: translateY(0); }
-        to { opacity: 0; transform: translateY(-10px); }
+      // Primary: Definitions, key concepts
+      if (trimmed.match(/\b(define[sd]?|definition|concept|principle|theory|law|fundamental|essential|critical|key concept)\b/i)) {
+        phrases.push({
+          phrase: trimmed,
+          startIndex: text.indexOf(trimmed),
+          endIndex: text.indexOf(trimmed) + trimmed.length,
+          confidence: 0.9,
+          category: "primary"
+        });
       }
-      
-      @keyframes highlightPulse {
-        0%, 100% { opacity: 0.4; }
-        50% { opacity: 0.7; }
+      // Secondary: Important facts, processes, methods
+      else if (trimmed.match(/\b(important|significant|key|main|primary|process|method|approach|strategy|technique)\b/i)) {
+        phrases.push({
+          phrase: trimmed,
+          startIndex: text.indexOf(trimmed),
+          endIndex: text.indexOf(trimmed) + trimmed.length,
+          confidence: 0.7,
+          category: "secondary"
+        });
       }
-      
-      .pdf-highlight {
-        animation: highlightPulse 2s ease-in-out;
+      // Tertiary: Supporting information, examples
+      else if (trimmed.match(/\b(example|instance|case|illustration|furthermore|additionally|moreover|however|therefore)\b/i)) {
+        phrases.push({
+          phrase: trimmed,
+          startIndex: text.indexOf(trimmed),
+          endIndex: text.indexOf(trimmed) + trimmed.length,
+          confidence: 0.5,
+          category: "tertiary"
+        });
       }
-      
-      .pdf-highlight:hover {
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-      }
-      
-      .highlight-tooltip {
-        animation: fadeIn 0.3s ease;
-      }
-    `;
-    
-    document.head.appendChild(style);
+    });
+
+    // Sort by confidence and limit results
+    return phrases
+      .sort((a, b) => b.confidence - a.confidence)
+      .slice(0, 15); // Limit to prevent overwhelming
+  }
+
+  /**
+   * Clear caches
+   */
+  clearCache(): void {
+    this.pageTextCache.clear();
+    this.pageTextStringCache.clear();
   }
 }
 
-// Export singleton instance
-export const pdfHighlighter = new PDFHighlighter();
+/**
+ * Create a PDF highlighter instance
+ */
+export const createPDFHighlighter = (document: any): PDFHighlighter => {
+  return new PDFHighlighter(document);
+};
+
+export default PDFHighlighter;
