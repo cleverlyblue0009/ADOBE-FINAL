@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { apiService } from '@/lib/api';
 import {
   Dialog,
   DialogContent,
@@ -189,30 +190,48 @@ export function AIInsightsModal({
   ): Promise<AIInsight[]> => {
     // Try to use API service first
     try {
-      const response = await apiService.generateInsights(text, {
-        persona,
-        jobToBeDone,
-        currentPage
-      });
+      const response = await apiService.generateInsights(text, persona || '', jobToBeDone || '', documentId);
       
-      if (response && response.length > 0) {
-        return response.map((insight: any, index: number) => ({
+      if (response && response.insights && response.insights.length > 0) {
+        return response.insights.map((insight: any, index: number) => ({
           id: `api-${index}`,
-          type: insight.type || 'summary',
-          title: insight.title || `Insight ${index + 1}`,
-          content: insight.content || insight.text || '',
-          relevanceScore: insight.relevance || 0.8,
-          pageReferences: insight.pageReferences || [currentPage || 1],
-          tags: insight.tags || ['analysis']
+          type: mapInsightType(insight.type),
+          title: getInsightTitle(insight.type),
+          content: insight.content || '',
+          relevanceScore: 0.9,
+          pageReferences: [currentPage || 1],
+          tags: [insight.type, 'ai-generated']
         }));
       }
     } catch (error) {
-      console.log('API unavailable, using contextual analysis');
+      console.log('API unavailable, using contextual analysis:', error);
     }
     
     // Fallback to contextual analysis
     await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate processing time
     return generateContextualInsights(text, persona, jobToBeDone, currentPage);
+  };
+
+  const mapInsightType = (apiType: string): AIInsight['type'] => {
+    const typeMap: Record<string, AIInsight['type']> = {
+      'takeaway': 'key-takeaway',
+      'fact': 'did-you-know',
+      'connection': 'related-topic',
+      'implication': 'action-item',
+      'error': 'summary'
+    };
+    return typeMap[apiType] || 'summary';
+  };
+
+  const getInsightTitle = (apiType: string): string => {
+    const titleMap: Record<string, string> = {
+      'takeaway': 'Key Takeaway',
+      'fact': 'Did You Know?',
+      'connection': 'Related Concept',
+      'implication': 'Action Item',
+      'error': 'Notice'
+    };
+    return titleMap[apiType] || 'Insight';
   };
 
   // Generate contextual insights from actual document text
@@ -310,99 +329,15 @@ export function AIInsightsModal({
       .map(([word]) => word);
   };
 
+  // This function is now deprecated - we use generateContextualInsights instead
   const getMockInsights = (
     text: string,
     persona?: string,
     jobToBeDone?: string,
     currentPage?: number
   ): AIInsight[] => {
-    const baseInsights: AIInsight[] = [
-      {
-        id: 'summary-1',
-        type: 'summary',
-        title: 'Document Summary',
-        content: `This document explores cutting-edge developments in artificial intelligence applications within healthcare systems. It examines how machine learning algorithms are revolutionizing clinical decision-making processes and optimizing patient care delivery. The analysis encompasses deep learning models specifically designed for medical imaging analysis and predictive analytics frameworks for forecasting patient outcomes.`,
-        relevanceScore: 0.95,
-        pageReferences: [1, 2, 3],
-        tags: ['AI', 'Healthcare', 'Machine Learning']
-      },
-      {
-        id: 'takeaway-1',
-        type: 'key-takeaway',
-        title: 'Breakthrough in Medical Diagnostics',
-        content: 'Modern AI systems have achieved remarkable accuracy in analyzing medical images, with performance levels that now match or even surpass experienced radiologists. This represents a paradigm shift in diagnostic capabilities, enabling faster, more accurate detection of medical conditions while reducing human error.',
-        relevanceScore: 0.92,
-        pageReferences: [2],
-        tags: ['Medical Imaging', 'Diagnostics', 'AI Performance']
-      },
-      {
-        id: 'question-1',
-        type: 'question',
-        title: 'Ethical Implementation Challenge',
-        content: 'As AI systems become more prevalent in healthcare, how can organizations ensure responsible deployment while maintaining strict patient privacy standards and effectively addressing potential algorithmic bias that could impact treatment decisions?',
-        relevanceScore: 0.88,
-        pageReferences: [1, 3],
-        tags: ['Ethics', 'Privacy', 'Implementation']
-      },
-      {
-        id: 'related-1',
-        type: 'related-topic',
-        title: 'Emerging Technologies',
-        content: 'Natural language processing for automated clinical documentation and sophisticated predictive models for early chronic condition identification are rapidly emerging as powerful complementary technologies that enhance overall healthcare AI ecosystems.',
-        relevanceScore: 0.85,
-        pageReferences: [2, 3],
-        tags: ['NLP', 'Predictive Analytics', 'Clinical Documentation']
-      },
-      {
-        id: 'action-1',
-        type: 'action-item',
-        title: 'Strategic Implementation Framework',
-        content: 'Organizations should prioritize developing comprehensive frameworks for responsible AI deployment that systematically address critical areas including data privacy protection, algorithmic bias mitigation, and regulatory compliance requirements.',
-        relevanceScore: 0.90,
-        pageReferences: [1, 2],
-        tags: ['Implementation', 'Governance', 'Compliance']
-      },
-      {
-        id: 'did-you-know-1',
-        type: 'did-you-know',
-        title: 'Did You Know?',
-        content: 'AI algorithms can process medical images up to 1000 times faster than human radiologists, and some AI systems have been trained on datasets containing over 10 million medical images from around the world.',
-        relevanceScore: 0.87,
-        pageReferences: [],
-        tags: ['AI Facts', 'Medical Imaging', 'Performance']
-      },
-      {
-        id: 'did-you-know-2',
-        type: 'did-you-know',
-        title: 'Did You Know?',
-        content: 'The global AI in healthcare market is expected to reach $102 billion by 2028, with diagnostic imaging applications representing the largest segment due to their proven effectiveness in clinical settings.',
-        relevanceScore: 0.84,
-        pageReferences: [],
-        tags: ['Market Trends', 'Healthcare AI', 'Industry Growth']
-      }
-    ];
-
-    // Customize insights based on persona and job
-    if (persona && jobToBeDone) {
-      baseInsights.forEach(insight => {
-        insight.content = `[For ${persona} working on ${jobToBeDone}] ${insight.content}`;
-      });
-
-      // Add persona-specific insights
-      if (persona.toLowerCase().includes('researcher')) {
-        baseInsights.push({
-          id: 'research-specific',
-          type: 'action-item',
-          title: 'Research Opportunity',
-          content: `As a ${persona}, consider investigating the methodological approaches described in this document for your ${jobToBeDone} research.`,
-          relevanceScore: 0.87,
-          pageReferences: [currentPage || 1],
-          tags: ['Research', 'Methodology']
-        });
-      }
-    }
-
-    return baseInsights.sort((a, b) => b.relevanceScore - a.relevanceScore);
+    // This should not be used anymore - redirect to contextual insights
+    return generateContextualInsights(text, persona, jobToBeDone, currentPage);
   };
 
   const getInsightsByType = (type: string) => {
